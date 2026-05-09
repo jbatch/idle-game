@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import type { Enemy } from './Enemy'
 import type { UnitData, UnitBuff, StatusEffect, Targetable } from '../data/types'
 import { CX, CY, ARENA_RADIUS } from '../constants'
+import { floatDamageNumber, floatHealNumber, playUnitAttackEffect } from '../effects/CombatEffects'
 
 export class Unit implements Targetable {
   scene: Phaser.Scene
@@ -20,6 +21,7 @@ export class Unit implements Targetable {
   private fxGraphics: Phaser.GameObjects.Graphics
   private graphics: Phaser.GameObjects.Graphics
   private hpBar: Phaser.GameObjects.Graphics
+  private destroyed: boolean = false
 
   constructor(scene: Phaser.Scene, x: number, y: number, data: UnitData) {
     this.scene = scene
@@ -47,14 +49,15 @@ export class Unit implements Targetable {
 
     switch (this.data.behaviour) {
       case 'melee_basic':   this.runMeleeBasic(dt, enemies);      break
-      case 'melee_taunt':   this.runMeleeBasic(dt, enemies);      break  // same movement, taunt is passive
-      case 'ranged_kite':   this.runRangedKite(dt, enemies);      break
-      case 'heal_support':  this.runHealSupport(dt, allies);      break
+      case 'melee_taunt':   this.runMeleeTaunt(dt, enemies);      break
+      case 'ranged_kite':   this.runRangedKite(dt, enemies, allies); break
+      case 'heal_support':  this.runHealSupport(dt, enemies, allies); break
       case 'aoe_slow':      this.runAoeSlow(dt, enemies);         break
       case 'stationary_guard': this.runStationaryGuard(dt, enemies); break
       case 'aura_haste':    this.runAuraHaste(dt, allies);        break
     }
 
+    this.applySeparation(dt, allies)
     this.clampToArena()
     this.draw()
   }
@@ -62,20 +65,45 @@ export class Unit implements Targetable {
   // ─── Behaviours ──────────────────────────────────────────────────
 
   private runMeleeBasic(dt: number, enemies: Enemy[]) {
-    const target = this.nearest(enemies)
-    if (!target) return
+    const target = this.bestInterceptTarget(enemies)
+    if (!target) {
+      this.returnToTowerBand(dt, 125)
+      return
+    }
     this.moveAndAttack(dt, target)
+    this.enforceMaxTowerDistance(dt, 285)
   }
 
-  private runRangedKite(dt: number, enemies: Enemy[]) {
-    const target = this.nearest(enemies)
-    if (!target) return
+  private runMeleeTaunt(dt: number, enemies: Enemy[]) {
+    const guardRadius = Number(this.data.params?.guardRadius ?? this.data.params?.tauntRadius ?? 165)
+    const leashRadius = Number(this.data.params?.leashRadius ?? guardRadius + 40)
+    const target = this.closestEnemyToTower(enemies, guardRadius + 90)
+
+    if (!target) {
+      this.returnToTowerBand(dt, guardRadius * 0.75)
+      return
+    }
+
+    this.moveAndAttack(dt, target)
+    this.enforceMaxTowerDistance(dt, leashRadius)
+  }
+
+  private runRangedKite(dt: number, enemies: Enemy[], allies: Unit[]) {
+    const target = this.bestRangedTarget(enemies, allies)
+    if (!target) {
+      this.returnToTowerBand(dt, 135)
+      return
+    }
     const dx = target.x - this.x
     const dy = target.y - this.y
-    const dist = Math.sqrt(dx * dx + dy * dy)
-    const preferred = this.data.attackRange * 0.72
+    const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy))
+    const preferred = Number(this.data.params?.preferredRange ?? this.data.attackRange * 0.78)
+    const dangerRadius = Number(this.data.params?.dangerRadius ?? 70)
+    const threat = this.nearestThreat(enemies, dangerRadius)
 
-    if (dist < preferred) {
+    if (threat) {
+      this.moveAwayFromPoint(dt, threat.x, threat.y, 1.15)
+    } else if (dist < preferred) {
       this.x -= (dx / dist) * this.data.speed * dt
       this.y -= (dy / dist) * this.data.speed * dt
     } else if (dist > this.data.attackRange) {
@@ -85,25 +113,33 @@ export class Unit implements Targetable {
 
     if (dist <= this.data.attackRange && this.attackTimer === 0) {
       const wasAlive = target.alive
+      this.playAttackEffect(target)
       target.takeDamage(this.data.attackDamage)
       if (wasAlive && !target.alive) this.statCallback?.('kill', 1)
       this.attackTimer = this.effectiveCooldown()
     }
+
+    this.enforceMaxTowerDistance(dt, Number(this.data.params?.leashRadius ?? 285))
   }
 
-  private runHealSupport(dt: number, allies: Unit[]) {
+  private runHealSupport(dt: number, enemies: Enemy[], allies: Unit[]) {
     const healRange = Number(this.data.params?.healRange ?? this.data.attackRange)
     const healAmount = Number(this.data.params?.healAmount ?? 20)
+    const avoidRadius = Number(this.data.params?.avoidRadius ?? 90)
 
-    const target = allies
-      .filter(a => a.alive && a !== this && a.hp < a.maxHp)
-      .sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0]
+    const threat = this.nearestThreat(enemies, avoidRadius)
+    if (threat) this.moveAwayFromPoint(dt, threat.x, threat.y, 1.1)
 
-    if (!target) return
+    const target = this.bestHealTarget(allies)
+
+    if (!target) {
+      this.moveToAlliedCluster(dt, allies, 80)
+      return
+    }
 
     const dx = target.x - this.x
     const dy = target.y - this.y
-    const dist = Math.sqrt(dx * dx + dy * dy)
+    const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy))
 
     if (dist > healRange) {
       this.x += (dx / dist) * this.data.speed * dt
@@ -120,11 +156,12 @@ export class Unit implements Targetable {
   }
 
   private runAoeSlow(dt: number, enemies: Enemy[]) {
-    const target = this.nearest(enemies)
+    const aoeR  = Number(this.data.params?.aoeRadius ?? 75)
+    const target = this.bestClusterTarget(enemies, aoeR)
     if (!target) return
     const dx = target.x - this.x
     const dy = target.y - this.y
-    const dist = Math.sqrt(dx * dx + dy * dy)
+    const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy))
 
     if (dist > this.data.attackRange) {
       this.x += (dx / dist) * this.data.speed * dt
@@ -133,14 +170,13 @@ export class Unit implements Targetable {
     }
 
     if (this.attackTimer === 0) {
-      const aoeR  = Number(this.data.params?.aoeRadius ?? 75)
       const slow  = Number(this.data.params?.slowMagnitude ?? 0.45)
       const dur   = Number(this.data.params?.slowDuration ?? 2.5)
       const dmg   = this.data.attackDamage
 
       const inBlast = enemies.filter(e => {
         if (!e.alive) return false
-        const dx = e.x - this.x, dy = e.y - this.y
+        const dx = e.x - target.x, dy = e.y - target.y
         return dx * dx + dy * dy <= aoeR * aoeR
       })
       if (inBlast.length === 0) return
@@ -148,7 +184,7 @@ export class Unit implements Targetable {
       const effect: StatusEffect = { type: 'slow', duration: dur, magnitude: slow }
       for (const e of enemies) {
         if (!e.alive) continue
-        const ex = e.x - this.x, ey = e.y - this.y
+        const ex = e.x - target.x, ey = e.y - target.y
         if (ex * ex + ey * ey <= aoeR * aoeR) {
           const wasAlive = e.alive
           e.takeDamage(dmg)
@@ -159,12 +195,14 @@ export class Unit implements Targetable {
 
       // AOE visual — blue pulse ring
       this.fxGraphics.lineStyle(2, 0x44ccff, 0.9)
-      this.fxGraphics.strokeCircle(this.x, this.y, aoeR)
+      this.fxGraphics.strokeCircle(target.x, target.y, aoeR)
       this.fxGraphics.fillStyle(0x44ccff, 0.08)
-      this.fxGraphics.fillCircle(this.x, this.y, aoeR)
+      this.fxGraphics.fillCircle(target.x, target.y, aoeR)
 
       this.attackTimer = this.effectiveCooldown()
     }
+
+    this.enforceMaxTowerDistance(dt, Number(this.data.params?.leashRadius ?? 300))
   }
 
   private runStationaryGuard(_dt: number, enemies: Enemy[]) {
@@ -180,7 +218,10 @@ export class Unit implements Targetable {
     }
 
     if (best && this.attackTimer === 0) {
+      const wasAlive = best.alive
+      this.playAttackEffect(best)
       best.takeDamage(this.data.attackDamage)
+      if (wasAlive && !best.alive) this.statCallback?.('kill', 1)
       this.attackTimer = this.effectiveCooldown()
       // Attack flash line to target
       this.fxGraphics.lineStyle(2, 0xffcc66, 0.7)
@@ -192,10 +233,12 @@ export class Unit implements Targetable {
     this.fxGraphics.strokeCircle(CX, CY, guardRange)
   }
 
-  private runAuraHaste(_dt: number, allies: Unit[]) {
+  private runAuraHaste(dt: number, allies: Unit[]) {
     const auraR  = Number(this.data.params?.auraRadius ?? 150)
     const haste  = Number(this.data.params?.hasteMultiplier ?? 0.5)
     const buffDur = this.data.attackCooldown + 0.1  // refresh slightly longer than interval
+
+    this.moveToAlliedCluster(dt, allies, auraR * 0.45)
 
     if (this.attackTimer === 0) {
       for (const a of allies) {
@@ -218,7 +261,7 @@ export class Unit implements Targetable {
   private moveAndAttack(dt: number, target: Targetable) {
     const dx = target.x - this.x
     const dy = target.y - this.y
-    const dist = Math.sqrt(dx * dx + dy * dy)
+    const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy))
     const stop = target.radius + this.data.attackRange
 
     if (dist > stop) {
@@ -226,22 +269,212 @@ export class Unit implements Targetable {
       this.y += (dy / dist) * this.data.speed * dt
     } else if (this.attackTimer === 0) {
       const wasAlive = target.alive
+      this.playAttackEffect(target)
       target.takeDamage(this.data.attackDamage)
       if (wasAlive && !target.alive) this.statCallback?.('kill', 1)
       this.attackTimer = this.effectiveCooldown()
     }
   }
 
-  private nearest(enemies: Enemy[]): Enemy | null {
+  private bestInterceptTarget(enemies: Enemy[]): Enemy | null {
+    let best: Enemy | null = null
+    let bestScore = Infinity
+    for (const e of enemies) {
+      if (!e.alive) continue
+      const unitDist = this.distance(this.x, this.y, e.x, e.y)
+      const towerDist = this.distance(CX, CY, e.x, e.y)
+      const score = unitDist + towerDist * 0.55
+      if (score < bestScore) {
+        bestScore = score
+        best = e
+      }
+    }
+    return best
+  }
+
+  private bestRangedTarget(enemies: Enemy[], allies: Unit[]): Enemy | null {
+    let best: Enemy | null = null
+    let bestScore = Infinity
+    for (const e of enemies) {
+      if (!e.alive) continue
+      const unitDist = this.distance(this.x, this.y, e.x, e.y)
+      const towerDist = this.distance(CX, CY, e.x, e.y)
+      const engagedBonus = allies.some(a => {
+        if (!a.alive || a === this || !a.data.tags.includes('melee')) return false
+        const dx = a.x - e.x, dy = a.y - e.y
+        return dx * dx + dy * dy <= 70 * 70
+      }) ? 75 : 0
+      const score = unitDist + towerDist * 0.25 - engagedBonus
+      if (score < bestScore) {
+        bestScore = score
+        best = e
+      }
+    }
+    return best
+  }
+
+  private bestHealTarget(allies: Unit[]): Unit | null {
+    let best: Unit | null = null
+    let bestScore = Infinity
+    for (const ally of allies) {
+      if (!ally.alive || ally === this || ally.hp >= ally.maxHp) continue
+      const hpFrac = ally.hp / ally.maxHp
+      const dist = this.distance(this.x, this.y, ally.x, ally.y)
+      const frontlinerBonus = ally.data.tags.includes('melee') || ally.data.tags.includes('tank') ? 40 : 0
+      const score = hpFrac * 260 + dist * 0.25 - frontlinerBonus
+      if (score < bestScore) {
+        bestScore = score
+        best = ally
+      }
+    }
+    return best
+  }
+
+  private bestClusterTarget(enemies: Enemy[], radius: number): Enemy | null {
+    let best: Enemy | null = null
+    let bestScore = -Infinity
+    for (const e of enemies) {
+      if (!e.alive) continue
+      let cluster = 0
+      for (const other of enemies) {
+        if (!other.alive) continue
+        const dx = other.x - e.x, dy = other.y - e.y
+        if (dx * dx + dy * dy <= radius * radius) cluster += other.isBoss ? 2 : 1
+      }
+      const dist = this.distance(this.x, this.y, e.x, e.y)
+      const score = cluster * 100 - dist * 0.15
+      if (score > bestScore) {
+        bestScore = score
+        best = e
+      }
+    }
+    return best
+  }
+
+  private closestEnemyToTower(enemies: Enemy[], maxTowerRadius = Infinity): Enemy | null {
     let best: Enemy | null = null
     let bestDist = Infinity
     for (const e of enemies) {
       if (!e.alive) continue
-      const dx = e.x - this.x, dy = e.y - this.y
+      const dx = e.x - CX, dy = e.y - CY
       const d = dx * dx + dy * dy
-      if (d < bestDist) { bestDist = d; best = e }
+      if (d <= maxTowerRadius * maxTowerRadius && d < bestDist) {
+        bestDist = d
+        best = e
+      }
     }
     return best
+  }
+
+  private nearestThreat(enemies: Enemy[], radius: number): Enemy | null {
+    let best: Enemy | null = null
+    let bestDist = radius * radius
+    for (const e of enemies) {
+      if (!e.alive) continue
+      const dx = e.x - this.x, dy = e.y - this.y
+      const d = dx * dx + dy * dy
+      if (d < bestDist) {
+        bestDist = d
+        best = e
+      }
+    }
+    return best
+  }
+
+  private moveToAlliedCluster(dt: number, allies: Unit[], desiredDistance: number) {
+    if (this.data.speed <= 0) return
+
+    const cluster = allies
+      .filter(a => a.alive && a !== this)
+      .reduce((acc, ally) => {
+        acc.x += ally.x
+        acc.y += ally.y
+        acc.count += 1
+        return acc
+      }, { x: 0, y: 0, count: 0 })
+
+    if (cluster.count === 0) {
+      this.returnToTowerBand(dt, 85)
+      return
+    }
+
+    const x = cluster.x / cluster.count
+    const y = cluster.y / cluster.count
+    if (this.distance(this.x, this.y, x, y) > desiredDistance) {
+      this.moveTowardPoint(dt, x, y, 0.75)
+    }
+  }
+
+  private returnToTowerBand(dt: number, preferredRadius: number) {
+    const towerDist = this.distance(CX, CY, this.x, this.y)
+    if (towerDist > preferredRadius + 18) {
+      this.moveTowardPoint(dt, CX, CY, 0.65)
+    } else if (towerDist < preferredRadius - 18 && towerDist > 1) {
+      this.moveAwayFromPoint(dt, CX, CY, 0.45)
+    }
+  }
+
+  private enforceMaxTowerDistance(dt: number, maxRadius: number) {
+    if (this.distance(CX, CY, this.x, this.y) <= maxRadius) return
+    this.moveTowardPoint(dt, CX, CY, 0.85)
+  }
+
+  private applySeparation(dt: number, allies: Unit[]) {
+    if (this.data.speed <= 0) return
+
+    const separationRadius = Number(this.data.params?.separationRadius ?? this.data.radius * 2 + 12)
+    let pushX = 0
+    let pushY = 0
+
+    for (const ally of allies) {
+      if (!ally.alive || ally === this) continue
+      let dx = this.x - ally.x
+      let dy = this.y - ally.y
+      let dist = Math.sqrt(dx * dx + dy * dy)
+      const minDist = separationRadius + ally.radius * 0.35
+      if (dist >= minDist) continue
+
+      if (dist < 1) {
+        dx = this.x - CX || 1
+        dy = this.y - CY || 0
+        dist = Math.max(1, Math.sqrt(dx * dx + dy * dy))
+      }
+
+      const pressure = (minDist - dist) / minDist
+      pushX += (dx / dist) * pressure
+      pushY += (dy / dist) * pressure
+    }
+
+    const pushDist = Math.sqrt(pushX * pushX + pushY * pushY)
+    if (pushDist === 0) return
+
+    const speed = this.data.speed * 0.75
+    this.x += (pushX / pushDist) * speed * dt
+    this.y += (pushY / pushDist) * speed * dt
+  }
+
+  private moveTowardPoint(dt: number, x: number, y: number, speedMultiplier = 1) {
+    if (this.data.speed <= 0) return
+    const dx = x - this.x
+    const dy = y - this.y
+    const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy))
+    this.x += (dx / dist) * this.data.speed * speedMultiplier * dt
+    this.y += (dy / dist) * this.data.speed * speedMultiplier * dt
+  }
+
+  private moveAwayFromPoint(dt: number, x: number, y: number, speedMultiplier = 1) {
+    if (this.data.speed <= 0) return
+    const dx = this.x - x
+    const dy = this.y - y
+    const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy))
+    this.x += (dx / dist) * this.data.speed * speedMultiplier * dt
+    this.y += (dy / dist) * this.data.speed * speedMultiplier * dt
+  }
+
+  private distance(ax: number, ay: number, bx: number, by: number): number {
+    const dx = ax - bx
+    const dy = ay - by
+    return Math.sqrt(dx * dx + dy * dy)
   }
 
   private effectiveCooldown(): number {
@@ -258,6 +491,10 @@ export class Unit implements Targetable {
     }
   }
 
+  private playAttackEffect(target: Targetable) {
+    playUnitAttackEffect(this.scene, this.data.effects?.attack, this, target, this.color)
+  }
+
   applyBuff(buff: UnitBuff) {
     const existing = this.buffs.find(b => b.type === buff.type)
     if (existing) {
@@ -269,18 +506,35 @@ export class Unit implements Targetable {
   }
 
   heal(amount: number) {
+    const actualHeal = Math.min(this.maxHp - this.hp, amount)
     this.hp = Math.min(this.maxHp, this.hp + amount)
+    floatHealNumber(this.scene, this.x, this.y, actualHeal)
   }
 
   takeDamage(amount: number) {
     if (!this.alive) return
+    floatDamageNumber(this.scene, this.x, this.y, amount)
     this.hp -= amount
     if (this.hp <= 0) {
-      this.alive = false
-      this.destroy()
+      this.die()
     } else {
       this.draw()
     }
+  }
+
+  private die() {
+    this.alive = false
+    this.hp = 0
+    this.hpBar.clear()
+    this.fxGraphics.clear()
+
+    this.scene.tweens.add({
+      targets: [this.graphics, this.hpBar, this.fxGraphics],
+      alpha: 0,
+      duration: 340,
+      ease: 'Quad.easeOut',
+      onComplete: () => this.destroy(),
+    })
   }
 
   private clampToArena() {
@@ -323,6 +577,8 @@ export class Unit implements Targetable {
   }
 
   destroy() {
+    if (this.destroyed) return
+    this.destroyed = true
     this.graphics.destroy()
     this.hpBar.destroy()
     this.fxGraphics.destroy()

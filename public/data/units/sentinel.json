@@ -9,6 +9,7 @@
   "attackRange": 90,
   "attackCooldown": 1.1,
   "behaviour": "stationary_guard",
+  "effects": { "attack": "quick_projectile" },
   "params": {},
   "tags": ["ranged", "defender"],
   "description": "Stationary. High damage to enemies near the Tower.",

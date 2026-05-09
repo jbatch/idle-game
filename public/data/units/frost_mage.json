@@ -9,7 +9,7 @@
   "attackRange": 110,
   "attackCooldown": 2.8,
   "behaviour": "aoe_slow",
-  "params": { "aoeRadius": 75, "slowMagnitude": 0.45, "slowDuration": 2.5 },
+  "params": { "aoeRadius": 75, "slowMagnitude": 0.45, "slowDuration": 2.5, "leashRadius": 300 },
   "tags": ["ranged", "cc"],
   "description": "Blasts a zone of enemies, dealing damage and slowing them.",
   "radius": 9,

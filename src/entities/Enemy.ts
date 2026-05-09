@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import type { Tower } from './Tower'
 import type { Unit } from './Unit'
 import type { EnemyData, StatusEffect, Targetable } from '../data/types'
+import { floatDamageNumber, floatHealNumber } from '../effects/CombatEffects'
 
 export class Enemy implements Targetable {
   scene: Phaser.Scene
@@ -26,6 +27,7 @@ export class Enemy implements Targetable {
   private effects: StatusEffect[] = []
   private graphics: Phaser.GameObjects.Graphics
   private hpBar: Phaser.GameObjects.Graphics
+  private destroyed: boolean = false
 
   alive: boolean = true
 
@@ -233,7 +235,9 @@ export class Enemy implements Targetable {
   }
 
   heal(amount: number) {
+    const actualHeal = Math.min(this.maxHp - this.hp, amount)
     this.hp = Math.min(this.maxHp, this.hp + amount)
+    floatHealNumber(this.scene, this.x, this.y, actualHeal)
     this.draw()
   }
 
@@ -248,13 +252,27 @@ export class Enemy implements Targetable {
 
   takeDamage(amount: number) {
     if (!this.alive) return
+    floatDamageNumber(this.scene, this.x, this.y, amount)
     this.hp -= amount
     if (this.hp <= 0) {
-      this.alive = false
-      this.destroy()
+      this.die()
     } else {
       this.draw()
     }
+  }
+
+  private die() {
+    this.alive = false
+    this.hp = 0
+    this.hpBar.clear()
+
+    this.scene.tweens.add({
+      targets: [this.graphics, this.hpBar],
+      alpha: 0,
+      duration: this.isBoss ? 520 : 320,
+      ease: 'Quad.easeOut',
+      onComplete: () => this.destroy(),
+    })
   }
 
   private isSlowed(): boolean {
@@ -296,6 +314,8 @@ export class Enemy implements Targetable {
   }
 
   destroy() {
+    if (this.destroyed) return
+    this.destroyed = true
     this.graphics.destroy()
     this.hpBar.destroy()
   }

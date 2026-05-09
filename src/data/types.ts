@@ -18,6 +18,12 @@ export interface UnitBuff {
   magnitude: number   // cooldown multiplier e.g. 0.5 = half cooldown
 }
 
+export type UnitAttackEffect = 'melee_slash' | 'quick_projectile'
+
+export interface UnitEffects {
+  attack?: UnitAttackEffect
+}
+
 export interface EnemyData {
   id: string
   name: string
@@ -47,6 +53,7 @@ export interface UnitData {
   attackRange: number
   attackCooldown: number
   behaviour: string
+  effects?: UnitEffects
   params?: Record<string, number | boolean>
   tags: string[]
   description: string

@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { floatDamageNumber } from '../effects/CombatEffects'
 
 const RADIUS = 28
 
@@ -35,6 +36,7 @@ export class Tower {
 
   takeDamage(amount: number) {
     if (!this.alive || this.godMode) return
+    floatDamageNumber(this.graphics.scene, this.x, this.y, amount)
     this.hp = Math.max(0, this.hp - amount)
     if (this.hp <= 0) this.alive = false
     this.draw()

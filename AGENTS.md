@@ -30,6 +30,7 @@ Priority key:
 | Boss knockback resistance | High | Low | P0 | Prevent cursor knockback from trivializing bosses. Small data/engine change. |
 | Unit survivability mechanic | High | Medium | P1 | Respawn timer, healing drops, or crates. Units dying early makes builds feel flat. |
 | Enemy pathing variation | Medium | Medium | P1 | Start with wobble/arc approaches, not full pathfinding. |
+| Aggro/threat system | High | Medium | P1/P2 | Give enemies a stronger concept of threat so ranged units cannot free-fire forever without drawing pressure. |
 | Unit collision/separation | High | Medium | P1 | Needed before multipacks/mega packs create large unit blobs. |
 | Damage/heal numbers | Medium | Low | P1 | Great for readability and balance tuning. |
 | Lightweight flocking | High | High | P2 | Grow out of collision + idle behavior; keep forces gentle. |
@@ -42,6 +43,7 @@ Priority key:
 | Same-unit synergy groups | High | Medium/High | P2 | Example: Archers spike at 5+ grouped Archers. Makes duplicate pack rolls exciting. |
 | Unit idle behavior/squads | Medium | Medium | P2 | Same-type units loosely cluster near tower with small idle drift. |
 | Support units opening crates | Medium | Medium | P2 | Support/passive units beeline to crates and open them for the player. |
+| Necromancer unit | Medium/High | Medium/High | P2/P3 | Targets dead allied units/corpses and revives them as temporary zombie or skeleton units. Requires corpse/dead-unit tracking. |
 
 #### Shop / Progression
 | Item | Impact | Complexity | Priority | Notes |
@@ -61,6 +63,7 @@ Priority key:
 | Unit viewer/tuner | High | High | P2 | Edit stats/behavior dropdowns and preview against an invincible training dummy. |
 | Config-driven tech tree layout | Medium | Medium | P2 | Render from explicit positions/edges instead of branch rows. |
 | Tech tree layout editor | Medium/High | High | P2/P3 | Drag nodes, connect lines, save layout metadata as config. |
+| Deployment packaging | Medium | Medium | P3 | Plan production builds that exclude local tools, plus a Docker/container path for running the packaged game. |
 
 #### UX / Meta Polish
 | Item | Impact | Complexity | Priority | Notes |

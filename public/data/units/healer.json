@@ -9,7 +9,7 @@
   "attackRange": 80,
   "attackCooldown": 2.2,
   "behaviour": "heal_support",
-  "params": { "healAmount": 22, "healRange": 80 },
+  "params": { "healAmount": 22, "healRange": 80, "avoidRadius": 90, "separationRadius": 26 },
   "tags": ["support"],
   "description": "Follows the lowest HP ally and restores their health.",
   "radius": 8,
