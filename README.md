@@ -4,7 +4,7 @@ Browser-based incremental roguelike with tower-defense mechanics. Defend a centr
 
 ## Stack
 
-- **Phaser 3** — game engine
+- **Phaser** — game engine
 - **Vite** — dev server with hot reload
 - **TypeScript**
 - **pnpm** — package manager
@@ -14,9 +14,20 @@ Browser-based incremental roguelike with tower-defense mechanics. Defend a centr
 
 ```bash
 pnpm install
-pnpm dev        # http://localhost:5173
+pnpm dev        # http://localhost:5173 by default
 pnpm exec tsc --noEmit   # type check
+pnpm build      # production build verification
 ```
+
+Vite may pick the next open port if `5173` is already in use.
+
+Local app entrypoints:
+
+| URL | Purpose |
+|---|---|
+| `/` | Main SiegeLoop game |
+| `/tools/` | Local-only tools hub |
+| `/tools/scenario.html` | Scenario sandbox for combat and behavior verification |
 
 ## Game Flow
 
@@ -43,13 +54,15 @@ Shop → Combat → Game Over → Shop
 
 | Unit | Cost | Behaviour |
 |---|---|---|
-| Footsoldier | 1 DC | Chases + melees nearest enemy |
-| Archer | 1 DC | Ranged kite — keeps preferred distance |
-| Shieldbearer | 2 DC | Aggressive melee; enemies within taunt radius redirect to it |
-| Healer | 2 DC | Follows lowest-HP ally, heals them |
-| Frost Mage | 2 DC | AOE blast — damage + 45% slow for 2.5s |
+| Footsoldier | 1 DC | Intercepts enemies threatening the Tower and melees them |
+| Archer | 1 DC | Ranged kite — prefers engaged targets and retreats from nearby threats |
+| Shieldbearer | 2 DC | Guard/tank — stays leashed near Tower and redirects enemies within taunt radius |
+| Healer | 2 DC | Avoids enemies and prioritizes urgent wounded allies, especially frontliners |
+| Frost Mage | 2 DC | Cluster-targeted AOE blast — damage + 45% slow for 2.5s |
 | Sentinel | 2 DC | Stationary; high damage to enemies near Tower |
-| Bard | 2 DC | Stationary aura; doubles nearby allies' attack speed |
+| Bard | 2 DC | Moves toward allied clusters; doubles nearby allies' attack speed |
+
+Units use lightweight steering for role behavior, tower leashing, and ally separation. Several unit attacks also have configurable visual effects in unit JSON via `effects.attack`.
 
 ## Enemies
 
@@ -90,25 +103,46 @@ Press **\`** (backtick) in combat to open the in-game debug panel:
 
 Open **[CHEATS]** in the shop for the inspector panel:
 - **QUESTS tab** — view all quest IDs with completion status and progress
-- **TECH tab** — view all 21 tech nodes and owned status
+- **TECH tab** — view all 24 tech nodes and owned status
 - **STATS tab** — view per-unit kill/heal/summon counters
 - **+100 PC** — inject currency
 - **RESET ALL PROGRESS** — wipe localStorage and restart
+
+## Local Tools
+
+Local-only side apps live under `tools/` and reuse game data from `public/data/`.
+
+### Scenario Sandbox
+
+Open `/tools/scenario.html` while `pnpm dev` is running.
+
+- Press `1-5` to switch scenario fixtures.
+- Press `R` to reset the current scenario.
+- Use this before and after behavior, targeting, combat readability, and balance changes.
+- Add focused fixtures in `src/tools/scenario/scenarios.ts` when introducing a new unit behavior, enemy behavior, effect, or combat mechanic.
 
 ## File Structure
 
 ```
 src/
   constants.ts          — GAME_W, GAME_H, CX, CY, ARENA_RADIUS
-  main.ts               — Phaser config, scene list
+  main.ts               — compatibility import for the main game app
+  apps/
+    game/main.ts        — main game app entrypoint
+    scenario/main.ts    — scenario sandbox app entrypoint
   data/
     types.ts            — TypeScript interfaces for all data schemas
   debug/
     DebugState.ts       — fastCursor, godMode, chapter selection
+  effects/
+    CombatEffects.ts    — damage/heal numbers and small attack effect presets
   entities/
     Tower.ts            — Tower entity (HP, god mode)
     Enemy.ts            — Enemy entity (behaviours, slow, knockback)
-    Unit.ts             — Unit entity (all 7 behaviours, haste buff, heal, stat tracking)
+    Unit.ts             — Unit entity (behaviours, steering, haste buff, heal, stat tracking)
+  game/
+    createPhaserGame.ts — shared Phaser game factory
+    loadGameData.ts     — shared JSON data manifest/loader
   input/
     CursorAttack.ts     — Mouse AOE attack (cooldown, knockback, damage)
   scenes/
@@ -123,6 +157,8 @@ src/
   ui/
     CheatPanel.ts       — Modal inspector panel (quests/tech/stats + cheats)
     DebugMenu.ts        — In-combat debug slide-in panel
+  tools/
+    scenario/           — Scenario sandbox boot scene, scene, and fixtures
 
 public/data/
   balance.json          — dcBudget, towerHp, pcMultiplier
@@ -130,4 +166,8 @@ public/data/
   chapters/             — chapter1.json, chapter2.json, chapter3.json
   enemies/              — 6 regular enemy types + 3 boss types
   units/                — footsoldier, archer, shieldbearer, healer, frost_mage, sentinel, bard
+
+tools/
+  index.html            — local tools hub
+  scenario.html         — scenario sandbox HTML entrypoint
 ```

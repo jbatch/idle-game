@@ -5,17 +5,57 @@ This file gives a new Claude session everything it needs to continue development
 ## Quick Start
 
 ```bash
-pnpm dev   # http://localhost:5173
+pnpm dev   # http://localhost:5173 by default
 pnpm exec tsc --noEmit   # type check before committing
+pnpm build # production build verification
 ```
 
-Dev server is Vite with HMR. The preview tool server ID changes each session — use `preview_start` with the `siegeloop` configuration in `.claude/launch.json`.
+Dev server is Vite with HMR. If port 5173 is occupied, Vite will pick the next open port.
+
+Local entrypoints:
+- `/` — main game.
+- `/tools/` — local tools hub.
+- `/tools/scenario.html` — scenario sandbox. Use number keys to switch fixtures and `R` to reset.
+
+The `.claude/` directory is local-only and ignored by git.
 
 ---
 
 ## Current Status
 
-Layers 1–6 (content pass) are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, and cheats inspector panel. This is the **v0.1 checkpoint** — a complete end-to-end prototype.
+Layers 1–6 (content pass) are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, and local scenario sandbox. This is the **v0.1.2 checkpoint**.
+
+### v0.1.2 Additions
+- Multi-entry Vite app structure: main game plus local-only side apps.
+- Scenario sandbox at `/tools/scenario.html` with reusable combat fixtures.
+- Shared Phaser game factory and shared data loader.
+- Configurable unit attack effects: `melee_slash` and `quick_projectile`.
+- Damage/heal float numbers and fade-out death animations.
+- First pass unit role behavior: ally separation, tower leashing, archer kiting, shieldbearer guarding, healer avoidance/targeting, frost mage cluster targeting, and bard cluster following.
+
+### Development Workflow Notes
+- When adding or changing combat mechanics, enemy behavior, unit behavior, targeting, movement, effects, or balance-sensitive tuning, add or update at least one focused scenario fixture in `src/tools/scenario/scenarios.ts`.
+- Use the scenario sandbox for quick visual verification before relying on a full game run.
+- Keep scenario fixtures small and diagnostic: one behavior question per fixture is better than a large chaotic showcase.
+- Run `pnpm exec tsc --noEmit` before committing code changes. Run `pnpm build` when touching app entrypoints, Vite config, shared boot/loading code, or anything used by both the game and tools.
+
+### Git Commit Message Style
+- Prefer descriptive messages over vague checkpoint messages.
+- Use a short imperative subject when the change is focused, e.g. `Add scenario sandbox`, `Tune unit role movement`, `Ignore local Claude config`.
+- For checkpoint commits, include the version and scope in the subject, then add a body with concise bullets for what changed and how it was verified.
+- Good checkpoint shape:
+
+```text
+Checkpoint v0.1.2: tools and combat readability
+
+- Split the app into main game and local tool entrypoints.
+- Added scenario sandbox fixtures for combat verification.
+- Added damage numbers, attack effects, death fades, and unit role steering.
+
+Verification:
+- pnpm exec tsc --noEmit
+- pnpm build
+```
 
 ### TODO Triage
 Priority key:
@@ -31,15 +71,15 @@ Priority key:
 | Unit survivability mechanic | High | Medium | P1 | Respawn timer, healing drops, or crates. Units dying early makes builds feel flat. |
 | Enemy pathing variation | Medium | Medium | P1 | Start with wobble/arc approaches, not full pathfinding. |
 | Aggro/threat system | High | Medium | P1/P2 | Give enemies a stronger concept of threat so ranged units cannot free-fire forever without drawing pressure. |
-| Unit collision/separation | High | Medium | P1 | Needed before multipacks/mega packs create large unit blobs. |
-| Damage/heal numbers | Medium | Low | P1 | Great for readability and balance tuning. |
+| Unit collision/separation | High | Medium | P1 | First pass exists. Continue tuning before multipacks/mega packs create large unit blobs. |
+| Damage/heal numbers | Medium | Low | P1 | First pass exists. Continue styling/filtering as combat gets denser. |
 | Lightweight flocking | High | High | P2 | Grow out of collision + idle behavior; keep forces gentle. |
-| Particle/effects system | Medium | Medium | P2 | Hit sparks, heal motes, frost shards, knockback dust, death bursts, boss shockwaves, tower flashes, pickup glints. |
+| Particle/effects system | Medium | Medium | P2 | First attack/death effects exist. Add hit sparks, heal motes, frost shards, knockback dust, death bursts, boss shockwaves, tower flashes, pickup glints. |
 
 #### Unit Identity
 | Item | Impact | Complexity | Priority | Notes |
 |---|---:|---:|---:|---|
-| Distinct unit strategies | High | Medium | P1 | Units should differ by targeting, positioning, and idle behavior, not just stats. |
+| Distinct unit strategies | High | Medium | P1 | First pass exists. Continue deepening targeting, positioning, and idle behavior. |
 | Same-unit synergy groups | High | Medium/High | P2 | Example: Archers spike at 5+ grouped Archers. Makes duplicate pack rolls exciting. |
 | Unit idle behavior/squads | Medium | Medium | P2 | Same-type units loosely cluster near tower with small idle drift. |
 | Support units opening crates | Medium | Medium | P2 | Support/passive units beeline to crates and open them for the player. |
@@ -59,7 +99,7 @@ Priority key:
 #### Tooling
 | Item | Impact | Complexity | Priority | Notes |
 |---|---:|---:|---:|---|
-| Combat scenario sandbox | Very High | Medium | P0 | Scenario fixtures for visual and balance verification, e.g. 5 Archers + dummy, 2 Footsoldiers vs Grunt. |
+| Combat scenario sandbox | Very High | Medium | P0 | First pass exists at `/tools/scenario.html`. Add fixtures whenever changing combat behavior or mechanics. |
 | Unit viewer/tuner | High | High | P2 | Edit stats/behavior dropdowns and preview against an invincible training dummy. |
 | Config-driven tech tree layout | Medium | Medium | P2 | Render from explicit positions/edges instead of branch rows. |
 | Tech tree layout editor | Medium/High | High | P2/P3 | Drag nodes, connect lines, save layout metadata as config. |
@@ -76,11 +116,11 @@ Priority key:
 | Main menu scene | Low/Medium | Low | P3 | Add once the prototype becomes more game-like. |
 
 ### Suggested Milestones
-1. **Verification + Combat Readability**
-   Build a `ScenarioScene`/combat sandbox with scenario fixtures. Add damage/heal numbers and simple combat event hooks so future combat work is easy to verify.
+1. [DONE] **Verification + Combat Readability**
+   First pass complete: scenario sandbox, attack effects, damage/heal numbers, and death fades. Continue adding fixtures and reusable combat hooks as new systems need them.
 
-2. **Unit Movement + Role Identity**
-   Add lightweight unit separation, then improve unit strategies: archers kite better, defenders stay close, skirmishers seek outer enemies, supports prioritize useful allies.
+2. [DONE] **Unit Movement + Role Identity**
+   First pass complete: lightweight unit separation, leashing, and role-aware targeting/positioning. Continue tuning and add deeper aggro/threat behavior.
 
 3. **Shop Packs v1**
    Replace direct buying with tier packs: single pack and 3-pack for tier 1 first. Revisit unit quest thresholds and make early runs understandable.
@@ -104,6 +144,17 @@ BootScene → ShopScene ⇄ TechTreeScene
 ShopScene → GameScene → GameOverScene → ShopScene
 ```
 
+### App entrypoints
+```
+index.html → src/apps/game/main.ts
+tools/index.html → local tools hub
+tools/scenario.html → src/apps/scenario/main.ts
+```
+
+Shared app helpers:
+- `src/game/createPhaserGame.ts` — common Phaser game config.
+- `src/game/loadGameData.ts` — shared JSON manifest/loader used by game and tools.
+
 ### Key design decisions (settled — don't re-litigate)
 - **No unit cap** — let it get chaotic, monitor performance
 - **No unit persistence between runs** — fresh shop each run, only PC carries over
@@ -117,7 +168,7 @@ All game content lives in `public/data/`. The engine reads these at startup via 
 
 Key interfaces in `src/data/types.ts`:
 - `EnemyData` — enemy config, optional `behaviour` + `params`
-- `UnitData` — unit config, `behaviour` + optional `params`
+- `UnitData` — unit config, `behaviour`, optional `params`, optional `effects`
 - `ChapterData` — wave schedule + optional `questRequirement` for unlock gating
 - `TechNode` + `TechEffect` — tech tree DAG nodes and effects
 - `Targetable`, `StatusEffect`, `UnitBuff`
@@ -173,12 +224,26 @@ Branch-row layout with mousewheel scrolling. `buildContent()` groups nodes by `b
 
 ### Unit behaviours (`src/entities/Unit.ts`)
 Each unit has an optional `statCallback?: (event: 'kill' | 'heal', amount: number) => void` set by GameScene. Used to track kills and healing for quest progression.
-- `melee_basic` / `melee_taunt` — chase + attack nearest enemy
-- `ranged_kite` — kite at `attackRange * 0.72`
-- `heal_support` — follow + heal lowest HP ally
-- `aoe_slow` — AOE blast only fires when enemies are within `aoeRadius`
+- All moving units apply gentle ally separation before clamping to the arena.
+- `melee_basic` — intercepts enemies using a score biased toward threats closer to the Tower, then returns to a tower band when idle.
+- `melee_taunt` — guard/tank behavior with configurable `guardRadius`, `leashRadius`, and passive taunt redirect.
+- `ranged_kite` — prefers enemies engaged by melee allies, retreats from nearby threats, and respects a tower leash.
+- `heal_support` — avoids nearby enemies, prioritizes urgent wounded allies/frontliners, and drifts toward allied clusters when idle.
+- `aoe_slow` — targets the densest enemy cluster and applies AOE damage/slow around the chosen target.
 - `stationary_guard` — attacks enemies within `attackRange` of Tower centre
-- `aura_haste` — pulses haste buff to allies within `auraRadius`
+- `aura_haste` — moves toward allied clusters and pulses haste buff to allies within `auraRadius`
+
+### Combat effects (`src/effects/CombatEffects.ts`)
+- Unit configs can set `effects.attack` to a named preset.
+- Current attack presets: `melee_slash`, `quick_projectile`.
+- Damage/heal numbers are emitted from `takeDamage()`/`heal()` on units, enemies, and tower.
+- Units and enemies mark `alive = false` immediately on death, then fade graphics out before destroying them.
+
+### Scenario sandbox
+- Open `/tools/scenario.html` while the Vite dev server is running.
+- Fixtures live in `src/tools/scenario/scenarios.ts`.
+- Press number keys to select a fixture and `R` to reset.
+- Use this tool before and after behavior/mechanic changes. If a change cannot be quickly seen in an existing fixture, add a new focused fixture.
 
 ### Chapter unlock system
 `ChapterData.questRequirement` gates access. `ShopScene` shows all 3 chapters; locked ones show as "???" and are not interactive. Chapter 2 requires `boss_chapter1_killed`, Chapter 3 requires `boss_chapter2_killed`. Both are completed in `GameOverScene` via `techState.completeQuest('boss_chapterN_killed')`.
