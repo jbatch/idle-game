@@ -25,7 +25,7 @@ Boot → Shop ⇄ Tech Tree
 Shop → Combat → Game Over → Shop
 ```
 
-- **Shop:** Spend Deployment Currency (DC, budget: 3 by default) to pick units for this run. Switch chapters from the chapter selector. Open [TECH TREE] or [CHEATS].
+- **Shop:** Spend Deployment Currency (DC, budget: 2 by default) to pick units for this run. Switch chapters from the chapter selector. Open [TECH TREE] or [CHEATS].
 - **Combat:** Defend the Tower through timed waves; cursor AOE attack + deployed units fight autonomously.
 - **Win (boss kill):** Chapter Complete — earn PC, unlock next chapter.
 - **Lose:** Tower HP reaches 0 — return to shop.
@@ -67,11 +67,12 @@ Shop → Combat → Game Over → Shop
 
 ## Tech Tree
 
-9 branches, 21 nodes. Spend PC to unlock permanent upgrades that persist across runs.
+10 branches, 24 nodes. Spend PC to unlock permanent upgrades that persist across runs.
 
 | Branch | Upgrades |
 |---|---|
 | Cursor | Knockback → Rapid Strike → Heavy Strike |
+| Deployment | Deployment Drills → Field Reserves → War Chest |
 | Tower | Fortify → Reinforce → Bastion |
 | Per unit (×7) | 2 nodes each, gated by stat quests |
 
@@ -125,7 +126,7 @@ src/
 
 public/data/
   balance.json          — dcBudget, towerHp, pcMultiplier
-  tech_tree.json        — 21 nodes across 9 branches
+  tech_tree.json        — 24 nodes across 10 branches
   chapters/             — chapter1.json, chapter2.json, chapter3.json
   enemies/              — 6 regular enemy types + 3 boss types
   units/                — footsoldier, archer, shieldbearer, healer, frost_mage, sentinel, bard

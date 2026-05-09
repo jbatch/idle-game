@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import type { UnitData, BalanceData, TechNode } from '../data/types'
 import { GAME_W, GAME_H } from '../constants'
 import { debugState } from '../debug/DebugState'
-import { techState } from '../systems/TechState'
+import { techState, applyDeploymentBudgetMods } from '../systems/TechState'
 import { CheatPanel } from '../ui/CheatPanel'
 
 const CHAPTER_DEFS = [
@@ -30,7 +30,7 @@ export class ShopScene extends Phaser.Scene {
   private unitMap!: Record<string, UnitData>
   private cart: Record<string, number> = {}
   private dcSpent: number = 0
-  private dcBudget: number = 3
+  private dcBudget: number = 2
 
   private dcText!: Phaser.GameObjects.Text
   private loadoutGroup: Phaser.GameObjects.GameObject[] = []
@@ -47,11 +47,11 @@ export class ShopScene extends Phaser.Scene {
       this.unitMap[id] = this.cache.json.get(id) as UnitData
     }
 
-    this.dcBudget = this.balance.dcBudget
     this.cart     = {}
     this.dcSpent  = 0
 
     const nodes = (this.cache.json.get('tech_tree') as { nodes: TechNode[] }).nodes
+    this.dcBudget = applyDeploymentBudgetMods(this.balance.dcBudget, nodes)
 
     this.add.rectangle(0, 0, GAME_W, GAME_H, 0x080810).setOrigin(0, 0)
     this.buildHeader()

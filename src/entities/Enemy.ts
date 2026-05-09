@@ -81,7 +81,7 @@ export class Enemy implements Targetable {
       if (taunt) {
         this.moveAndAttack(dt, taunt, effectiveSpeed)
       } else {
-        this.runRushTower(dt, tower, effectiveSpeed, [])
+        this.runRushTower(dt, tower, effectiveSpeed, units)
       }
     }
 

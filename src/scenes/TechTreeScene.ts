@@ -15,6 +15,7 @@ const ROW_PAD_X = 20   // left edge of content area
 // Branch display names
 const BRANCH_LABELS: Record<string, string> = {
   cursor:       'CURSOR',
+  deployment:   'DEPLOYMENT',
   tower:        'TOWER',
   footsoldier:  'FOOTSOLDIER',
   archer:       'ARCHER',
@@ -25,7 +26,7 @@ const BRANCH_LABELS: Record<string, string> = {
   bard:         'BARD',
 }
 
-const BRANCH_ORDER = ['cursor', 'tower', 'footsoldier', 'archer', 'shieldbearer', 'healer', 'frost_mage', 'sentinel', 'bard']
+const BRANCH_ORDER = ['cursor', 'deployment', 'tower', 'footsoldier', 'archer', 'shieldbearer', 'healer', 'frost_mage', 'sentinel', 'bard']
 
 export class TechTreeScene extends Phaser.Scene {
   private nodes: TechNode[] = []

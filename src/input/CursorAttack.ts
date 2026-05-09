@@ -1,8 +1,15 @@
 import Phaser from 'phaser'
 import type { Enemy } from '../entities/Enemy'
 
-const BASE_RADIUS = 40
-const BASE_DAMAGE = 15
+const FULL_CIRCLE = Math.PI * 2
+const RECHARGE_START_ANGLE = -Math.PI / 2
+
+export interface CursorAttackConfig {
+  damage: number
+  radius: number
+  cooldown: number
+  knockback: number
+}
 
 export class CursorAttack {
   private scene: Phaser.Scene
@@ -11,14 +18,17 @@ export class CursorAttack {
   private cooldownText: Phaser.GameObjects.Text
   private pulseAlpha: number = 0
 
-  readonly radius: number = BASE_RADIUS
+  radius: number
+  damage: number
+  cooldown: number
+  knockback: number
 
-  cooldown: number = 3.0
-  knockback: number = 0       // 0 until cursor_knockback tech unlocked
-  damageBonus: number = 0     // added by cursor_heavy tech
-
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene, config: CursorAttackConfig) {
     this.scene = scene
+    this.radius = config.radius
+    this.damage = config.damage
+    this.cooldown = config.cooldown
+    this.knockback = config.knockback
     this.pulseGraphics = scene.add.graphics().setDepth(10)
     this.cooldownText = scene.add.text(10, 10, '', {
       fontSize: '13px',
@@ -31,7 +41,12 @@ export class CursorAttack {
     })
   }
 
-  get damage(): number { return BASE_DAMAGE + this.damageBonus }
+  configure(config: CursorAttackConfig) {
+    this.radius = config.radius
+    this.damage = config.damage
+    this.cooldown = config.cooldown
+    this.knockback = config.knockback
+  }
 
   tryFire(x: number, y: number, enemies: Enemy[]): boolean {
     if (this.cooldownTimer > 0) return false
@@ -44,7 +59,7 @@ export class CursorAttack {
       if (!e.alive) return
       const dx = e.x - x
       const dy = e.y - y
-      if (dx * dx + dy * dy <= BASE_RADIUS * BASE_RADIUS) {
+      if (dx * dx + dy * dy <= this.radius * this.radius) {
         e.takeDamage(dmg)
         if (kb > 0) e.applyKnockback(x, y, kb)
       }
@@ -64,21 +79,48 @@ export class CursorAttack {
 
     this.pulseGraphics.clear()
 
-    this.pulseGraphics.lineStyle(1, 0xffffff, 0.15)
-    this.pulseGraphics.strokeCircle(mouseX, mouseY, BASE_RADIUS)
+    const charge = this.cooldown <= 0
+      ? 1
+      : Phaser.Math.Clamp(1 - this.cooldownTimer / this.cooldown, 0, 1)
+    this.drawRecharge(mouseX, mouseY, charge)
 
     if (this.pulseAlpha > 0) {
-      this.pulseGraphics.lineStyle(2, 0xffdd44, this.pulseAlpha)
-      this.pulseGraphics.strokeCircle(mouseX, mouseY, BASE_RADIUS)
-      this.pulseGraphics.fillStyle(0xffdd44, this.pulseAlpha * 0.15)
-      this.pulseGraphics.fillCircle(mouseX, mouseY, BASE_RADIUS)
+      this.pulseGraphics.lineStyle(2, 0xffffff, this.pulseAlpha * 0.6)
+      this.pulseGraphics.strokeCircle(mouseX, mouseY, this.radius + 4)
     }
 
-    const ready = this.cooldownTimer <= 0
+    const ready = charge >= 1
     this.cooldownText.setText(
       ready ? 'CURSOR: READY' : `CURSOR: ${this.cooldownTimer.toFixed(1)}s`
     )
-    this.cooldownText.setColor(ready ? '#44ff88' : '#aa8844')
+    this.cooldownText.setColor(ready ? '#ffdd44' : '#dde6ff')
+  }
+
+  private drawRecharge(x: number, y: number, charge: number) {
+    this.pulseGraphics.fillStyle(0xdde6ff, 0.035)
+    this.pulseGraphics.fillCircle(x, y, this.radius)
+    this.pulseGraphics.lineStyle(1, 0xdde6ff, 0.34)
+    this.pulseGraphics.strokeCircle(x, y, this.radius)
+
+    if (charge >= 1) {
+      this.pulseGraphics.fillStyle(0xffdd44, 0.16)
+      this.pulseGraphics.fillCircle(x, y, this.radius)
+      this.pulseGraphics.lineStyle(2, 0xffdd44, 0.95)
+      this.pulseGraphics.strokeCircle(x, y, this.radius)
+      return
+    }
+
+    if (charge <= 0) return
+
+    const endAngle = RECHARGE_START_ANGLE + FULL_CIRCLE * charge
+    this.pulseGraphics.fillStyle(0xffdd44, 0.13)
+    this.pulseGraphics.slice(x, y, this.radius, RECHARGE_START_ANGLE, endAngle)
+    this.pulseGraphics.fillPath()
+
+    this.pulseGraphics.lineStyle(3, 0xffdd44, 0.9)
+    this.pulseGraphics.beginPath()
+    this.pulseGraphics.arc(x, y, this.radius, RECHARGE_START_ANGLE, endAngle)
+    this.pulseGraphics.strokePath()
   }
 
   bindEnemies(getEnemies: () => Enemy[]) {

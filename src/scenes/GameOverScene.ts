@@ -48,8 +48,9 @@ export class GameOverScene extends Phaser.Scene {
       }).setOrigin(0.5)
     })
 
-    if (data.won) {
-      this.add.text(GAME_W / 2, GAME_H / 2 + 60, '★  Chapter 1 unlocked  ★', {
+    const unlockMessage = this.unlockMessage(data.chapter)
+    if (data.won && unlockMessage) {
+      this.add.text(GAME_W / 2, GAME_H / 2 + 60, unlockMessage, {
         fontSize: '14px', color: '#ddaa22', fontFamily: 'monospace',
       }).setOrigin(0.5)
     }
@@ -61,5 +62,12 @@ export class GameOverScene extends Phaser.Scene {
     btn.on('pointerover', () => btn.setColor('#88aaff'))
     btn.on('pointerout',  () => btn.setColor('#4466ff'))
     btn.on('pointerdown', () => this.scene.start('ShopScene'))
+  }
+
+  private unlockMessage(chapter: string): string {
+    if (chapter === 'chapter1') return '★  Chapter 2 unlocked  ★'
+    if (chapter === 'chapter2') return '★  Chapter 3 unlocked  ★'
+    if (chapter === 'chapter3') return '★  All chapters complete  ★'
+    return ''
   }
 }

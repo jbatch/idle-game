@@ -65,10 +65,15 @@ export interface BalanceData {
   dcBudget: number
   pcMultiplier: number
   towerHp: number
+  cursor: {
+    damage: number
+    radius: number
+    cooldown: number
+  }
 }
 
 export interface TechEffect {
-  type: 'cursor_knockback' | 'cursor_cooldown' | 'cursor_damage' | 'tower_hp_bonus'
+  type: 'cursor_knockback' | 'cursor_cooldown' | 'cursor_damage' | 'tower_hp_bonus' | 'dc_budget_bonus'
        | 'unit_atk_bonus' | 'unit_hp_bonus' | 'unit_range_bonus'
        | 'unit_cooldown_mult' | 'unit_param_bonus'
   value: number
@@ -83,7 +88,7 @@ export interface TechNode {
   cost: number
   requires: string[]
   questRequirement?: string
-  effect: TechEffect
+  effect: TechEffect | TechEffect[]
   branch: string    // used by TechTreeScene for grouping
 }
 

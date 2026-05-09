@@ -16,7 +16,7 @@ export class Tower {
   alive: boolean = true
   godMode: boolean = false
 
-  constructor(scene: Phaser.Scene, x: number, y: number, maxHp: number = 300) {
+  constructor(scene: Phaser.Scene, x: number, y: number, maxHp: number) {
     this.hp = maxHp
     this.maxHp = maxHp
     this.x = x

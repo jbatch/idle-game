@@ -6,7 +6,7 @@
   "speed": 35,
   "damage": 20,
   "attackCooldown": 2.5,
-  "attackRange": 42,
+  "attackRange": 28,
   "reward": 50,
   "radius": 22,
   "color": "0xddaa22",

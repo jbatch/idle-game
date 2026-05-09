@@ -1,5 +1,10 @@
 {
-  "dcBudget": 3,
+  "dcBudget": 2,
   "pcMultiplier": 1.0,
-  "towerHp": 300
+  "towerHp": 140,
+  "cursor": {
+    "damage": 8,
+    "radius": 30,
+    "cooldown": 1.2
+  }
 }

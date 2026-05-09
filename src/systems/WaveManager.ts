@@ -23,6 +23,20 @@ export class WaveManager {
 
   update(delta: number) {
     this.elapsed += delta / 1000
+    this.fireDueEvents()
+  }
+
+  skipToNextWave(): boolean {
+    if (this.nextEventIndex >= this.schedule.length) return false
+    const nextTime = this.schedule[this.nextEventIndex].time
+    if (this.elapsed >= nextTime) return false
+
+    this.elapsed = nextTime
+    this.fireDueEvents()
+    return true
+  }
+
+  private fireDueEvents() {
     while (
       this.nextEventIndex < this.schedule.length &&
       this.elapsed >= this.schedule[this.nextEventIndex].time
@@ -52,7 +66,6 @@ export class WaveManager {
       ...data,
       hp: Math.round(data.hp * this.baseMultiplier),
       damage: Math.round(data.damage * this.baseMultiplier),
-      speed: data.speed * this.baseMultiplier,
     }
   }
 

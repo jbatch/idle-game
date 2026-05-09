@@ -1,11 +1,9 @@
-import type { TechNode, UnitData } from '../data/types'
+import type { BalanceData, TechEffect, TechNode, UnitData } from '../data/types'
 
 const PC_KEY     = 'siegeloop_pc'
 const TECH_KEY   = 'siegeloop_tech'
 const QUESTS_KEY = 'siegeloop_quests'
 const STATS_KEY  = 'siegeloop_stats'
-
-const DESIGN_COOLDOWN = 3.0
 
 function loadSet(key: string): Set<string> {
   try { return new Set(JSON.parse(localStorage.getItem(key) ?? '[]')) }
@@ -71,26 +69,6 @@ export const techState = {
     return true
   },
 
-  // ─── Cursor effects ────────────────────────────────────────────
-  get knockback(): number {
-    return this.has('cursor_knockback') ? 280 : 0
-  },
-  get cursorCooldown(): number {
-    return this.has('cursor_fast') ? 2.0 : DESIGN_COOLDOWN
-  },
-  get cursorDamageBonus(): number {
-    return this.has('cursor_heavy') ? 10 : 0
-  },
-
-  // ─── Tower effects ─────────────────────────────────────────────
-  get towerHpBonus(): number {
-    let bonus = 0
-    if (this.has('tower_fortify'))   bonus += 100
-    if (this.has('tower_reinforce')) bonus += 200
-    if (this.has('tower_bastion'))   bonus += 300
-    return bonus
-  },
-
   // ─── Debug reset ───────────────────────────────────────────────
   reset() {
     localStorage.removeItem(PC_KEY)
@@ -98,6 +76,49 @@ export const techState = {
     localStorage.removeItem(QUESTS_KEY)
     localStorage.removeItem(STATS_KEY)
   },
+}
+
+function nodeEffects(node: TechNode): TechEffect[] {
+  return Array.isArray(node.effect) ? node.effect : [node.effect]
+}
+
+function purchasedEffects(nodes: TechNode[]): TechEffect[] {
+  const purchased = techState.purchased
+  return nodes
+    .filter(node => purchased.has(node.id))
+    .flatMap(nodeEffects)
+}
+
+// ─── Cursor / tower mod application ───────────────────────────────
+export function applyCursorMods(base: BalanceData['cursor'], nodes: TechNode[]) {
+  let damage = base.damage
+  let cooldown = base.cooldown
+  let radius = base.radius
+  let knockback = 0
+
+  for (const effect of purchasedEffects(nodes)) {
+    if (effect.type === 'cursor_damage') damage += effect.value
+    if (effect.type === 'cursor_cooldown') cooldown = Math.min(cooldown, effect.value)
+    if (effect.type === 'cursor_knockback') knockback += effect.value
+  }
+
+  return { damage, cooldown, radius, knockback }
+}
+
+export function applyTowerMods(baseHp: number, nodes: TechNode[]): number {
+  let hp = baseHp
+  for (const effect of purchasedEffects(nodes)) {
+    if (effect.type === 'tower_hp_bonus') hp += effect.value
+  }
+  return hp
+}
+
+export function applyDeploymentBudgetMods(baseBudget: number, nodes: TechNode[]): number {
+  let budget = baseBudget
+  for (const effect of purchasedEffects(nodes)) {
+    if (effect.type === 'dc_budget_bonus') budget += effect.value
+  }
+  return budget
 }
 
 // ─── Unit mod application ──────────────────────────────────────────
@@ -108,14 +129,15 @@ export function applyUnitMods(data: UnitData, nodes: TechNode[]): UnitData {
 
   for (const node of nodes) {
     if (!purchased.has(node.id)) continue
-    const e = node.effect
-    if (e.unitId !== data.id) continue
-    if (e.type === 'unit_atk_bonus')    atkBonus   += e.value
-    if (e.type === 'unit_hp_bonus')     hpBonus    += e.value
-    if (e.type === 'unit_range_bonus')  rangeBonus += e.value
-    if (e.type === 'unit_cooldown_mult') cooldownMult *= e.value
-    if (e.type === 'unit_param_bonus' && e.param) {
-      paramBonuses[e.param] = (paramBonuses[e.param] ?? 0) + e.value
+    for (const e of nodeEffects(node)) {
+      if (e.unitId !== data.id) continue
+      if (e.type === 'unit_atk_bonus')     atkBonus   += e.value
+      if (e.type === 'unit_hp_bonus')      hpBonus    += e.value
+      if (e.type === 'unit_range_bonus')   rangeBonus += e.value
+      if (e.type === 'unit_cooldown_mult') cooldownMult *= e.value
+      if (e.type === 'unit_param_bonus' && e.param) {
+        paramBonuses[e.param] = (paramBonuses[e.param] ?? 0) + e.value
+      }
     }
   }
 

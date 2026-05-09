@@ -7,7 +7,7 @@ import { WaveManager } from '../systems/WaveManager'
 import { DebugMenu } from '../ui/DebugMenu'
 import { debugState } from '../debug/DebugState'
 import type { ChapterData, EnemyData, UnitData, BalanceData, TechNode } from '../data/types'
-import { techState, applyUnitMods, checkStatQuests } from '../systems/TechState'
+import { techState, applyCursorMods, applyTowerMods, applyUnitMods, checkStatQuests } from '../systems/TechState'
 import { GAME_W, GAME_H, CX, CY, ARENA_RADIUS } from '../constants'
 
 const DEBUG_COOLDOWN = 0.05
@@ -29,6 +29,8 @@ export class GameScene extends Phaser.Scene {
   private elapsed: number = 0
   private gameOver: boolean = false
   private bossSpawned: boolean = false
+  private pcMultiplier: number = 1
+  private skippedWaveThisFrame: boolean = false
 
   constructor() {
     super({ key: 'GameScene' })
@@ -42,10 +44,13 @@ export class GameScene extends Phaser.Scene {
     this.runPc = 0
     this.elapsed = 0
     this.bossSpawned = false
+    this.skippedWaveThisFrame = false
 
     const balance = this.cache.json.get('balance')  as BalanceData
+    this.pcMultiplier = balance.pcMultiplier
     const chapter = this.cache.json.get(debugState.chapter) as ChapterData
     this.techNodes = (this.cache.json.get('tech_tree') as { nodes: TechNode[] }).nodes
+    const cursorStats = applyCursorMods(balance.cursor, this.techNodes)
     const enemyIds = ['grunt', 'runner', 'brute', 'archer_enemy', 'shaman', 'siege_golem', 'boss_chapter1', 'boss_chapter2', 'boss_chapter3']
     const enemyMap: Record<string, EnemyData> = Object.fromEntries(
       enemyIds.map(id => [id, this.cache.json.get(id)])
@@ -56,14 +61,14 @@ export class GameScene extends Phaser.Scene {
     this.drawArena()
 
     // Tower — apply tech HP bonus
-    this.tower = new Tower(this, CX, CY, balance.towerHp + techState.towerHpBonus)
+    this.tower = new Tower(this, CX, CY, applyTowerMods(balance.towerHp, this.techNodes))
 
     // Spawn purchased units around the tower
     const loadout = data.loadout ?? []
     this.spawnUnits(loadout)
 
     // Cursor
-    this.cursor = new CursorAttack(this)
+    this.cursor = new CursorAttack(this, cursorStats)
     this.cursor.bindEnemies(() => this.enemies)
 
     // Wave manager
@@ -73,7 +78,7 @@ export class GameScene extends Phaser.Scene {
       this.boss = e
       this.bossSpawned = true
       this.enemies.push(e)
-      this.showBossWarning()
+      this.showBossWarning(e.name)
     }
 
     // HUD
@@ -87,9 +92,10 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(21)
 
     // Apply tech + debug state to cursor
-    this.cursor.knockback    = techState.knockback
-    this.cursor.damageBonus  = techState.cursorDamageBonus
-    this.cursor.cooldown     = debugState.fastCursor ? DEBUG_COOLDOWN : techState.cursorCooldown
+    this.cursor.configure({
+      ...cursorStats,
+      cooldown: debugState.fastCursor ? DEBUG_COOLDOWN : cursorStats.cooldown,
+    })
     this.tower.godMode       = debugState.godMode
 
     new DebugMenu(this, [
@@ -98,7 +104,7 @@ export class GameScene extends Phaser.Scene {
         active: debugState.fastCursor,
         onToggle: (on) => {
           debugState.fastCursor = on
-          this.cursor.cooldown = on ? DEBUG_COOLDOWN : techState.cursorCooldown
+          this.cursor.cooldown = on ? DEBUG_COOLDOWN : cursorStats.cooldown
         },
       },
       {
@@ -152,8 +158,8 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private showBossWarning() {
-    const warn = this.add.text(GAME_W / 2, GAME_H / 2 - 120, '⚠ STONE WARDEN APPROACHES ⚠', {
+  private showBossWarning(bossName: string) {
+    const warn = this.add.text(GAME_W / 2, GAME_H / 2 - 120, `⚠ ${bossName.toUpperCase()} APPROACHES ⚠`, {
       fontSize: '20px', color: '#ddaa22', fontFamily: 'monospace', fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(30)
     this.tweens.add({
@@ -178,7 +184,7 @@ export class GameScene extends Phaser.Scene {
       const e = this.enemies[i]
       e.update(delta, this.tower, this.units, this.enemies)
       if (!e.alive) {
-        this.runPc += e.reward
+        this.runPc += Math.round(e.reward * this.pcMultiplier)
         this.enemies.splice(i, 1)
         if (e === this.boss) this.boss = null
       }
@@ -191,11 +197,23 @@ export class GameScene extends Phaser.Scene {
       if (!u.alive) this.units.splice(i, 1)
     }
 
+    this.skippedWaveThisFrame = this.shouldSkipToNextWave()
+      ? this.waves.skipToNextWave()
+      : false
+
     this.cursor.update(delta, ptr.x, ptr.y, [])
     this.updateHUD()
 
     if (this.bossSpawned && this.boss === null) this.endRun(true)
     if (!this.tower.alive) this.endRun(false)
+  }
+
+  private shouldSkipToNextWave(): boolean {
+    if (this.enemies.length > 0) return false
+    if (this.waves.waveFired === 0) return false
+    if (this.waves.eventsComplete) return false
+    if (this.bossSpawned) return false
+    return true
   }
 
   private updateHUD() {
@@ -208,7 +226,7 @@ export class GameScene extends Phaser.Scene {
 
     this.hudText.setText([
       `PC: ${this.runPc}`,
-      waveStr,
+      this.skippedWaveThisFrame ? `${waveStr}  (advanced)` : waveStr,
       this.units.length > 0 ? `Units: ${this.units.length}` : '',
     ])
 

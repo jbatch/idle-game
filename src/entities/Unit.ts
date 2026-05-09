@@ -84,7 +84,9 @@ export class Unit implements Targetable {
     }
 
     if (dist <= this.data.attackRange && this.attackTimer === 0) {
+      const wasAlive = target.alive
       target.takeDamage(this.data.attackDamage)
+      if (wasAlive && !target.alive) this.statCallback?.('kill', 1)
       this.attackTimer = this.effectiveCooldown()
     }
   }
