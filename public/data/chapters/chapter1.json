@@ -1,0 +1,24 @@
+{
+  "id": "chapter1",
+  "name": "The First Siege",
+  "baseMultiplier": 1.0,
+  "boss": "boss_chapter1",
+  "spawnSchedule": [
+    { "time": 3,  "enemyId": "grunt",          "count": 2, "formation": "ring"    },
+    { "time": 12, "enemyId": "grunt",          "count": 3, "formation": "ring"    },
+    { "time": 20, "enemyId": "runner",         "count": 3, "formation": "cluster" },
+    { "time": 28, "enemyId": "grunt",          "count": 2, "formation": "ring"    },
+    { "time": 28, "enemyId": "runner",         "count": 2, "formation": "cluster" },
+    { "time": 36, "enemyId": "brute",          "count": 1, "formation": "ring"    },
+    { "time": 36, "enemyId": "grunt",          "count": 3, "formation": "cluster" },
+    { "time": 44, "enemyId": "archer_enemy",   "count": 2, "formation": "ring"    },
+    { "time": 44, "enemyId": "runner",         "count": 2, "formation": "cluster" },
+    { "time": 52, "enemyId": "brute",          "count": 2, "formation": "ring"    },
+    { "time": 52, "enemyId": "shaman",         "count": 1, "formation": "cluster" },
+    { "time": 60, "enemyId": "siege_golem",    "count": 1, "formation": "ring"    },
+    { "time": 60, "enemyId": "archer_enemy",   "count": 2, "formation": "cluster" },
+    { "time": 68, "enemyId": "siege_golem",    "count": 1, "formation": "ring"    },
+    { "time": 68, "enemyId": "shaman",         "count": 1, "formation": "cluster" },
+    { "time": 76, "enemyId": "boss_chapter1",  "count": 1, "formation": "ring"    }
+  ]
+}

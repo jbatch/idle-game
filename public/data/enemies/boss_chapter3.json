@@ -1,0 +1,16 @@
+{
+  "id": "boss_chapter3",
+  "name": "Void Sovereign",
+  "tier": 3,
+  "hp": 1200,
+  "speed": 50,
+  "damage": 55,
+  "attackCooldown": 1.5,
+  "attackRange": 45,
+  "reward": 200,
+  "radius": 24,
+  "color": "0xaa22cc",
+  "tags": ["boss", "melee", "fast"],
+  "isBoss": true,
+  "behaviour": "ranged_unit_targeter"
+}

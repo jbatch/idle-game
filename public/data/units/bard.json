@@ -1,0 +1,17 @@
+{
+  "id": "bard",
+  "name": "Bard",
+  "cost": 2,
+  "tier": 2,
+  "hp": 40,
+  "speed": 0,
+  "attackDamage": 0,
+  "attackRange": 0,
+  "attackCooldown": 1.8,
+  "behaviour": "aura_haste",
+  "params": { "auraRadius": 150, "hasteMultiplier": 0.5 },
+  "tags": ["support"],
+  "description": "Passive aura: doubles attack speed of nearby allies.",
+  "radius": 9,
+  "color": "0xff88cc"
+}

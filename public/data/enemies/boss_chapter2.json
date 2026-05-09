@@ -1,0 +1,17 @@
+{
+  "id": "boss_chapter2",
+  "name": "Iron Colossus",
+  "tier": 3,
+  "hp": 800,
+  "speed": 22,
+  "damage": 35,
+  "attackCooldown": 3.0,
+  "attackRange": 50,
+  "reward": 100,
+  "radius": 28,
+  "color": "0x8899bb",
+  "tags": ["boss", "melee", "aoe"],
+  "isBoss": true,
+  "behaviour": "rush_tower_aoe",
+  "params": { "splashRadius": 100, "splashDamage": 15 }
+}

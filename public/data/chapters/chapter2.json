@@ -1,0 +1,26 @@
+{
+  "id": "chapter2",
+  "name": "The Iron March",
+  "baseMultiplier": 1.6,
+  "boss": "boss_chapter2",
+  "questRequirement": "boss_chapter1_killed",
+  "spawnSchedule": [
+    { "time": 3,  "enemyId": "runner",         "count": 3, "formation": "ring"    },
+    { "time": 10, "enemyId": "grunt",          "count": 3, "formation": "ring"    },
+    { "time": 10, "enemyId": "runner",         "count": 2, "formation": "cluster" },
+    { "time": 18, "enemyId": "brute",          "count": 2, "formation": "ring"    },
+    { "time": 25, "enemyId": "archer_enemy",   "count": 3, "formation": "ring"    },
+    { "time": 25, "enemyId": "runner",         "count": 2, "formation": "cluster" },
+    { "time": 33, "enemyId": "grunt",          "count": 3, "formation": "cluster" },
+    { "time": 33, "enemyId": "brute",          "count": 1, "formation": "ring"    },
+    { "time": 41, "enemyId": "shaman",         "count": 1, "formation": "cluster" },
+    { "time": 41, "enemyId": "brute",          "count": 3, "formation": "ring"    },
+    { "time": 49, "enemyId": "siege_golem",    "count": 2, "formation": "ring"    },
+    { "time": 49, "enemyId": "runner",         "count": 3, "formation": "cluster" },
+    { "time": 57, "enemyId": "archer_enemy",   "count": 3, "formation": "ring"    },
+    { "time": 57, "enemyId": "shaman",         "count": 2, "formation": "cluster" },
+    { "time": 65, "enemyId": "siege_golem",    "count": 2, "formation": "ring"    },
+    { "time": 65, "enemyId": "brute",          "count": 2, "formation": "cluster" },
+    { "time": 73, "enemyId": "boss_chapter2",  "count": 1, "formation": "ring"    }
+  ]
+}

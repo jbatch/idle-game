@@ -1,0 +1,208 @@
+{
+  "nodes": [
+    {
+      "id": "cursor_knockback",
+      "name": "Knockback",
+      "description": "Cursor blasts knock enemies back",
+      "cost": 15,
+      "requires": [],
+      "effect": { "type": "cursor_knockback", "value": 280 },
+      "branch": "cursor"
+    },
+    {
+      "id": "cursor_fast",
+      "name": "Rapid Strike",
+      "description": "Cursor cooldown 3s → 2s",
+      "cost": 25,
+      "requires": ["cursor_knockback"],
+      "effect": { "type": "cursor_cooldown", "value": 2.0 },
+      "branch": "cursor"
+    },
+    {
+      "id": "cursor_heavy",
+      "name": "Heavy Strike",
+      "description": "Cursor damage +10",
+      "cost": 40,
+      "requires": ["cursor_fast"],
+      "questRequirement": "boss_chapter1_killed",
+      "effect": { "type": "cursor_damage", "value": 10 },
+      "branch": "cursor"
+    },
+
+    {
+      "id": "tower_fortify",
+      "name": "Fortify",
+      "description": "Tower max HP +100",
+      "cost": 20,
+      "requires": [],
+      "effect": { "type": "tower_hp_bonus", "value": 100 },
+      "branch": "tower"
+    },
+    {
+      "id": "tower_reinforce",
+      "name": "Reinforce",
+      "description": "Tower max HP +200",
+      "cost": 35,
+      "requires": ["tower_fortify"],
+      "effect": { "type": "tower_hp_bonus", "value": 200 },
+      "branch": "tower"
+    },
+    {
+      "id": "tower_bastion",
+      "name": "Bastion",
+      "description": "Tower max HP +300",
+      "cost": 55,
+      "requires": ["tower_reinforce"],
+      "questRequirement": "boss_chapter2_killed",
+      "effect": { "type": "tower_hp_bonus", "value": 300 },
+      "branch": "tower"
+    },
+
+    {
+      "id": "footsoldier_veteran",
+      "name": "Battle-Hardened",
+      "description": "Footsoldier ATK +15",
+      "cost": 20,
+      "requires": [],
+      "questRequirement": "footsoldier:kills:50",
+      "effect": { "type": "unit_atk_bonus", "value": 15, "unitId": "footsoldier" },
+      "branch": "footsoldier"
+    },
+    {
+      "id": "footsoldier_iron",
+      "name": "Iron Veteran",
+      "description": "Footsoldier HP +50",
+      "cost": 35,
+      "requires": ["footsoldier_veteran"],
+      "questRequirement": "footsoldier:kills:100",
+      "effect": { "type": "unit_hp_bonus", "value": 50, "unitId": "footsoldier" },
+      "branch": "footsoldier"
+    },
+
+    {
+      "id": "archer_sharpshooter",
+      "name": "Sharpshooter",
+      "description": "Archer range +25",
+      "cost": 20,
+      "requires": [],
+      "questRequirement": "archer:kills:30",
+      "effect": { "type": "unit_range_bonus", "value": 25, "unitId": "archer" },
+      "branch": "archer"
+    },
+    {
+      "id": "archer_swift",
+      "name": "Swift Quiver",
+      "description": "Archer cooldown −20%",
+      "cost": 35,
+      "requires": ["archer_sharpshooter"],
+      "questRequirement": "archer:kills:75",
+      "effect": { "type": "unit_cooldown_mult", "value": 0.8, "unitId": "archer" },
+      "branch": "archer"
+    },
+
+    {
+      "id": "shieldbearer_aegis",
+      "name": "Aegis",
+      "description": "Shieldbearer HP +80",
+      "cost": 20,
+      "requires": [],
+      "questRequirement": "shieldbearer:summoned:5",
+      "effect": { "type": "unit_hp_bonus", "value": 80, "unitId": "shieldbearer" },
+      "branch": "shieldbearer"
+    },
+    {
+      "id": "shieldbearer_bulwark",
+      "name": "Iron Bulwark",
+      "description": "Shieldbearer taunt radius +40",
+      "cost": 35,
+      "requires": ["shieldbearer_aegis"],
+      "questRequirement": "shieldbearer:summoned:15",
+      "effect": { "type": "unit_param_bonus", "value": 40, "unitId": "shieldbearer", "param": "tauntRadius" },
+      "branch": "shieldbearer"
+    },
+
+    {
+      "id": "healer_blessed",
+      "name": "Blessed Hands",
+      "description": "Healer heal amount +15",
+      "cost": 20,
+      "requires": [],
+      "questRequirement": "healer:healed:500",
+      "effect": { "type": "unit_param_bonus", "value": 15, "unitId": "healer", "param": "healAmount" },
+      "branch": "healer"
+    },
+    {
+      "id": "healer_renewal",
+      "name": "Renewal",
+      "description": "Healer cooldown −25%",
+      "cost": 35,
+      "requires": ["healer_blessed"],
+      "questRequirement": "healer:healed:1500",
+      "effect": { "type": "unit_cooldown_mult", "value": 0.75, "unitId": "healer" },
+      "branch": "healer"
+    },
+
+    {
+      "id": "frost_mage_glacial",
+      "name": "Glacial Reach",
+      "description": "Frost Mage AOE radius +20",
+      "cost": 20,
+      "requires": [],
+      "questRequirement": "frost_mage:kills:25",
+      "effect": { "type": "unit_param_bonus", "value": 20, "unitId": "frost_mage", "param": "aoeRadius" },
+      "branch": "frost_mage"
+    },
+    {
+      "id": "frost_mage_permafrost",
+      "name": "Permafrost",
+      "description": "Slow magnitude +20%",
+      "cost": 35,
+      "requires": ["frost_mage_glacial"],
+      "questRequirement": "frost_mage:kills:60",
+      "effect": { "type": "unit_param_bonus", "value": 0.2, "unitId": "frost_mage", "param": "slowMagnitude" },
+      "branch": "frost_mage"
+    },
+
+    {
+      "id": "sentinel_watchtower",
+      "name": "Watchtower",
+      "description": "Sentinel guard range +40",
+      "cost": 20,
+      "requires": [],
+      "questRequirement": "sentinel:summoned:5",
+      "effect": { "type": "unit_range_bonus", "value": 40, "unitId": "sentinel" },
+      "branch": "sentinel"
+    },
+    {
+      "id": "sentinel_overwatch",
+      "name": "Overwatch",
+      "description": "Sentinel ATK +20",
+      "cost": 35,
+      "requires": ["sentinel_watchtower"],
+      "questRequirement": "sentinel:summoned:15",
+      "effect": { "type": "unit_atk_bonus", "value": 20, "unitId": "sentinel" },
+      "branch": "sentinel"
+    },
+
+    {
+      "id": "bard_inspiring",
+      "name": "Inspiring Presence",
+      "description": "Bard aura radius +30",
+      "cost": 20,
+      "requires": [],
+      "questRequirement": "bard:summoned:5",
+      "effect": { "type": "unit_param_bonus", "value": 30, "unitId": "bard", "param": "auraRadius" },
+      "branch": "bard"
+    },
+    {
+      "id": "bard_crescendo",
+      "name": "Crescendo",
+      "description": "Bard haste strength +10%",
+      "cost": 35,
+      "requires": ["bard_inspiring"],
+      "questRequirement": "bard:summoned:15",
+      "effect": { "type": "unit_param_bonus", "value": 0.1, "unitId": "bard", "param": "hasteMultiplier" },
+      "branch": "bard"
+    }
+  ]
+}

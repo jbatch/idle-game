@@ -1,0 +1,17 @@
+{
+  "id": "sentinel",
+  "name": "Sentinel",
+  "cost": 2,
+  "tier": 2,
+  "hp": 80,
+  "speed": 0,
+  "attackDamage": 30,
+  "attackRange": 90,
+  "attackCooldown": 1.1,
+  "behaviour": "stationary_guard",
+  "params": {},
+  "tags": ["ranged", "defender"],
+  "description": "Stationary. High damage to enemies near the Tower.",
+  "radius": 11,
+  "color": "0xcc8833"
+}

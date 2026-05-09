@@ -1,0 +1,15 @@
+{
+  "id": "boss_chapter1",
+  "name": "Stone Warden",
+  "tier": 3,
+  "hp": 300,
+  "speed": 35,
+  "damage": 20,
+  "attackCooldown": 2.5,
+  "attackRange": 42,
+  "reward": 50,
+  "radius": 22,
+  "color": "0xddaa22",
+  "tags": ["boss", "melee"],
+  "isBoss": true
+}

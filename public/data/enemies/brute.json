@@ -1,0 +1,16 @@
+{
+  "id": "brute",
+  "name": "Brute",
+  "tier": 2,
+  "hp": 120,
+  "speed": 35,
+  "damage": 22,
+  "attackCooldown": 2.0,
+  "attackRange": 40,
+  "reward": 8,
+  "radius": 16,
+  "color": "0x993322",
+  "tags": ["melee", "tank"],
+  "isBoss": false,
+  "behaviour": "rush_tower"
+}

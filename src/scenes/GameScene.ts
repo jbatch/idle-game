@@ -1,0 +1,248 @@
+import Phaser from 'phaser'
+import { Tower } from '../entities/Tower'
+import { Enemy } from '../entities/Enemy'
+import { Unit } from '../entities/Unit'
+import { CursorAttack } from '../input/CursorAttack'
+import { WaveManager } from '../systems/WaveManager'
+import { DebugMenu } from '../ui/DebugMenu'
+import { debugState } from '../debug/DebugState'
+import type { ChapterData, EnemyData, UnitData, BalanceData, TechNode } from '../data/types'
+import { techState, applyUnitMods, checkStatQuests } from '../systems/TechState'
+import { GAME_W, GAME_H, CX, CY, ARENA_RADIUS } from '../constants'
+
+const DEBUG_COOLDOWN = 0.05
+
+export class GameScene extends Phaser.Scene {
+  private tower!: Tower
+  private enemies: Enemy[] = []
+  private units: Unit[] = []
+  private boss: Enemy | null = null
+  private cursor!: CursorAttack
+  private waves!: WaveManager
+  private arenaGfx!: Phaser.GameObjects.Graphics
+  private bossBarGfx!: Phaser.GameObjects.Graphics
+  private hudText!: Phaser.GameObjects.Text
+  private bossLabel!: Phaser.GameObjects.Text
+
+  private techNodes: TechNode[] = []
+  private runPc: number = 0
+  private elapsed: number = 0
+  private gameOver: boolean = false
+  private bossSpawned: boolean = false
+
+  constructor() {
+    super({ key: 'GameScene' })
+  }
+
+  create(data: { loadout?: string[] }) {
+    this.gameOver = false
+    this.enemies = []
+    this.units = []
+    this.boss = null
+    this.runPc = 0
+    this.elapsed = 0
+    this.bossSpawned = false
+
+    const balance = this.cache.json.get('balance')  as BalanceData
+    const chapter = this.cache.json.get(debugState.chapter) as ChapterData
+    this.techNodes = (this.cache.json.get('tech_tree') as { nodes: TechNode[] }).nodes
+    const enemyIds = ['grunt', 'runner', 'brute', 'archer_enemy', 'shaman', 'siege_golem', 'boss_chapter1', 'boss_chapter2', 'boss_chapter3']
+    const enemyMap: Record<string, EnemyData> = Object.fromEntries(
+      enemyIds.map(id => [id, this.cache.json.get(id)])
+    )
+
+    // Arena
+    this.arenaGfx = this.add.graphics()
+    this.drawArena()
+
+    // Tower — apply tech HP bonus
+    this.tower = new Tower(this, CX, CY, balance.towerHp + techState.towerHpBonus)
+
+    // Spawn purchased units around the tower
+    const loadout = data.loadout ?? []
+    this.spawnUnits(loadout)
+
+    // Cursor
+    this.cursor = new CursorAttack(this)
+    this.cursor.bindEnemies(() => this.enemies)
+
+    // Wave manager
+    this.waves = new WaveManager(this, chapter, enemyMap)
+    this.waves.onSpawn = e => this.enemies.push(e)
+    this.waves.onBossSpawn = e => {
+      this.boss = e
+      this.bossSpawned = true
+      this.enemies.push(e)
+      this.showBossWarning()
+    }
+
+    // HUD
+    this.hudText = this.add.text(10, 10, '', {
+      fontSize: '13px', color: '#aaaacc', fontFamily: 'monospace',
+    }).setDepth(20)
+
+    this.bossBarGfx = this.add.graphics().setDepth(20)
+    this.bossLabel  = this.add.text(GAME_W / 2, 28, '', {
+      fontSize: '12px', color: '#ddaa22', fontFamily: 'monospace',
+    }).setOrigin(0.5).setDepth(21)
+
+    // Apply tech + debug state to cursor
+    this.cursor.knockback    = techState.knockback
+    this.cursor.damageBonus  = techState.cursorDamageBonus
+    this.cursor.cooldown     = debugState.fastCursor ? DEBUG_COOLDOWN : techState.cursorCooldown
+    this.tower.godMode       = debugState.godMode
+
+    new DebugMenu(this, [
+      {
+        label: 'Fast Cursor',
+        active: debugState.fastCursor,
+        onToggle: (on) => {
+          debugState.fastCursor = on
+          this.cursor.cooldown = on ? DEBUG_COOLDOWN : techState.cursorCooldown
+        },
+      },
+      {
+        label: 'God Mode',
+        active: debugState.godMode,
+        onToggle: (on) => {
+          debugState.godMode = on
+          this.tower.godMode = on
+        },
+      },
+    ])
+  }
+
+  private spawnUnits(loadout: string[]) {
+    const unitRadius = 80
+    const count = loadout.length
+    const angleOffset = Math.random() * Math.PI * 2
+
+    loadout.forEach((id, i) => {
+      const raw = this.cache.json.get(id) as UnitData
+      if (!raw) { console.warn(`Unknown unit id: ${id}`); return }
+
+      // Track summon stats + apply tech mods
+      techState.incrementStat(`${id}_summoned`)
+      checkStatQuests(this.techNodes)
+      const data = applyUnitMods(raw, this.techNodes)
+
+      const angle = angleOffset + (i / Math.max(count, 1)) * Math.PI * 2
+      const x = CX + Math.cos(angle) * unitRadius
+      const y = CY + Math.sin(angle) * unitRadius
+
+      const unit = new Unit(this, x, y, data)
+      unit.statCallback = (event, amount) => {
+        const statKey = event === 'kill' ? `${id}_kills` : `${id}_healed`
+        techState.incrementStat(statKey, amount)
+        checkStatQuests(this.techNodes)
+      }
+      this.units.push(unit)
+    })
+  }
+
+  private drawArena() {
+    this.arenaGfx.clear()
+    this.arenaGfx.fillStyle(0x0d0d1a, 1)
+    this.arenaGfx.fillCircle(CX, CY, ARENA_RADIUS)
+    this.arenaGfx.lineStyle(2, 0x223366, 1)
+    this.arenaGfx.strokeCircle(CX, CY, ARENA_RADIUS)
+    for (let r = 80; r < ARENA_RADIUS; r += 80) {
+      this.arenaGfx.lineStyle(1, 0x1a1a33, 1)
+      this.arenaGfx.strokeCircle(CX, CY, r)
+    }
+  }
+
+  private showBossWarning() {
+    const warn = this.add.text(GAME_W / 2, GAME_H / 2 - 120, '⚠ STONE WARDEN APPROACHES ⚠', {
+      fontSize: '20px', color: '#ddaa22', fontFamily: 'monospace', fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(30)
+    this.tweens.add({
+      targets: warn,
+      alpha: 0,
+      duration: 2500,
+      ease: 'Power2',
+      onComplete: () => warn.destroy(),
+    })
+  }
+
+  update(_time: number, delta: number) {
+    if (this.gameOver) return
+
+    this.elapsed += delta / 1000
+    this.waves.update(delta)
+
+    const ptr = this.input.activePointer
+
+    // Update enemies + collect PC on death
+    for (let i = this.enemies.length - 1; i >= 0; i--) {
+      const e = this.enemies[i]
+      e.update(delta, this.tower, this.units, this.enemies)
+      if (!e.alive) {
+        this.runPc += e.reward
+        this.enemies.splice(i, 1)
+        if (e === this.boss) this.boss = null
+      }
+    }
+
+    // Update units + prune dead
+    for (let i = this.units.length - 1; i >= 0; i--) {
+      const u = this.units[i]
+      u.update(delta, this.enemies, this.units)
+      if (!u.alive) this.units.splice(i, 1)
+    }
+
+    this.cursor.update(delta, ptr.x, ptr.y, [])
+    this.updateHUD()
+
+    if (this.bossSpawned && this.boss === null) this.endRun(true)
+    if (!this.tower.alive) this.endRun(false)
+  }
+
+  private updateHUD() {
+    const timeToNext = this.waves.timeToNext
+    const waveStr = this.waves.eventsComplete
+      ? 'All waves cleared'
+      : this.waves.nextIsBoss
+        ? `BOSS IN ${timeToNext !== null ? timeToNext.toFixed(1) : '?'}s`
+        : `Wave ${this.waves.waveFired + 1}/${this.waves.waveTotal}  next: ${timeToNext !== null ? timeToNext.toFixed(1) : '?'}s`
+
+    this.hudText.setText([
+      `PC: ${this.runPc}`,
+      waveStr,
+      this.units.length > 0 ? `Units: ${this.units.length}` : '',
+    ])
+
+    this.bossBarGfx.clear()
+    if (this.boss) {
+      const barW = 180
+      const barH = 10
+      const bx = GAME_W / 2 - barW / 2
+      const by = 38
+      const frac = this.boss.hp / this.boss.maxHp
+      this.bossBarGfx.fillStyle(0x221100, 1)
+      this.bossBarGfx.fillRect(bx, by, barW, barH)
+      this.bossBarGfx.fillStyle(0xddaa22, 1)
+      this.bossBarGfx.fillRect(bx + 1, by + 1, (barW - 2) * frac, barH - 2)
+      this.bossBarGfx.lineStyle(1, 0x886600, 1)
+      this.bossBarGfx.strokeRect(bx, by, barW, barH)
+      this.bossLabel.setText(`${this.boss.name}  ${this.boss.hp} / ${this.boss.maxHp}`)
+    } else {
+      this.bossLabel.setText('')
+    }
+  }
+
+  private endRun(won: boolean) {
+    if (this.gameOver) return
+    this.gameOver = true
+    this.time.delayedCall(won ? 600 : 800, () => {
+      this.scene.start('GameOverScene', {
+        won,
+        pc: this.runPc,
+        elapsed: Math.floor(this.elapsed),
+        wavesCleared: this.waves.waveFired,
+        totalWaves: this.waves.waveTotal,
+        chapter: debugState.chapter,
+      })
+    })
+  }
+}

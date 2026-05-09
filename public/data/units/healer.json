@@ -1,0 +1,17 @@
+{
+  "id": "healer",
+  "name": "Healer",
+  "cost": 2,
+  "tier": 1,
+  "hp": 45,
+  "speed": 75,
+  "attackDamage": 0,
+  "attackRange": 80,
+  "attackCooldown": 2.2,
+  "behaviour": "heal_support",
+  "params": { "healAmount": 22, "healRange": 80 },
+  "tags": ["support"],
+  "description": "Follows the lowest HP ally and restores their health.",
+  "radius": 8,
+  "color": "0xdddd44"
+}

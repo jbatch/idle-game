@@ -1,0 +1,17 @@
+{
+  "id": "frost_mage",
+  "name": "Frost Mage",
+  "cost": 2,
+  "tier": 2,
+  "hp": 40,
+  "speed": 65,
+  "attackDamage": 10,
+  "attackRange": 110,
+  "attackCooldown": 2.8,
+  "behaviour": "aoe_slow",
+  "params": { "aoeRadius": 75, "slowMagnitude": 0.45, "slowDuration": 2.5 },
+  "tags": ["ranged", "cc"],
+  "description": "Blasts a zone of enemies, dealing damage and slowing them.",
+  "radius": 9,
+  "color": "0x44ccff"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "shaman",
+  "name": "Shaman",
+  "tier": 3,
+  "hp": 50,
+  "speed": 55,
+  "damage": 0,
+  "attackCooldown": 2.5,
+  "attackRange": 70,
+  "reward": 10,
+  "radius": 10,
+  "color": "0x44aa88",
+  "tags": ["support"],
+  "isBoss": false,
+  "behaviour": "healer_support",
+  "params": { "healAmount": 18, "healRange": 70 }
+}

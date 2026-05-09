@@ -1,0 +1,16 @@
+{
+  "id": "archer_enemy",
+  "name": "Archer",
+  "tier": 2,
+  "hp": 25,
+  "speed": 70,
+  "damage": 10,
+  "attackCooldown": 1.8,
+  "attackRange": 120,
+  "reward": 5,
+  "radius": 8,
+  "color": "0xaa7733",
+  "tags": ["ranged"],
+  "isBoss": false,
+  "behaviour": "ranged_unit_targeter"
+}

@@ -1,0 +1,16 @@
+{
+  "id": "footsoldier",
+  "name": "Footsoldier",
+  "cost": 1,
+  "tier": 1,
+  "hp": 60,
+  "speed": 85,
+  "attackDamage": 12,
+  "attackRange": 32,
+  "attackCooldown": 1.0,
+  "behaviour": "melee_basic",
+  "tags": ["melee"],
+  "description": "Charges the nearest enemy and attacks.",
+  "radius": 9,
+  "color": "0x44aa66"
+}

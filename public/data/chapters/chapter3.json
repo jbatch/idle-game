@@ -1,0 +1,25 @@
+{
+  "id": "chapter3",
+  "name": "Eternal Darkness",
+  "baseMultiplier": 2.5,
+  "boss": "boss_chapter3",
+  "questRequirement": "boss_chapter2_killed",
+  "spawnSchedule": [
+    { "time": 3,  "enemyId": "runner",         "count": 5, "formation": "ring"    },
+    { "time": 10, "enemyId": "brute",          "count": 3, "formation": "ring"    },
+    { "time": 10, "enemyId": "archer_enemy",   "count": 3, "formation": "cluster" },
+    { "time": 18, "enemyId": "siege_golem",    "count": 2, "formation": "ring"    },
+    { "time": 18, "enemyId": "shaman",         "count": 2, "formation": "cluster" },
+    { "time": 25, "enemyId": "runner",         "count": 4, "formation": "ring"    },
+    { "time": 25, "enemyId": "archer_enemy",   "count": 3, "formation": "cluster" },
+    { "time": 32, "enemyId": "siege_golem",    "count": 3, "formation": "ring"    },
+    { "time": 32, "enemyId": "shaman",         "count": 2, "formation": "cluster" },
+    { "time": 40, "enemyId": "brute",          "count": 4, "formation": "ring"    },
+    { "time": 40, "enemyId": "archer_enemy",   "count": 4, "formation": "cluster" },
+    { "time": 40, "enemyId": "runner",         "count": 3, "formation": "ring"    },
+    { "time": 50, "enemyId": "siege_golem",    "count": 3, "formation": "ring"    },
+    { "time": 50, "enemyId": "shaman",         "count": 3, "formation": "cluster" },
+    { "time": 50, "enemyId": "brute",          "count": 3, "formation": "ring"    },
+    { "time": 60, "enemyId": "boss_chapter3",  "count": 1, "formation": "ring"    }
+  ]
+}

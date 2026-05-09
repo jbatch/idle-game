@@ -1,0 +1,17 @@
+{
+  "id": "shieldbearer",
+  "name": "Shieldbearer",
+  "cost": 2,
+  "tier": 1,
+  "hp": 200,
+  "speed": 60,
+  "attackDamage": 6,
+  "attackRange": 30,
+  "attackCooldown": 1.5,
+  "behaviour": "melee_taunt",
+  "params": { "tauntRadius": 160 },
+  "tags": ["melee", "tank"],
+  "description": "High HP frontliner. Nearby enemies redirect to it over the Tower.",
+  "radius": 13,
+  "color": "0x8855cc"
+}

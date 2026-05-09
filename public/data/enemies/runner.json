@@ -1,0 +1,16 @@
+{
+  "id": "runner",
+  "name": "Runner",
+  "tier": 1,
+  "hp": 15,
+  "speed": 150,
+  "damage": 3,
+  "attackCooldown": 1.0,
+  "attackRange": 36,
+  "reward": 3,
+  "radius": 7,
+  "color": "0xee6622",
+  "tags": ["melee", "fast"],
+  "isBoss": false,
+  "behaviour": "rush_tower"
+}

@@ -1,0 +1,16 @@
+{
+  "id": "archer",
+  "name": "Archer",
+  "cost": 1,
+  "tier": 1,
+  "hp": 35,
+  "speed": 80,
+  "attackDamage": 8,
+  "attackRange": 110,
+  "attackCooldown": 1.4,
+  "behaviour": "ranged_kite",
+  "tags": ["ranged"],
+  "description": "Attacks from range, retreating when enemies close in.",
+  "radius": 8,
+  "color": "0x4488cc"
+}
