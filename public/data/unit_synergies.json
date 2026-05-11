@@ -1,0 +1,38 @@
+{
+  "synergies": [
+    {
+      "id": "archer_volley",
+      "unitId": "archer",
+      "name": "Archer Volley",
+      "description": "Three or more living Archers coordinate fire, attack faster, and hold a tighter firing line.",
+      "threshold": 3,
+      "effects": [
+        { "type": "cooldown_mult", "value": 0.8 },
+        { "type": "cohesion", "radius": 58, "strength": 0.55 }
+      ]
+    },
+    {
+      "id": "footsoldier_phalanx",
+      "unitId": "footsoldier",
+      "name": "Footsoldier Phalanx",
+      "description": "Three or more living Footsoldiers pack together and hit harder.",
+      "threshold": 3,
+      "effects": [
+        { "type": "attack_damage_bonus", "value": 3 },
+        { "type": "cohesion", "radius": 48, "strength": 0.45 }
+      ]
+    },
+    {
+      "id": "shield_wall",
+      "unitId": "shieldbearer",
+      "name": "Shield Wall",
+      "description": "Two or more living Shieldbearers hold a wider defensive line.",
+      "threshold": 2,
+      "effects": [
+        { "type": "param_bonus", "param": "tauntRadius", "value": 35 },
+        { "type": "param_bonus", "param": "guardRadius", "value": 25 },
+        { "type": "cohesion", "radius": 55, "strength": 0.35 }
+      ]
+    }
+  ]
+}

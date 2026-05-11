@@ -36,11 +36,24 @@ Boot → Shop ⇄ Tech Tree
 Shop → Combat → Game Over → Shop
 ```
 
-- **Shop:** Spend Deployment Currency (DC, budget: 2 by default) to pick units for this run. Switch chapters from the chapter selector. Open [TECH TREE] or [CHEATS].
+- **Shop:** Spend Deployment Currency (DC, budget: 2 by default) on unopened unit packs for this run. Switch chapters from the chapter selector. Open [TECH TREE] or [CHEATS].
 - **Combat:** Defend the Tower through timed waves; cursor AOE attack + deployed units fight autonomously.
 - **Win (boss kill):** Chapter Complete — earn PC, unlock next chapter.
 - **Lose:** Tower HP reaches 0 — return to shop.
 - Only **Progression Currency (PC)** carries over between runs.
+
+## Shop Packs
+
+The shop sells unopened packs. Rolled units are hidden in the shop and revealed when combat starts.
+
+| Pack | Cost | Rolls | Unlock | Pool |
+|---|---:|---:|---|---|
+| Tier 1 Recruit Pack | 1 DC | 1 | Always | Footsoldier 45%, Archer 45%, Shieldbearer 10% |
+| Tier 1 Squad Pack | 3 DC | 4 | Buy 15 Tier 1 Recruit Packs | Footsoldier 45%, Archer 45%, Shieldbearer 10% |
+| Tier 2 Specialist Pack | 2 DC | 1 | Chapter 2 | Healer, Frost Mage, Sentinel, Bard |
+| Tier 2 Squad Pack | 6 DC | 4 | Chapter 2 + buy 15 Tier 2 Specialist Packs | Healer, Frost Mage, Sentinel, Bard |
+
+Squad packs give four rolls for the price of three singles. Pack purchases are tracked when a run starts, so buying singles is also how later discounted squad packs unlock.
 
 ## Chapters
 
@@ -52,17 +65,29 @@ Shop → Combat → Game Over → Shop
 
 ## Units
 
-| Unit | Cost | Behaviour |
+| Unit | Tier | Behaviour |
 |---|---|---|
-| Footsoldier | 1 DC | Intercepts enemies threatening the Tower and melees them |
-| Archer | 1 DC | Ranged kite — prefers engaged targets and retreats from nearby threats |
-| Shieldbearer | 2 DC | Guard/tank — stays leashed near Tower and redirects enemies within taunt radius |
-| Healer | 2 DC | Avoids enemies and prioritizes urgent wounded allies, especially frontliners |
-| Frost Mage | 2 DC | Cluster-targeted AOE blast — damage + 45% slow for 2.5s |
-| Sentinel | 2 DC | Stationary; high damage to enemies near Tower |
-| Bard | 2 DC | Moves toward allied clusters; doubles nearby allies' attack speed |
+| Footsoldier | 1 | Intercepts enemies threatening the Tower and melees them |
+| Archer | 1 | Ranged kite — prefers engaged targets and retreats from nearby threats |
+| Shieldbearer | 1 | Guard/tank — stays leashed near Tower and redirects enemies within taunt radius |
+| Healer | 2 | Avoids enemies and prioritizes urgent wounded allies, especially frontliners |
+| Frost Mage | 2 | Cluster-targeted AOE blast — damage + 45% slow for 2.5s |
+| Sentinel | 2 | Stationary; high damage to enemies near Tower |
+| Bard | 2 | Moves toward allied clusters; doubles nearby allies' attack speed |
 
 Units use lightweight steering for role behavior, tower leashing, and ally separation. Several unit attacks also have configurable visual effects in unit JSON via `effects.attack`.
+
+## Unit Synergies
+
+Same-unit synergies reward duplicate pack rolls while the matching units are alive.
+
+| Synergy | Requirement | Effect |
+|---|---|---|
+| Archer Volley | 3+ living Archers | Archers gain 20% faster attacks and hold a tighter firing line |
+| Footsoldier Phalanx | 3+ living Footsoldiers | Footsoldiers cluster together and gain +3 attack damage |
+| Shield Wall | 2+ living Shieldbearers | Shieldbearers cluster together and gain wider guard/taunt radii |
+
+Synergy effects can alter stats, runtime behaviour parameters, or movement patterns. Cooldown synergies stack multiplicatively with Bard haste.
 
 ## Enemies
 
@@ -80,14 +105,23 @@ Units use lightweight steering for role behavior, tower leashing, and ally separ
 
 ## Tech Tree
 
-10 branches, 24 nodes. Spend PC to unlock permanent upgrades that persist across runs.
+10 branches, 26 nodes. Spend PC to unlock permanent upgrades that persist across runs.
+Some low-power upgrades are repeatable and increase in price each time.
 
 | Branch | Upgrades |
 |---|---|
-| Cursor | Knockback → Rapid Strike → Heavy Strike |
+| Cursor | Cursor Focus ×4 → Knockback → Rapid Strike → Heavy Strike |
 | Deployment | Deployment Drills → Field Reserves → War Chest |
 | Tower | Fortify → Reinforce → Bastion |
-| Per unit (×7) | 2 nodes each, gated by stat quests |
+| Per unit (×7) | Unit upgrades, many gated by stat quests |
+
+Repeatable early upgrades:
+
+| Upgrade | Max | Cost | Effect |
+|---|---:|---|---|
+| Cursor Focus | 4 | 10, 18, 26, 34 PC | Cursor damage +2 per level |
+| Boot Camp | 3 | 12, 20, 28 PC | Footsoldier HP +15 per level |
+| Fletching | 3 | 12, 20, 28 PC | Archer ATK +2 per level |
 
 ### Quest System
 
@@ -103,7 +137,7 @@ Press **\`** (backtick) in combat to open the in-game debug panel:
 
 Open **[CHEATS]** in the shop for the inspector panel:
 - **QUESTS tab** — view all quest IDs with completion status and progress
-- **TECH tab** — view all 24 tech nodes and owned status
+- **TECH tab** — view all 26 tech nodes and owned status
 - **STATS tab** — view per-unit kill/heal/summon counters
 - **+100 PC** — inject currency
 - **RESET ALL PROGRESS** — wipe localStorage and restart
@@ -147,12 +181,13 @@ src/
     CursorAttack.ts     — Mouse AOE attack (cooldown, knockback, damage)
   scenes/
     BootScene.ts        — Loads all JSON assets
-    ShopScene.ts        — Pre-run shop (DC budget, unit cards, chapter selector)
+    ShopScene.ts        — Pre-run shop (DC budget, unopened pack cards, chapter selector)
     GameScene.ts        — Main combat (waves, units, enemies, HUD)
     GameOverScene.ts    — End-of-run summary, PC persistence, quest completion
     TechTreeScene.ts    — Branch-row tech tree with purchase flow
   systems/
     TechState.ts        — localStorage singleton (PC, purchased nodes, quests, stats)
+    UnitSynergies.ts    — same-unit synergy activation and buff application
     WaveManager.ts      — Time-based spawn schedule from ChapterData
   ui/
     CheatPanel.ts       — Modal inspector panel (quests/tech/stats + cheats)
@@ -162,7 +197,9 @@ src/
 
 public/data/
   balance.json          — dcBudget, towerHp, pcMultiplier
-  tech_tree.json        — 24 nodes across 10 branches
+  shop_packs.json       — unopened pack definitions and weighted roll tables
+  unit_synergies.json   — same-unit synergy thresholds and buffs
+  tech_tree.json        — 26 nodes across 10 branches
   chapters/             — chapter1.json, chapter2.json, chapter3.json
   enemies/              — 6 regular enemy types + 3 boss types
   units/                — footsoldier, archer, shieldbearer, healer, frost_mage, sentinel, bard

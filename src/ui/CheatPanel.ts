@@ -150,7 +150,12 @@ export class CheatPanel {
 
     const nodesWithQuests = this.nodes.filter(n => n.questRequirement)
     // Also show chapter boss quests not in node list
-    const extraQuests = ['boss_chapter2_killed', 'boss_chapter3_killed'].filter(
+    const extraQuests = [
+      'boss_chapter2_killed',
+      'boss_chapter3_killed',
+      'pack_tier1_recruit:bought:15',
+      'pack_tier2_specialist:bought:15',
+    ].filter(
       q => !nodesWithQuests.find(n => n.questRequirement === q)
     )
 
@@ -199,6 +204,9 @@ export class CheatPanel {
     const parts = req.split(':')
     if (parts.length !== 3) return req
     const [unitId, stat, threshold] = parts
+    if (unitId.startsWith('pack_') && stat === 'bought') {
+      return `${unitId.replace(/^pack_/, '').replace(/_/g, ' ')}: bought ${threshold}`
+    }
     const name = unitId.replace('_', ' ')
     if (stat === 'kills')    return `${name}: ${threshold} kills`
     if (stat === 'healed')   return `${name}: ${threshold} HP healed`
@@ -224,14 +232,18 @@ export class CheatPanel {
         lastBranch = node.branch
       }
 
-      const owned = techState.has(node.id)
+      const level = techState.level(node.id)
+      const owned = level > 0
+      const maxed = techState.isMaxed(node)
       const tick = this.scene.add.text(24, y, owned ? '✓' : '─', {
         fontSize: '12px', color: owned ? '#44cc88' : '#2a3a4a', fontFamily: 'monospace',
       })
-      const name = this.scene.add.text(42, y, node.name, {
+      const label = node.repeatable && owned ? `${node.name} ${level}/${node.repeatable.maxLevel}` : node.name
+      const name = this.scene.add.text(42, y, label, {
         fontSize: '12px', color: owned ? '#44cc88' : '#445566', fontFamily: 'monospace',
       })
-      const cost = this.scene.add.text(PW - 80, y, `${node.cost} PC`, {
+      const costLabel = maxed ? 'MAX' : `${techState.currentCost(node)} PC`
+      const cost = this.scene.add.text(PW - 80, y, costLabel, {
         fontSize: '11px', color: owned ? '#336644' : '#2a3a4a', fontFamily: 'monospace',
       })
       out.push(tick, name, cost)
@@ -251,6 +263,7 @@ export class CheatPanel {
     const rows: [string, string][] = [
       ['PC (total)',       String(techState.pc)],
       ['Nodes purchased',  String(techState.purchased.size)],
+      ['Tech levels',      String(Object.values(techState.levels).reduce((sum, level) => sum + level, 0))],
       ['Quests completed', String(techState.completedQuests.size)],
       ['─────────────', ''],
     ]

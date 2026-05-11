@@ -18,19 +18,33 @@ export const combatScenarios: CombatScenario[] = [
   {
     id: 'archer_focus_fire',
     name: 'Archer Focus Fire',
-    description: 'Five archers versus a single durable target.',
+    description: 'Five archers versus a single durable target, with Archer Volley active.',
     units: [{ id: 'archer', count: 5, radius: 105, angle: -90, spread: 95 }],
     enemies: [{ id: 'brute', count: 1, radius: 285, angle: -90 }],
   },
   {
+    id: 'archer_volley_synergy',
+    name: 'Archer Volley Synergy',
+    description: 'Three archers should glow and fire faster while all three are alive.',
+    units: [{ id: 'archer', count: 3, radius: 105, angle: -90, spread: 70 }],
+    enemies: [{ id: 'brute', count: 2, radius: 290, angle: -90, spread: 55 }],
+  },
+  {
     id: 'shield_wall',
     name: 'Shield Wall',
-    description: 'Footsoldiers and a shieldbearer holding back a grunt pack.',
+    description: 'Two shieldbearers should hold a wider taunt line while footsoldiers fight.',
     units: [
-      { id: 'shieldbearer', count: 1, radius: 95, angle: -90 },
+      { id: 'shieldbearer', count: 2, radius: 95, angle: -90, spread: 30 },
       { id: 'footsoldier', count: 2, radius: 125, angle: -105, spread: 30 },
     ],
     enemies: [{ id: 'grunt', count: 6, radius: 330, angle: -90, spread: 70 }],
+  },
+  {
+    id: 'footsoldier_phalanx',
+    name: 'Footsoldier Phalanx',
+    description: 'Three footsoldiers should cluster and hit harder while all three are alive.',
+    units: [{ id: 'footsoldier', count: 3, radius: 122, angle: -100, spread: 42 }],
+    enemies: [{ id: 'grunt', count: 7, radius: 330, angle: -90, spread: 74 }],
   },
   {
     id: 'support_loop',
@@ -71,5 +85,15 @@ export const combatScenarios: CombatScenario[] = [
       { id: 'grunt', count: 5, radius: 335, angle: -100, spread: 70 },
       { id: 'runner', count: 4, radius: 335, angle: 20, spread: 55 },
     ],
+  },
+  {
+    id: 'enemy_ranged_tells',
+    name: 'Enemy Ranged Tells',
+    description: 'Enemy archers should visibly fire projectiles at player units.',
+    units: [
+      { id: 'footsoldier', count: 1, radius: 115, angle: -100 },
+      { id: 'archer', count: 2, radius: 80, angle: 80, spread: 42 },
+    ],
+    enemies: [{ id: 'archer_enemy', count: 3, radius: 275, angle: -90, spread: 80 }],
   },
 ]

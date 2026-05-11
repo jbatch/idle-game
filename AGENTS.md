@@ -23,7 +23,7 @@ The `.claude/` directory is local-only and ignored by git.
 
 ## Current Status
 
-Layers 1–6 (content pass) are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, and local scenario sandbox. This is the **v0.1.2 checkpoint**.
+Layers 1–6 (content pass) are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, first-pass unopened shop packs, and same-unit synergy payoffs. This is the **v0.1.3 checkpoint**.
 
 ### v0.1.2 Additions
 - Multi-entry Vite app structure: main game plus local-only side apps.
@@ -32,6 +32,15 @@ Layers 1–6 (content pass) are complete. The game is fully playable end-to-end 
 - Configurable unit attack effects: `melee_slash` and `quick_projectile`.
 - Damage/heal float numbers and fade-out death animations.
 - First pass unit role behavior: ally separation, tower leashing, archer kiting, shieldbearer guarding, healer avoidance/targeting, frost mage cluster targeting, and bard cluster following.
+
+### v0.1.3 Additions
+- Direct unit buys have been replaced by unopened shop packs.
+- Tier 1 Recruit Pack costs 1 DC and rolls Footsoldier 45%, Archer 45%, Shieldbearer 10%.
+- Pack unlocks now use quest/stat requirements: T1 Squad requires 15 T1 Recruit purchases; T2 Specialist unlocks with Chapter 2; T2 Squad requires 15 T2 Specialist purchases.
+- Packs are rolled at battle start so the shop does not reveal exact units before combat.
+- First same-unit synergy system exists with stat, parameter, and cohesion behaviour effects. Archer Volley, Footsoldier Phalanx, and Shield Wall are configured.
+- Low-power repeatable tech levels now exist for early catch-up: Cursor Focus, Footsoldier Boot Camp, and Archer Fletching.
+- Shop and tech tree labels now use bounded fitting/wrapping to keep longer data-driven text inside cards and nodes.
 
 ### Development Workflow Notes
 - When adding or changing combat mechanics, enemy behavior, unit behavior, targeting, movement, effects, or balance-sensitive tuning, add or update at least one focused scenario fixture in `src/tools/scenario/scenarios.ts`.
@@ -80,7 +89,7 @@ Priority key:
 | Item | Impact | Complexity | Priority | Notes |
 |---|---:|---:|---:|---|
 | Distinct unit strategies | High | Medium | P1 | First pass exists. Continue deepening targeting, positioning, and idle behavior. |
-| Same-unit synergy groups | High | Medium/High | P2 | Example: Archers spike at 5+ grouped Archers. Makes duplicate pack rolls exciting. |
+| Same-unit synergy groups | High | Medium/High | P2 | First pass exists: Archer Volley, Footsoldier Phalanx, and Shield Wall. Continue tuning and adding payoffs selectively. |
 | Unit idle behavior/squads | Medium | Medium | P2 | Same-type units loosely cluster near tower with small idle drift. |
 | Support units opening crates | Medium | Medium | P2 | Support/passive units beeline to crates and open them for the player. |
 | Necromancer unit | Medium/High | Medium/High | P2/P3 | Targets dead allied units/corpses and revives them as temporary zombie or skeleton units. Requires corpse/dead-unit tracking. |
@@ -88,8 +97,8 @@ Priority key:
 #### Shop / Progression
 | Item | Impact | Complexity | Priority | Notes |
 |---|---:|---:|---:|---|
-| Unit packs replacing direct buys | Very High | High | P1 | Biggest design pivot. Changes shop, quests, availability, and balance. |
-| Single/multipack/mega-pack structure | Very High | High | P1 | Each tier unlocks single pack, then 3-pack discount; lower tiers later get mega packs. |
+| Unit packs replacing direct buys | Very High | High | P1 | First pass exists: unopened packs replace direct buys. Continue balancing unlocks and quest thresholds. |
+| Single/multipack/mega-pack structure | Very High | High | P1 | First pass exists: singles unlock squad packs via purchase-count quests; T2 singles unlock with Chapter 2. Mega packs later. |
 | More cursor upgrades by chapter | High | Medium | P1 | Cursor is constant, so add many small chapter-gated upgrades: range, damage, CD, knockback, stun chance. |
 | Cursor power modes | High | High | P2 | Weak knockback AOE, stun/control, heal/support pulse, strong single-target. Decide pre-run vs hot-swap vs tech branches. |
 | Tower self-defense tree | Medium/High | Medium | P2 | Retaliation after hits, thorns, splash, shield pulse, low-HP panic blast. |
@@ -122,11 +131,11 @@ Priority key:
 2. [DONE] **Unit Movement + Role Identity**
    First pass complete: lightweight unit separation, leashing, and role-aware targeting/positioning. Continue tuning and add deeper aggro/threat behavior.
 
-3. **Shop Packs v1**
-   Replace direct buying with tier packs: single pack and 3-pack for tier 1 first. Revisit unit quest thresholds and make early runs understandable.
+3. [DONE] **Shop Packs v1**
+   First pass complete: direct buying replaced with unopened packs. Base shop offers T1 single rolls; T1 Squad unlocks after 15 T1 singles; T2 Specialist unlocks with Chapter 2; T2 Squad unlocks after 15 T2 singles. Continue revisiting unit quest thresholds and early-run clarity.
 
 4. **Unit Synergy + Pack Payoffs**
-   Add same-unit group synergies, starting with Archers at 5+. Use this to make pack randomness feel exciting instead of punishing.
+   First pass exists: data-driven synergies can apply cooldown, damage, parameter, and cohesion effects. Archer Volley, Footsoldier Phalanx, and Shield Wall are configured. Continue tuning and adding same-unit payoffs selectively so pack randomness feels exciting instead of punishing.
 
 5. **Drops / Crates / Recovery**
    Add click-to-open crates or health drops. Then add support-unit crate behavior so players can invest in automation/passive utility.
@@ -171,21 +180,25 @@ Key interfaces in `src/data/types.ts`:
 - `UnitData` — unit config, `behaviour`, optional `params`, optional `effects`
 - `ChapterData` — wave schedule + optional `questRequirement` for unlock gating
 - `TechNode` + `TechEffect` — tech tree DAG nodes and effects
+- `ShopPackData` + `ShopPackRoll` — unopened shop pack definitions and weighted unit roll tables
+- `UnitSynergyData` — same-unit synergy threshold and buff definitions
 - `Targetable`, `StatusEffect`, `UnitBuff`
 
 ### Currency
-- **DC (Deployment Currency):** fresh each run (default: 2), spent in shop
+- **DC (Deployment Currency):** fresh each run (default: 2), spent on unopened shop packs
 - **PC (Progression Currency):** earned by killing enemies, persisted via `techState.addPc()`
 
 ### Persistence (`src/systems/TechState.ts`)
 Module-level singleton with localStorage backing. Keys:
 - `siegeloop_pc` — total accumulated PC
 - `siegeloop_tech` — JSON array of purchased node IDs
+- `siegeloop_tech_levels` — JSON object of repeatable tech levels, e.g. `{ cursor_focus: 3 }`
 - `siegeloop_quests` — JSON array of completed quest IDs
 - `siegeloop_stats` — JSON object of stat counters e.g. `{ footsoldier_kills: 47, healer_healed: 820 }`
 
 Exported functions:
 - `techState` — main singleton (pc, purchase, has, questDone, incrementStat, getStat, etc.)
+- `techState.level(nodeId)` / `techState.currentCost(node)` / `techState.isMaxed(node)` — repeatable tech helpers
 - `applyUnitMods(data, nodes)` — returns a modified UnitData with purchased bonuses applied
 - `applyDeploymentBudgetMods(baseBudget, nodes)` — returns the shop DC budget with purchased deployment bonuses applied
 - `checkStatQuests(nodes)` — parses `"unitId:stat:threshold"` quest IDs and completes them if stat threshold is met
@@ -194,18 +207,47 @@ Quest ID formats:
 - Stat gate: `"footsoldier:kills:50"` — auto-completed by `checkStatQuests()`
 - Event gate: `"boss_chapter1_killed"` — manually completed in GameOverScene
 
+Repeatable tech uses `repeatable: { maxLevel, costIncrease }` on a `TechNode`. Effects apply once per purchased level. Legacy one-time purchases without an explicit level still read as level 1 via `techState.level()`.
+
 ### Tech tree (`public/data/tech_tree.json`)
-**10 branches, 24 nodes total:**
-- **cursor** — Knockback (25) → Rapid Strike (40) → Heavy Strike (65, quest: boss ch1)
+**10 branches, 26 nodes total:**
+- **cursor** — Cursor Focus ×4 (10/18/26/34) → Knockback (25) → Rapid Strike (40) → Heavy Strike (65, quest: boss ch1)
 - **deployment** — Deployment Drills (35) → Field Reserves (70, quest: boss ch1) → War Chest (110, quest: boss ch2)
 - **tower** — Fortify (30) → Reinforce (55) → Bastion (85, quest: boss ch2)
-- **footsoldier** — Battle-Hardened (30, 50 kills) → Iron Veteran (55, 100 kills)
-- **archer** — Sharpshooter (30, 30 kills) → Swift Quiver (55, 75 kills)
+- **footsoldier** — Boot Camp ×3 (12/20/28) → Battle-Hardened (30, 50 kills) → Iron Veteran (55, 100 kills)
+- **archer** — Fletching ×3 (12/20/28) → Sharpshooter (30, 30 kills) → Swift Quiver (55, 75 kills)
 - **shieldbearer** — Aegis (30, 5 summons) → Iron Bulwark (55, 15 summons)
 - **healer** — Blessed Hands (30, 500 healed) → Renewal (55, 1500 healed)
 - **frost_mage** — Glacial Reach (30, 25 kills) → Permafrost (55, 60 kills)
 - **sentinel** — Watchtower (30, 5 summons) → Overwatch (55, 15 summons)
 - **bard** — Inspiring Presence (30, 5 summons) → Crescendo (55, 15 summons)
+
+### Shop packs
+`public/data/shop_packs.json` defines unopened pack costs, roll counts, unlock tech requirements, and weighted roll tables. `ShopScene` only tracks unopened pack purchases. `GameScene` rolls those packs at battle start and then spawns the resulting flat unit loadout.
+
+Current packs:
+- **Tier 1 Recruit Pack** — 1 DC, 1 roll: Footsoldier 45%, Archer 45%, Shieldbearer 10%.
+- **Tier 1 Squad Pack** — 3 DC, 4 rolls, requires `pack_tier1_recruit:bought:15`: same T1 roll table.
+- **Tier 2 Specialist Pack** — 2 DC, 1 roll, requires `boss_chapter1_killed`: Healer, Frost Mage, Sentinel, Bard at equal weights.
+- **Tier 2 Squad Pack** — 6 DC, 4 rolls, requires `boss_chapter1_killed` and `pack_tier2_specialist:bought:15`: same T2 roll table.
+
+Pack purchase stats are recorded when the player starts a run with unopened packs selected, using keys like `pack_tier1_recruit_bought`.
+
+### Unit synergies
+`public/data/unit_synergies.json` defines same-unit thresholds and effects. `src/systems/UnitSynergies.ts` counts living units by ID and applies matching effects each combat tick. `GameScene` and the scenario sandbox both run this pass.
+
+Supported synergy effect types:
+- `cooldown_mult` — multiplies attack cooldown, stacking multiplicatively with Bard haste.
+- `attack_damage_bonus` — adds to unit attack damage while active.
+- `param_bonus` — adds to runtime behaviour params such as `tauntRadius` or `guardRadius`.
+- `cohesion` — pulls same-type units toward their living group centre so they hold a tighter formation.
+
+Current synergies:
+- **Archer Volley** — 3+ living Archers gain 20% faster attacks and cohesion.
+- **Footsoldier Phalanx** — 3+ living Footsoldiers gain +3 attack damage and cohesion.
+- **Shield Wall** — 2+ living Shieldbearers gain wider guard/taunt radii and cohesion.
+
+Bard haste and cooldown synergies stack multiplicatively in `Unit.effectiveCooldown()`.
 
 ### TechTreeScene
 Branch-row layout with mousewheel scrolling. `buildContent()` groups nodes by `branch` field, renders each branch as a horizontal row. Rebuilds on purchase. Layout is placeholder — user wants spatial DAG later.

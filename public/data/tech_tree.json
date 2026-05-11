@@ -1,11 +1,21 @@
 {
   "nodes": [
     {
+      "id": "cursor_focus",
+      "name": "Cursor Focus",
+      "description": "Cursor damage +2",
+      "cost": 10,
+      "repeatable": { "maxLevel": 4, "costIncrease": 8 },
+      "requires": [],
+      "effect": { "type": "cursor_damage", "value": 2 },
+      "branch": "cursor"
+    },
+    {
       "id": "cursor_knockback",
       "name": "Knockback",
       "description": "Cursor blasts knock enemies back",
       "cost": 25,
-      "requires": [],
+      "requires": ["cursor_focus"],
       "effect": { "type": "cursor_knockback", "value": 280 },
       "branch": "cursor"
     },
@@ -92,11 +102,21 @@
     },
 
     {
+      "id": "footsoldier_boot_camp",
+      "name": "Boot Camp",
+      "description": "Footsoldier HP +15",
+      "cost": 12,
+      "repeatable": { "maxLevel": 3, "costIncrease": 8 },
+      "requires": [],
+      "effect": { "type": "unit_hp_bonus", "value": 15, "unitId": "footsoldier" },
+      "branch": "footsoldier"
+    },
+    {
       "id": "footsoldier_veteran",
       "name": "Battle-Hardened",
       "description": "Footsoldier ATK +15",
       "cost": 30,
-      "requires": [],
+      "requires": ["footsoldier_boot_camp"],
       "questRequirement": "footsoldier:kills:50",
       "effect": { "type": "unit_atk_bonus", "value": 15, "unitId": "footsoldier" },
       "branch": "footsoldier"
@@ -113,11 +133,21 @@
     },
 
     {
+      "id": "archer_fletching",
+      "name": "Fletching",
+      "description": "Archer ATK +2",
+      "cost": 12,
+      "repeatable": { "maxLevel": 3, "costIncrease": 8 },
+      "requires": [],
+      "effect": { "type": "unit_atk_bonus", "value": 2, "unitId": "archer" },
+      "branch": "archer"
+    },
+    {
       "id": "archer_sharpshooter",
       "name": "Sharpshooter",
       "description": "Archer range +25",
       "cost": 30,
-      "requires": [],
+      "requires": ["archer_fletching"],
       "questRequirement": "archer:kills:30",
       "effect": { "type": "unit_range_bonus", "value": 25, "unitId": "archer" },
       "branch": "archer"

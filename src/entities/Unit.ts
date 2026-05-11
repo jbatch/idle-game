@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import type { Enemy } from './Enemy'
-import type { UnitData, UnitBuff, StatusEffect, Targetable } from '../data/types'
+import type { UnitData, UnitBuff, UnitSynergyEffect, StatusEffect, Targetable } from '../data/types'
 import { CX, CY, ARENA_RADIUS } from '../constants'
 import { floatDamageNumber, floatHealNumber, playUnitAttackEffect } from '../effects/CombatEffects'
 
@@ -18,6 +18,7 @@ export class Unit implements Targetable {
   private color: number
   private attackTimer: number = 0
   private buffs: UnitBuff[] = []
+  private synergyEffects: UnitSynergyEffect[] = []
   private fxGraphics: Phaser.GameObjects.Graphics
   private graphics: Phaser.GameObjects.Graphics
   private hpBar: Phaser.GameObjects.Graphics
@@ -57,6 +58,7 @@ export class Unit implements Targetable {
       case 'aura_haste':    this.runAuraHaste(dt, allies);        break
     }
 
+    this.applySynergyCohesion(dt, allies)
     this.applySeparation(dt, allies)
     this.clampToArena()
     this.draw()
@@ -75,8 +77,8 @@ export class Unit implements Targetable {
   }
 
   private runMeleeTaunt(dt: number, enemies: Enemy[]) {
-    const guardRadius = Number(this.data.params?.guardRadius ?? this.data.params?.tauntRadius ?? 165)
-    const leashRadius = Number(this.data.params?.leashRadius ?? guardRadius + 40)
+    const guardRadius = this.getParam('guardRadius', this.getParam('tauntRadius', 165))
+    const leashRadius = this.getParam('leashRadius', guardRadius + 40)
     const target = this.closestEnemyToTower(enemies, guardRadius + 90)
 
     if (!target) {
@@ -97,8 +99,8 @@ export class Unit implements Targetable {
     const dx = target.x - this.x
     const dy = target.y - this.y
     const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy))
-    const preferred = Number(this.data.params?.preferredRange ?? this.data.attackRange * 0.78)
-    const dangerRadius = Number(this.data.params?.dangerRadius ?? 70)
+    const preferred = this.getParam('preferredRange', this.data.attackRange * 0.78)
+    const dangerRadius = this.getParam('dangerRadius', 70)
     const threat = this.nearestThreat(enemies, dangerRadius)
 
     if (threat) {
@@ -114,18 +116,18 @@ export class Unit implements Targetable {
     if (dist <= this.data.attackRange && this.attackTimer === 0) {
       const wasAlive = target.alive
       this.playAttackEffect(target)
-      target.takeDamage(this.data.attackDamage)
+      target.takeDamage(this.effectiveAttackDamage())
       if (wasAlive && !target.alive) this.statCallback?.('kill', 1)
       this.attackTimer = this.effectiveCooldown()
     }
 
-    this.enforceMaxTowerDistance(dt, Number(this.data.params?.leashRadius ?? 285))
+    this.enforceMaxTowerDistance(dt, this.getParam('leashRadius', 285))
   }
 
   private runHealSupport(dt: number, enemies: Enemy[], allies: Unit[]) {
-    const healRange = Number(this.data.params?.healRange ?? this.data.attackRange)
-    const healAmount = Number(this.data.params?.healAmount ?? 20)
-    const avoidRadius = Number(this.data.params?.avoidRadius ?? 90)
+    const healRange = this.getParam('healRange', this.data.attackRange)
+    const healAmount = this.getParam('healAmount', 20)
+    const avoidRadius = this.getParam('avoidRadius', 90)
 
     const threat = this.nearestThreat(enemies, avoidRadius)
     if (threat) this.moveAwayFromPoint(dt, threat.x, threat.y, 1.1)
@@ -156,7 +158,7 @@ export class Unit implements Targetable {
   }
 
   private runAoeSlow(dt: number, enemies: Enemy[]) {
-    const aoeR  = Number(this.data.params?.aoeRadius ?? 75)
+    const aoeR  = this.getParam('aoeRadius', 75)
     const target = this.bestClusterTarget(enemies, aoeR)
     if (!target) return
     const dx = target.x - this.x
@@ -170,9 +172,9 @@ export class Unit implements Targetable {
     }
 
     if (this.attackTimer === 0) {
-      const slow  = Number(this.data.params?.slowMagnitude ?? 0.45)
-      const dur   = Number(this.data.params?.slowDuration ?? 2.5)
-      const dmg   = this.data.attackDamage
+      const slow  = this.getParam('slowMagnitude', 0.45)
+      const dur   = this.getParam('slowDuration', 2.5)
+      const dmg   = this.effectiveAttackDamage()
 
       const inBlast = enemies.filter(e => {
         if (!e.alive) return false
@@ -202,7 +204,7 @@ export class Unit implements Targetable {
       this.attackTimer = this.effectiveCooldown()
     }
 
-    this.enforceMaxTowerDistance(dt, Number(this.data.params?.leashRadius ?? 300))
+    this.enforceMaxTowerDistance(dt, this.getParam('leashRadius', 300))
   }
 
   private runStationaryGuard(_dt: number, enemies: Enemy[]) {
@@ -220,7 +222,7 @@ export class Unit implements Targetable {
     if (best && this.attackTimer === 0) {
       const wasAlive = best.alive
       this.playAttackEffect(best)
-      best.takeDamage(this.data.attackDamage)
+      best.takeDamage(this.effectiveAttackDamage())
       if (wasAlive && !best.alive) this.statCallback?.('kill', 1)
       this.attackTimer = this.effectiveCooldown()
       // Attack flash line to target
@@ -234,8 +236,8 @@ export class Unit implements Targetable {
   }
 
   private runAuraHaste(dt: number, allies: Unit[]) {
-    const auraR  = Number(this.data.params?.auraRadius ?? 150)
-    const haste  = Number(this.data.params?.hasteMultiplier ?? 0.5)
+    const auraR  = this.getParam('auraRadius', 150)
+    const haste  = this.getParam('hasteMultiplier', 0.5)
     const buffDur = this.data.attackCooldown + 0.1  // refresh slightly longer than interval
 
     this.moveToAlliedCluster(dt, allies, auraR * 0.45)
@@ -270,7 +272,7 @@ export class Unit implements Targetable {
     } else if (this.attackTimer === 0) {
       const wasAlive = target.alive
       this.playAttackEffect(target)
-      target.takeDamage(this.data.attackDamage)
+      target.takeDamage(this.effectiveAttackDamage())
       if (wasAlive && !target.alive) this.statCallback?.('kill', 1)
       this.attackTimer = this.effectiveCooldown()
     }
@@ -422,7 +424,7 @@ export class Unit implements Targetable {
   private applySeparation(dt: number, allies: Unit[]) {
     if (this.data.speed <= 0) return
 
-    const separationRadius = Number(this.data.params?.separationRadius ?? this.data.radius * 2 + 12)
+    const separationRadius = this.getParam('separationRadius', this.data.radius * 2 + 12)
     let pushX = 0
     let pushY = 0
 
@@ -453,6 +455,29 @@ export class Unit implements Targetable {
     this.y += (pushY / pushDist) * speed * dt
   }
 
+  private applySynergyCohesion(dt: number, allies: Unit[]) {
+    if (this.data.speed <= 0) return
+
+    const cohesionEffects = this.synergyEffects.filter(effect => effect.type === 'cohesion')
+    if (cohesionEffects.length === 0) return
+
+    const sameType = allies.filter(ally => ally.alive && ally.data.id === this.data.id)
+    if (sameType.length <= 1) return
+
+    const center = sameType.reduce((acc, ally) => {
+      acc.x += ally.x
+      acc.y += ally.y
+      return acc
+    }, { x: 0, y: 0 })
+    center.x /= sameType.length
+    center.y /= sameType.length
+
+    for (const effect of cohesionEffects) {
+      if (this.distance(this.x, this.y, center.x, center.y) <= effect.radius) continue
+      this.moveTowardPoint(dt, center.x, center.y, effect.strength)
+    }
+  }
+
   private moveTowardPoint(dt: number, x: number, y: number, speedMultiplier = 1) {
     if (this.data.speed <= 0) return
     const dx = x - this.x
@@ -478,10 +503,29 @@ export class Unit implements Targetable {
   }
 
   private effectiveCooldown(): number {
-    const maxHaste = this.buffs
-      .filter(b => b.type === 'haste')
-      .reduce((acc, b) => Math.max(acc, b.magnitude), 0)
-    return this.data.attackCooldown * (1 - maxHaste)
+    const buffMultiplier = this.buffs.reduce((multiplier, buff) => {
+      const reduction = Phaser.Math.Clamp(buff.magnitude, 0, 0.85)
+      return multiplier * (1 - reduction)
+    }, 1)
+    const synergyMultiplier = this.synergyEffects
+      .filter(effect => effect.type === 'cooldown_mult')
+      .reduce((multiplier, effect) => multiplier * effect.value, 1)
+    return this.data.attackCooldown * buffMultiplier * synergyMultiplier
+  }
+
+  private effectiveAttackDamage(): number {
+    return this.data.attackDamage + this.synergyEffects
+      .filter(effect => effect.type === 'attack_damage_bonus')
+      .reduce((bonus, effect) => bonus + effect.value, 0)
+  }
+
+  getParam(name: string, fallback: number): number {
+    const base = Number(this.data.params?.[name] ?? fallback)
+    let bonus = 0
+    for (const effect of this.synergyEffects) {
+      if (effect.type === 'param_bonus' && effect.param === name) bonus += effect.value
+    }
+    return base + bonus
   }
 
   private tickBuffs(dt: number) {
@@ -493,6 +537,14 @@ export class Unit implements Targetable {
 
   private playAttackEffect(target: Targetable) {
     playUnitAttackEffect(this.scene, this.data.effects?.attack, this, target, this.color)
+  }
+
+  setSynergyEffects(effects: UnitSynergyEffect[]) {
+    this.synergyEffects = [...effects]
+  }
+
+  addSynergyEffects(effects: UnitSynergyEffect[]) {
+    this.synergyEffects.push(...effects)
   }
 
   applyBuff(buff: UnitBuff) {
@@ -551,8 +603,20 @@ export class Unit implements Targetable {
     return this.buffs.some(b => b.type === 'haste')
   }
 
+  private hasSynergyBuff(): boolean {
+    return this.synergyEffects.length > 0
+  }
+
   private draw() {
     this.graphics.clear()
+
+    // Same-unit synergy glow
+    if (this.hasSynergyBuff()) {
+      this.graphics.lineStyle(2, 0x66ccff, 0.55)
+      this.graphics.strokeCircle(this.x, this.y, this.data.radius + 8)
+      this.graphics.lineStyle(1, 0xffffff, 0.28)
+      this.graphics.strokeCircle(this.x, this.y, this.data.radius + 11)
+    }
 
     // Haste glow
     if (this.isHasted()) {

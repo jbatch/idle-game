@@ -6,8 +6,9 @@ import { CursorAttack } from '../input/CursorAttack'
 import { WaveManager } from '../systems/WaveManager'
 import { DebugMenu } from '../ui/DebugMenu'
 import { debugState } from '../debug/DebugState'
-import type { ChapterData, EnemyData, UnitData, BalanceData, TechNode } from '../data/types'
+import type { ChapterData, EnemyData, UnitData, BalanceData, TechNode, ShopPackData, UnitSynergyData } from '../data/types'
 import { techState, applyCursorMods, applyTowerMods, applyUnitMods, checkStatQuests } from '../systems/TechState'
+import { applyUnitSynergies } from '../systems/UnitSynergies'
 import { GAME_W, GAME_H, CX, CY, ARENA_RADIUS } from '../constants'
 
 const DEBUG_COOLDOWN = 0.05
@@ -25,6 +26,7 @@ export class GameScene extends Phaser.Scene {
   private bossLabel!: Phaser.GameObjects.Text
 
   private techNodes: TechNode[] = []
+  private unitSynergies: UnitSynergyData[] = []
   private runPc: number = 0
   private elapsed: number = 0
   private gameOver: boolean = false
@@ -36,7 +38,7 @@ export class GameScene extends Phaser.Scene {
     super({ key: 'GameScene' })
   }
 
-  create(data: { loadout?: string[] }) {
+  create(data: { loadout?: string[], packs?: string[] }) {
     this.gameOver = false
     this.enemies = []
     this.units = []
@@ -50,6 +52,7 @@ export class GameScene extends Phaser.Scene {
     this.pcMultiplier = balance.pcMultiplier
     const chapter = this.cache.json.get(debugState.chapter) as ChapterData
     this.techNodes = (this.cache.json.get('tech_tree') as { nodes: TechNode[] }).nodes
+    this.unitSynergies = (this.cache.json.get('unit_synergies') as { synergies: UnitSynergyData[] }).synergies
     const cursorStats = applyCursorMods(balance.cursor, this.techNodes)
     const enemyIds = ['grunt', 'runner', 'brute', 'archer_enemy', 'shaman', 'siege_golem', 'boss_chapter1', 'boss_chapter2', 'boss_chapter3']
     const enemyMap: Record<string, EnemyData> = Object.fromEntries(
@@ -63,9 +66,10 @@ export class GameScene extends Phaser.Scene {
     // Tower — apply tech HP bonus
     this.tower = new Tower(this, CX, CY, applyTowerMods(balance.towerHp, this.techNodes))
 
-    // Spawn purchased units around the tower
-    const loadout = data.loadout ?? []
+    // Open unopened shop packs at battle start, then spawn the rolled units.
+    const loadout = data.loadout ?? this.rollPacks(data.packs ?? [])
     this.spawnUnits(loadout)
+    if (!data.loadout && data.packs?.length) this.showPackReveal(loadout)
 
     // Cursor
     this.cursor = new CursorAttack(this, cursorStats)
@@ -146,6 +150,63 @@ export class GameScene extends Phaser.Scene {
     })
   }
 
+  private rollPacks(packIds: string[]): string[] {
+    const packs = (this.cache.json.get('shop_packs') as { packs: ShopPackData[] }).packs
+    const packMap = new Map(packs.map(pack => [pack.id, pack]))
+    const loadout: string[] = []
+
+    for (const packId of packIds) {
+      const pack = packMap.get(packId)
+      if (!pack) {
+        console.warn(`Unknown shop pack id: ${packId}`)
+        continue
+      }
+
+      for (let i = 0; i < pack.rolls; i++) {
+        const roll = this.rollUnitId(pack)
+        if (roll) loadout.push(roll)
+      }
+    }
+
+    return loadout
+  }
+
+  private rollUnitId(pack: ShopPackData): string | null {
+    const totalWeight = pack.rollTable.reduce((sum, roll) => sum + roll.weight, 0)
+    if (totalWeight <= 0) return null
+
+    let pick = Math.random() * totalWeight
+    for (const roll of pack.rollTable) {
+      pick -= roll.weight
+      if (pick <= 0) return roll.unitId
+    }
+
+    return pack.rollTable[pack.rollTable.length - 1]?.unitId ?? null
+  }
+
+  private showPackReveal(loadout: string[]) {
+    if (loadout.length === 0) return
+
+    const names = loadout.map(id => {
+      const data = this.cache.json.get(id) as UnitData | undefined
+      return data?.name ?? id
+    })
+    const message = `PACKS OPENED: ${names.join(', ')}`
+    const reveal = this.add.text(GAME_W / 2, GAME_H / 2 - 150, message, {
+      fontSize: '15px', color: '#ddaa22', fontFamily: 'monospace', fontStyle: 'bold',
+      wordWrap: { width: 620 },
+      align: 'center',
+    }).setOrigin(0.5).setDepth(30)
+
+    this.tweens.add({
+      targets: reveal,
+      alpha: 0,
+      duration: 2600,
+      ease: 'Power2',
+      onComplete: () => reveal.destroy(),
+    })
+  }
+
   private drawArena() {
     this.arenaGfx.clear()
     this.arenaGfx.fillStyle(0x0d0d1a, 1)
@@ -191,6 +252,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Update units + prune dead
+    applyUnitSynergies(this.units, this.unitSynergies)
     for (let i = this.units.length - 1; i >= 0; i--) {
       const u = this.units[i]
       u.update(delta, this.enemies, this.units)

@@ -1,0 +1,57 @@
+{
+  "packs": [
+    {
+      "id": "tier1_recruit",
+      "name": "Tier 1 Recruit Pack",
+      "description": "One unopened low-tier unit roll.",
+      "cost": 1,
+      "rolls": 1,
+      "rollTable": [
+        { "unitId": "footsoldier", "weight": 45, "rarity": "common" },
+        { "unitId": "archer", "weight": 45, "rarity": "common" },
+        { "unitId": "shieldbearer", "weight": 10, "rarity": "rare" }
+      ]
+    },
+    {
+      "id": "tier1_squad",
+      "name": "Tier 1 Squad Pack",
+      "description": "Four unopened low-tier unit rolls for the price of three.",
+      "cost": 3,
+      "rolls": 4,
+      "questRequirements": ["pack_tier1_recruit:bought:15"],
+      "rollTable": [
+        { "unitId": "footsoldier", "weight": 45, "rarity": "common" },
+        { "unitId": "archer", "weight": 45, "rarity": "common" },
+        { "unitId": "shieldbearer", "weight": 10, "rarity": "rare" }
+      ]
+    },
+    {
+      "id": "tier2_specialist",
+      "name": "Tier 2 Specialist Pack",
+      "description": "One unopened higher-tier specialist roll.",
+      "cost": 2,
+      "rolls": 1,
+      "questRequirements": ["boss_chapter1_killed"],
+      "rollTable": [
+        { "unitId": "healer", "weight": 25, "rarity": "specialist" },
+        { "unitId": "frost_mage", "weight": 25, "rarity": "specialist" },
+        { "unitId": "sentinel", "weight": 25, "rarity": "specialist" },
+        { "unitId": "bard", "weight": 25, "rarity": "specialist" }
+      ]
+    },
+    {
+      "id": "tier2_squad",
+      "name": "Tier 2 Squad Pack",
+      "description": "Four unopened specialist rolls for the price of three.",
+      "cost": 6,
+      "rolls": 4,
+      "questRequirements": ["boss_chapter1_killed", "pack_tier2_specialist:bought:15"],
+      "rollTable": [
+        { "unitId": "healer", "weight": 25, "rarity": "specialist" },
+        { "unitId": "frost_mage", "weight": 25, "rarity": "specialist" },
+        { "unitId": "sentinel", "weight": 25, "rarity": "specialist" },
+        { "unitId": "bard", "weight": 25, "rarity": "specialist" }
+      ]
+    }
+  ]
+}

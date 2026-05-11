@@ -2,7 +2,14 @@ import Phaser from 'phaser'
 import type { Tower } from './Tower'
 import type { Unit } from './Unit'
 import type { EnemyData, StatusEffect, Targetable } from '../data/types'
-import { floatDamageNumber, floatHealNumber } from '../effects/CombatEffects'
+import {
+  floatDamageNumber,
+  floatHealNumber,
+  playEnemyHealEffect,
+  playEnemyMeleeAttackEffect,
+  playEnemyProjectileEffect,
+  playEnemySplashEffect,
+} from '../effects/CombatEffects'
 
 export class Enemy implements Targetable {
   scene: Phaser.Scene
@@ -112,11 +119,13 @@ export class Enemy implements Targetable {
     } else {
       this.attackTimer -= dt
       if (this.attackTimer <= 0) {
+        this.playAttackEffect(tower)
         tower.takeDamage(this.damage)
         // AOE splash damages units around tower
         if (this.data.behaviour === 'rush_tower_aoe') {
           const splash = this.data.params?.splashRadius ?? 80
           const splashDmg = this.data.params?.splashDamage ?? 8
+          playEnemySplashEffect(this.scene, tower.x, tower.y, splash, this.color)
           for (const u of units) {
             if (!u.alive) continue
             const ux = u.x - tower.x, uy = u.y - tower.y
@@ -155,6 +164,7 @@ export class Enemy implements Targetable {
       } else {
         this.attackTimer -= dt
         if (this.attackTimer <= 0) {
+          playEnemyHealEffect(this.scene, this, target, this.color)
           target.heal(healAmount)
           this.attackTimer = this.attackCooldown
         }
@@ -176,6 +186,7 @@ export class Enemy implements Targetable {
     } else {
       this.attackTimer -= dt
       if (this.attackTimer <= 0) {
+        this.playAttackEffect(target)
         target.takeDamage(this.damage)
         this.attackTimer = this.attackCooldown
       }
@@ -189,7 +200,7 @@ export class Enemy implements Targetable {
     let bestDist = Infinity
     for (const u of units) {
       if (!u.alive || !u.data.params?.tauntRadius) continue
-      const tauntRadius = Number(u.data.params.tauntRadius)
+      const tauntRadius = u.getParam('tauntRadius', Number(u.data.params.tauntRadius))
       const dx = u.x - this.x, dy = u.y - this.y
       const d2 = dx * dx + dy * dy
       if (d2 <= tauntRadius * tauntRadius && d2 < bestDist) { bestDist = d2; best = u }
@@ -220,6 +231,14 @@ export class Enemy implements Targetable {
     for (let i = this.effects.length - 1; i >= 0; i--) {
       this.effects[i].duration -= dt
       if (this.effects[i].duration <= 0) this.effects.splice(i, 1)
+    }
+  }
+
+  private playAttackEffect(target: Targetable) {
+    if (this.data.tags.includes('ranged')) {
+      playEnemyProjectileEffect(this.scene, this, target, this.color)
+    } else {
+      playEnemyMeleeAttackEffect(this.scene, this, target, this.color)
     }
   }
 

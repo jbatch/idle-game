@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import type { TechNode } from '../data/types'
 import { techState } from '../systems/TechState'
 import { GAME_W, GAME_H } from '../constants'
+import { addFittedText } from '../ui/fittedText'
 
 const HEADER_H  = 90   // title + PC bar + separator
 const FOOTER_H  = 54   // back button area
@@ -151,14 +152,19 @@ export class TechTreeScene extends Phaser.Scene {
   }
 
   private buildNode(node: TechNode, nx: number, ny: number) {
-    const purchased = techState.has(node.id)
+    const level = techState.level(node.id)
+    const purchased = level > 0
+    const maxed = techState.isMaxed(node)
     const available = techState.isAvailable(node)
-    const canAfford  = techState.pc >= node.cost
+    const currentCost = techState.currentCost(node)
+    const canAfford  = techState.pc >= currentCost
     const locked     = !purchased && !available
 
     let borderColor: number
     let bgColor: number
-    if (purchased)       { borderColor = 0x44cc88; bgColor = 0x0e2211 }
+    if (maxed)           { borderColor = 0x44cc88; bgColor = 0x0e2211 }
+    else if (purchased && canAfford) { borderColor = 0x66aaee; bgColor = 0x0d1a33 }
+    else if (purchased)  { borderColor = 0x668855; bgColor = 0x10180e }
     else if (!available) { borderColor = 0x1a2a3a; bgColor = 0x080c14 }
     else if (canAfford)  { borderColor = 0x4466bb; bgColor = 0x0d1a33 }
     else                 { borderColor = 0x885522; bgColor = 0x1a0e08 }
@@ -170,44 +176,50 @@ export class TechTreeScene extends Phaser.Scene {
     this.content.add(bg)
     this.content.add(border)
 
-    const cx = nx + NODE_W / 2
+    const textX = nx + 8
+    const textW = NODE_W - 16
     const nameColor = purchased ? '#44cc88' : locked ? '#2a3a4a' : '#ccd4ff'
-    const nameText = this.add.text(cx, ny + 14, node.name, {
+    const nameText = addFittedText(this, textX, ny + 8, node.name, {
       fontSize: '13px', color: nameColor, fontFamily: 'monospace', fontStyle: 'bold',
-    }).setOrigin(0.5)
+    }, { width: textW, maxLines: 1, minFontSize: 10, align: 'center' })
     this.content.add(nameText)
 
     const descColor = locked ? '#1e2e3e' : '#556688'
-    const descText = this.add.text(cx, ny + 33, node.description, {
+    const descText = addFittedText(this, textX, ny + 29, node.description, {
       fontSize: '10px', color: descColor, fontFamily: 'monospace',
-    }).setOrigin(0.5)
+      lineSpacing: -2,
+    }, { width: textW, maxLines: 2, minFontSize: 8, align: 'center' })
     this.content.add(descText)
 
     // Quest requirement line
     if (node.questRequirement && !techState.questDone(node.questRequirement)) {
       const qLabel = this.formatQuestLabel(node.questRequirement)
-      const qText = this.add.text(cx, ny + 50, qLabel, {
+      const qText = addFittedText(this, textX, ny + 55, qLabel, {
         fontSize: '9px', color: '#4a3322', fontFamily: 'monospace',
-      }).setOrigin(0.5)
+      }, { width: textW, maxLines: 1, minFontSize: 7, align: 'center' })
       this.content.add(qText)
     }
 
     // Cost / status line
     let statusStr: string
     let statusColor: string
-    if (purchased) {
+    if (maxed && node.repeatable) {
+      statusStr = `LV ${level}/${node.repeatable.maxLevel} MAX`; statusColor = '#44cc88'
+    } else if (purchased && node.repeatable) {
+      statusStr = `LV ${level}/${node.repeatable.maxLevel}  ${currentCost} PC`; statusColor = canAfford ? '#ddaa22' : '#664422'
+    } else if (purchased) {
       statusStr = '✓ OWNED'; statusColor = '#44cc88'
     } else if (node.questRequirement && !techState.questDone(node.questRequirement)) {
       statusStr = 'QUEST LOCKED'; statusColor = '#4a3322'
     } else if (locked) {
       statusStr = 'LOCKED'; statusColor = '#2a3a4a'
     } else {
-      statusStr = `${node.cost} PC`
+      statusStr = `${currentCost} PC`
       statusColor = canAfford ? '#ddaa22' : '#664422'
     }
-    const costText = this.add.text(cx, ny + NODE_H - 12, statusStr, {
+    const costText = addFittedText(this, textX, ny + NODE_H - 18, statusStr, {
       fontSize: '11px', color: statusColor, fontFamily: 'monospace',
-    }).setOrigin(0.5)
+    }, { width: textW, maxLines: 1, minFontSize: 9, align: 'center' })
     this.content.add(costText)
 
     // Click to purchase

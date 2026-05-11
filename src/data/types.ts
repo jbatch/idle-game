@@ -15,7 +15,7 @@ export interface StatusEffect {
 export interface UnitBuff {
   type: 'haste'
   duration: number
-  magnitude: number   // cooldown multiplier e.g. 0.5 = half cooldown
+  magnitude: number   // cooldown reduction e.g. 0.5 = half cooldown
 }
 
 export type UnitAttackEffect = 'melee_slash' | 'quick_projectile'
@@ -61,6 +61,38 @@ export interface UnitData {
   color: string
 }
 
+export interface ShopPackRoll {
+  unitId: string
+  weight: number
+  rarity: 'common' | 'rare' | 'specialist'
+}
+
+export interface ShopPackData {
+  id: string
+  name: string
+  description: string
+  cost: number
+  rolls: number
+  unlockTechId?: string
+  questRequirements?: string[]
+  rollTable: ShopPackRoll[]
+}
+
+export type UnitSynergyEffect =
+  | { type: 'cooldown_mult', value: number }
+  | { type: 'attack_damage_bonus', value: number }
+  | { type: 'param_bonus', param: string, value: number }
+  | { type: 'cohesion', radius: number, strength: number }
+
+export interface UnitSynergyData {
+  id: string
+  unitId: string
+  name: string
+  description: string
+  threshold: number
+  effects: UnitSynergyEffect[]
+}
+
 export interface SpawnEvent {
   time: number
   enemyId: string
@@ -93,6 +125,10 @@ export interface TechNode {
   name: string
   description: string
   cost: number
+  repeatable?: {
+    maxLevel: number
+    costIncrease: number
+  }
   requires: string[]
   questRequirement?: string
   effect: TechEffect | TechEffect[]

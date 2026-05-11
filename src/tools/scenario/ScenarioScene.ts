@@ -3,7 +3,8 @@ import { Enemy } from '../../entities/Enemy'
 import { Tower } from '../../entities/Tower'
 import { Unit } from '../../entities/Unit'
 import { ARENA_RADIUS, CX, CY, GAME_H, GAME_W } from '../../constants'
-import type { BalanceData, EnemyData, UnitData } from '../../data/types'
+import type { BalanceData, EnemyData, UnitData, UnitSynergyData } from '../../data/types'
+import { applyUnitSynergies } from '../../systems/UnitSynergies'
 import { combatScenarios, type CombatScenario, type ScenarioSpawn } from './scenarios'
 
 export class ScenarioScene extends Phaser.Scene {
@@ -12,6 +13,7 @@ export class ScenarioScene extends Phaser.Scene {
   private tower!: Tower
   private units: Unit[] = []
   private enemies: Enemy[] = []
+  private unitSynergies: UnitSynergyData[] = []
   private scenarioIndex = 0
 
   constructor() {
@@ -20,6 +22,7 @@ export class ScenarioScene extends Phaser.Scene {
 
   create() {
     this.arenaGfx = this.add.graphics()
+    this.unitSynergies = (this.cache.json.get('unit_synergies') as { synergies: UnitSynergyData[] }).synergies
     this.hudText = this.add.text(12, 12, '', {
       fontSize: '13px',
       color: '#d8d8f0',
@@ -48,6 +51,7 @@ export class ScenarioScene extends Phaser.Scene {
       if (!enemy.alive) this.enemies.splice(i, 1)
     }
 
+    applyUnitSynergies(this.units, this.unitSynergies)
     for (let i = this.units.length - 1; i >= 0; i--) {
       const unit = this.units[i]
       unit.update(delta, this.enemies, this.units)

@@ -2,6 +2,7 @@ import type { BalanceData, TechEffect, TechNode, UnitData } from '../data/types'
 
 const PC_KEY     = 'siegeloop_pc'
 const TECH_KEY   = 'siegeloop_tech'
+const TECH_LEVELS_KEY = 'siegeloop_tech_levels'
 const QUESTS_KEY = 'siegeloop_quests'
 const STATS_KEY  = 'siegeloop_stats'
 
@@ -13,6 +14,24 @@ function loadSet(key: string): Set<string> {
 function loadStats(): Record<string, number> {
   try { return JSON.parse(localStorage.getItem(STATS_KEY) ?? '{}') }
   catch { return {} }
+}
+
+function loadLevels(): Record<string, number> {
+  try { return JSON.parse(localStorage.getItem(TECH_LEVELS_KEY) ?? '{}') }
+  catch { return {} }
+}
+
+function maxLevel(node: TechNode): number {
+  return node.repeatable?.maxLevel ?? 1
+}
+
+function statQuestParts(questId: string): [string, string, number] | null {
+  const parts = questId.split(':')
+  if (parts.length !== 3) return null
+  const [subject, stat, threshStr] = parts
+  const threshold = parseInt(threshStr, 10)
+  if (!Number.isFinite(threshold)) return null
+  return [subject, stat, threshold]
 }
 
 export const techState = {
@@ -28,14 +47,35 @@ export const techState = {
   get purchased(): Set<string> {
     return loadSet(TECH_KEY)
   },
+  get levels(): Record<string, number> {
+    return loadLevels()
+  },
+  level(nodeId: string): number {
+    const explicitLevel = this.levels[nodeId]
+    if (explicitLevel !== undefined) return explicitLevel
+    return this.purchased.has(nodeId) ? 1 : 0
+  },
+  currentCost(node: TechNode): number {
+    return node.cost + this.level(node.id) * (node.repeatable?.costIncrease ?? 0)
+  },
+  isMaxed(node: TechNode): boolean {
+    return this.level(node.id) >= maxLevel(node)
+  },
   purchase(node: TechNode) {
+    const cost = this.currentCost(node)
+    if (cost > this.pc || this.isMaxed(node)) return
+
     const p = this.purchased
     p.add(node.id)
     localStorage.setItem(TECH_KEY, JSON.stringify([...p]))
-    localStorage.setItem(PC_KEY, String(this.pc - node.cost))
+
+    const levels = this.levels
+    levels[node.id] = this.level(node.id) + 1
+    localStorage.setItem(TECH_LEVELS_KEY, JSON.stringify(levels))
+    localStorage.setItem(PC_KEY, String(this.pc - cost))
   },
   has(nodeId: string): boolean {
-    return this.purchased.has(nodeId)
+    return this.level(nodeId) > 0
   },
 
   // ─── Quests ────────────────────────────────────────────────────
@@ -50,6 +90,20 @@ export const techState = {
   questDone(questId: string): boolean {
     return this.completedQuests.has(questId)
   },
+  questProgress(questId: string): { current: number, threshold: number } | null {
+    const parts = statQuestParts(questId)
+    if (!parts) return null
+    const [subject, stat, threshold] = parts
+    return { current: this.getStat(`${subject}_${stat}`), threshold }
+  },
+  isQuestRequirementMet(questId: string): boolean {
+    if (this.questDone(questId)) return true
+    const progress = this.questProgress(questId)
+    if (!progress) return false
+    if (progress.current < progress.threshold) return false
+    this.completeQuest(questId)
+    return true
+  },
 
   // ─── Stat tracking ─────────────────────────────────────────────
   incrementStat(key: string, amount: number = 1) {
@@ -63,9 +117,9 @@ export const techState = {
 
   // ─── Node availability ─────────────────────────────────────────
   isAvailable(node: TechNode): boolean {
-    if (this.has(node.id)) return false
+    if (this.isMaxed(node)) return false
     if (node.requires.some(r => !this.has(r))) return false
-    if (node.questRequirement && !this.questDone(node.questRequirement)) return false
+    if (node.questRequirement && !this.isQuestRequirementMet(node.questRequirement)) return false
     return true
   },
 
@@ -73,6 +127,7 @@ export const techState = {
   reset() {
     localStorage.removeItem(PC_KEY)
     localStorage.removeItem(TECH_KEY)
+    localStorage.removeItem(TECH_LEVELS_KEY)
     localStorage.removeItem(QUESTS_KEY)
     localStorage.removeItem(STATS_KEY)
   },
@@ -83,10 +138,11 @@ function nodeEffects(node: TechNode): TechEffect[] {
 }
 
 function purchasedEffects(nodes: TechNode[]): TechEffect[] {
-  const purchased = techState.purchased
-  return nodes
-    .filter(node => purchased.has(node.id))
-    .flatMap(nodeEffects)
+  return nodes.flatMap(node => {
+    const level = techState.level(node.id)
+    if (level <= 0) return []
+    return Array.from({ length: level }, () => nodeEffects(node)).flat()
+  })
 }
 
 // ─── Cursor / tower mod application ───────────────────────────────
@@ -123,13 +179,14 @@ export function applyDeploymentBudgetMods(baseBudget: number, nodes: TechNode[])
 
 // ─── Unit mod application ──────────────────────────────────────────
 export function applyUnitMods(data: UnitData, nodes: TechNode[]): UnitData {
-  const purchased = techState.purchased
   let atkBonus = 0, hpBonus = 0, rangeBonus = 0, cooldownMult = 1.0
   const paramBonuses: Record<string, number> = {}
 
   for (const node of nodes) {
-    if (!purchased.has(node.id)) continue
-    for (const e of nodeEffects(node)) {
+    const level = techState.level(node.id)
+    if (level <= 0) continue
+    const effects = nodeEffects(node)
+    for (let i = 0; i < level; i++) for (const e of effects) {
       if (e.unitId !== data.id) continue
       if (e.type === 'unit_atk_bonus')     atkBonus   += e.value
       if (e.type === 'unit_hp_bonus')      hpBonus    += e.value
@@ -166,12 +223,6 @@ export function checkStatQuests(nodes: TechNode[]) {
   for (const node of nodes) {
     const q = node.questRequirement
     if (!q || techState.questDone(q)) continue
-    const parts = q.split(':')
-    if (parts.length !== 3) continue   // not a stat quest (e.g. plain event quest)
-    const [unitId, stat, threshStr] = parts
-    const statKey = `${unitId}_${stat}`
-    if (techState.getStat(statKey) >= parseInt(threshStr, 10)) {
-      techState.completeQuest(q)
-    }
+    techState.isQuestRequirementMet(q)
   }
 }

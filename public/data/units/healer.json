@@ -2,7 +2,7 @@
   "id": "healer",
   "name": "Healer",
   "cost": 2,
-  "tier": 1,
+  "tier": 2,
   "hp": 45,
   "speed": 75,
   "attackDamage": 0,

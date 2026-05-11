@@ -35,6 +35,80 @@ export function playUnitAttackEffect(
   }
 }
 
+export function playEnemyMeleeAttackEffect(
+  scene: Phaser.Scene,
+  from: Point,
+  target: Targetable,
+  color: number,
+) {
+  playMeleeSlash(scene, from, target, color)
+}
+
+export function playEnemyProjectileEffect(
+  scene: Phaser.Scene,
+  from: Point,
+  target: Targetable,
+  color: number,
+) {
+  playQuickProjectile(scene, from, target, color)
+}
+
+export function playEnemyHealEffect(
+  scene: Phaser.Scene,
+  from: Point,
+  target: Targetable,
+  color: number,
+) {
+  const beam = scene.add.graphics().setDepth(17)
+  beam.lineStyle(2, color, 0.75)
+  beam.lineBetween(from.x, from.y, target.x, target.y)
+  beam.lineStyle(1, 0xffffff, 0.35)
+  beam.lineBetween(from.x, from.y, target.x, target.y)
+
+  const pulse = scene.add.graphics().setPosition(target.x, target.y).setDepth(18)
+  pulse.lineStyle(2, color, 0.85)
+  pulse.strokeCircle(0, 0, target.radius + 5)
+
+  scene.tweens.add({
+    targets: beam,
+    alpha: 0,
+    duration: 180,
+    ease: 'Quad.easeOut',
+    onComplete: () => beam.destroy(),
+  })
+  scene.tweens.add({
+    targets: pulse,
+    alpha: 0,
+    scale: 1.35,
+    duration: 220,
+    ease: 'Quad.easeOut',
+    onComplete: () => pulse.destroy(),
+  })
+}
+
+export function playEnemySplashEffect(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  radius: number,
+  color: number,
+) {
+  const gfx = scene.add.graphics().setPosition(x, y).setDepth(17)
+  gfx.lineStyle(3, color, 0.55)
+  gfx.strokeCircle(0, 0, radius * 0.25)
+  gfx.lineStyle(1, 0xffffff, 0.3)
+  gfx.strokeCircle(0, 0, radius * 0.15)
+
+  scene.tweens.add({
+    targets: gfx,
+    alpha: 0,
+    scale: 4,
+    duration: 260,
+    ease: 'Quad.easeOut',
+    onComplete: () => gfx.destroy(),
+  })
+}
+
 function floatNumber(scene: Phaser.Scene, x: number, y: number, text: string, color: string) {
   const label = scene.add.text(x, y - 18, text, {
     fontSize: '14px',

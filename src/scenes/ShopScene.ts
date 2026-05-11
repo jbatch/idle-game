@@ -1,9 +1,10 @@
 import Phaser from 'phaser'
-import type { UnitData, BalanceData, TechNode } from '../data/types'
+import type { UnitData, BalanceData, TechNode, ShopPackData, ShopPackRoll } from '../data/types'
 import { GAME_W, GAME_H } from '../constants'
 import { debugState } from '../debug/DebugState'
 import { techState, applyDeploymentBudgetMods } from '../systems/TechState'
 import { CheatPanel } from '../ui/CheatPanel'
+import { addFittedText } from '../ui/fittedText'
 
 const CHAPTER_DEFS = [
   { id: 'chapter1', questReq: null },
@@ -28,7 +29,8 @@ const AVAILABLE_UNITS = ['footsoldier', 'archer', 'shieldbearer', 'healer', 'fro
 export class ShopScene extends Phaser.Scene {
   private balance!: BalanceData
   private unitMap!: Record<string, UnitData>
-  private cart: Record<string, number> = {}
+  private packs: ShopPackData[] = []
+  private packPurchases: string[] = []
   private dcSpent: number = 0
   private dcBudget: number = 2
 
@@ -46,8 +48,9 @@ export class ShopScene extends Phaser.Scene {
     for (const id of AVAILABLE_UNITS) {
       this.unitMap[id] = this.cache.json.get(id) as UnitData
     }
+    this.packs = (this.cache.json.get('shop_packs') as { packs: ShopPackData[] }).packs
 
-    this.cart     = {}
+    this.packPurchases = []
     this.dcSpent  = 0
 
     const nodes = (this.cache.json.get('tech_tree') as { nodes: TechNode[] }).nodes
@@ -133,27 +136,33 @@ export class ShopScene extends Phaser.Scene {
     this.dcText.setColor(remaining > 0 ? '#ddaa22' : '#664422')
   }
 
-  // ─── Unit cards ──────────────────────────────────────────────────
+  // ─── Pack cards ──────────────────────────────────────────────────
 
   private buildCards() {
-    this.add.text(CARD_X, CARDS_Y - 22, 'AVAILABLE UNITS', {
+    this.add.text(CARD_X, CARDS_Y - 22, 'AVAILABLE PACKS', {
       fontSize: '11px', color: '#445577', fontFamily: 'monospace',
     })
 
-    AVAILABLE_UNITS.forEach((id, i) => {
-      const data = this.unitMap[id]
+    this.packs.forEach((pack, i) => {
       const y = CARDS_Y + i * (CARD_H + CARD_GAP)
-      this.buildCard(data, CARD_X, y)
+      this.buildCard(pack, CARD_X, y)
     })
   }
 
-  private buildCard(data: UnitData, x: number, y: number) {
-    const color = Number(data.color)
+  private buildCard(pack: ShopPackData, x: number, y: number) {
+    const isUnlocked = this.isPackUnlocked(pack)
+    const color = isUnlocked ? 0x3366aa : 0x334455
+    const btnW = 80
+    const btnH = 26
+    const btnX = x + CARD_W - btnW - 10
+    const btnY = y + CARD_H - btnH - 10
+    const textX = x + 52
+    const copyW = btnX - textX - 14
 
     // Background
-    const bg = this.add.rectangle(x, y, CARD_W, CARD_H, 0x0d1122).setOrigin(0, 0)
+    const bg = this.add.rectangle(x, y, CARD_W, CARD_H, isUnlocked ? 0x0d1122 : 0x090d18).setOrigin(0, 0)
     const border = this.add.graphics()
-    border.lineStyle(1, 0x223366, 1)
+    border.lineStyle(1, isUnlocked ? 0x223366 : 0x1a2230, 1)
     border.strokeRect(x, y, CARD_W, CARD_H)
 
     // Left colour strip
@@ -161,73 +170,131 @@ export class ShopScene extends Phaser.Scene {
     strip.fillStyle(color, 0.8)
     strip.fillRect(x, y, 4, CARD_H)
 
-    // Unit icon
+    // Pack icon
     const icon = this.add.graphics()
     icon.fillStyle(color, 1)
-    icon.fillCircle(x + 28, y + CARD_H / 2, 14)
+    icon.fillRoundedRect(x + 16, y + CARD_H / 2 - 14, 28, 28, 5)
     icon.lineStyle(1, 0xffffff, 0.3)
-    icon.strokeCircle(x + 28, y + CARD_H / 2, 14)
+    icon.strokeRoundedRect(x + 16, y + CARD_H / 2 - 14, 28, 28, 5)
 
     // Name + cost
-    this.add.text(x + 52, y + 12, data.name, {
+    addFittedText(this, textX, y + 12, pack.name, {
       fontSize: '16px', color: '#ccd4ff', fontFamily: 'monospace', fontStyle: 'bold',
-    })
-    this.add.text(x + CARD_W - 12, y + 12, `${data.cost} DC`, {
+    }, { width: copyW, maxLines: 1, minFontSize: 13 })
+    this.add.text(x + CARD_W - 12, y + 12, `${pack.cost} DC`, {
       fontSize: '14px', color: '#ddaa22', fontFamily: 'monospace',
     }).setOrigin(1, 0)
 
-    // Stats
-    const stats = `HP: ${data.hp}   ATK: ${data.attackDamage}   RNG: ${data.attackRange}   CD: ${data.attackCooldown}s`
-    this.add.text(x + 52, y + 40, stats, {
+    // Roll count + pool summary
+    const rollText = `${pack.rolls} unopened roll${pack.rolls === 1 ? '' : 's'}`
+    this.add.text(textX, y + 38, rollText, {
       fontSize: '11px', color: '#667799', fontFamily: 'monospace',
     })
 
-    // Description
-    this.add.text(x + 52, y + 62, data.description, {
+    const summary = this.rollTableSummary(pack.rollTable)
+    addFittedText(this, textX, y + 55, summary, {
       fontSize: '12px', color: '#8899aa', fontFamily: 'monospace',
-    })
+      lineSpacing: -2,
+    }, { width: copyW, maxLines: 2, minFontSize: 10 })
 
-    // ADD button
-    const btnW = 80
-    const btnH = 26
-    const btnX = x + CARD_W - btnW - 10
-    const btnY = y + CARD_H - btnH - 10
+    const description = isUnlocked ? pack.description : this.packLockText(pack)
+    addFittedText(this, textX, y + 90, description, {
+      fontSize: '11px', color: isUnlocked ? '#667799' : '#664444', fontFamily: 'monospace',
+      lineSpacing: -2,
+    }, { width: copyW, maxLines: 2, minFontSize: 9 })
 
+    // BUY button
     const addBtn = this.add.rectangle(btnX, btnY, btnW, btnH, 0x112244)
-      .setOrigin(0, 0).setInteractive({ useHandCursor: true })
-    const addText = this.add.text(btnX + btnW / 2, btnY + btnH / 2, '+ ADD', {
+      .setOrigin(0, 0).setInteractive({ useHandCursor: isUnlocked })
+    const addText = this.add.text(btnX + btnW / 2, btnY + btnH / 2, isUnlocked ? 'BUY' : 'LOCKED', {
       fontSize: '12px', color: '#6688cc', fontFamily: 'monospace',
     }).setOrigin(0.5)
 
     addBtn.on('pointerover', () => {
-      if (this.dcSpent < this.dcBudget) addBtn.setFillStyle(0x1a3366)
+      if (this.canBuyPack(pack)) addBtn.setFillStyle(0x1a3366)
     })
     addBtn.on('pointerout', () => addBtn.setFillStyle(0x112244))
     addBtn.on('pointerdown', () => {
-      if (this.dcSpent + data.cost > this.dcBudget) return
-      this.cart[data.id] = (this.cart[data.id] ?? 0) + 1
-      this.dcSpent += data.cost
+      if (!this.canBuyPack(pack)) return
+      this.packPurchases.push(pack.id)
+      this.dcSpent += pack.cost
       this.refreshDCText()
       this.refreshLoadout()
     })
 
     // Store bg ref for hover effect on whole card
-    bg.setInteractive({ useHandCursor: true })
+    bg.setInteractive({ useHandCursor: isUnlocked })
     bg.on('pointerover', () => {
-      if (this.dcSpent < this.dcBudget) bg.setFillStyle(0x111830)
+      if (this.canBuyPack(pack)) bg.setFillStyle(0x111830)
     })
-    bg.on('pointerout', () => bg.setFillStyle(0x0d1122))
+    bg.on('pointerout', () => bg.setFillStyle(isUnlocked ? 0x0d1122 : 0x090d18))
     bg.on('pointerdown', () => addBtn.emit('pointerdown'))
 
-    // Keep add button text in sync with affordability
+    // Keep buy button text in sync with affordability.
     this.time.addEvent({
       delay: 100,
       loop: true,
       callback: () => {
-        const canAfford = this.dcSpent + data.cost <= this.dcBudget
-        addText.setColor(canAfford ? '#6688cc' : '#334455')
+        if (!this.isPackUnlocked(pack)) {
+          addText.setText('LOCKED')
+          addText.setColor('#334455')
+          return
+        }
+        const canBuy = this.canBuyPack(pack)
+        addText.setText(canBuy ? 'BUY' : 'FULL')
+        addText.setColor(canBuy ? '#6688cc' : '#334455')
       },
     })
+  }
+
+  private isPackUnlocked(pack: ShopPackData): boolean {
+    if (pack.unlockTechId && !techState.has(pack.unlockTechId)) return false
+    return (pack.questRequirements ?? []).every(req => techState.isQuestRequirementMet(req))
+  }
+
+  private canBuyPack(pack: ShopPackData): boolean {
+    return this.isPackUnlocked(pack) && this.dcSpent + pack.cost <= this.dcBudget
+  }
+
+  private packLockText(pack: ShopPackData): string {
+    if (pack.unlockTechId && !techState.has(pack.unlockTechId)) return 'Unlock with Deployment Drills.'
+    const unmet = (pack.questRequirements ?? []).find(req => !techState.isQuestRequirementMet(req))
+    if (unmet) return this.formatPackRequirement(unmet)
+    return 'Locked.'
+  }
+
+  private formatPackRequirement(req: string): string {
+    if (req === 'boss_chapter1_killed') return 'Unlock by reaching Chapter 2.'
+
+    const progress = techState.questProgress(req)
+    if (!progress) return `Unlock: ${req}`
+
+    const [subject, stat] = req.split(':')
+    if (subject.startsWith('pack_') && stat === 'bought') {
+      const packId = subject.replace(/^pack_/, '')
+      const packName = this.packs.find(pack => pack.id === packId)?.name ?? packId
+      return `Buy ${progress.threshold} ${packName}s. ${progress.current}/${progress.threshold}`
+    }
+
+    return `${progress.current}/${progress.threshold}`
+  }
+
+  private rollTableSummary(rollTable: ShopPackRoll[]): string {
+    const groups = new Map<string, string[]>()
+    for (const roll of rollTable) {
+      const label = this.rarityLabel(roll.rarity)
+      const unit = this.unitMap[roll.unitId]
+      const name = unit?.name ?? roll.unitId
+      const entry = roll.rarity === 'specialist' ? name : `${name} ${roll.weight}%`
+      groups.set(label, [...(groups.get(label) ?? []), entry])
+    }
+    return [...groups.entries()].map(([label, names]) => `${label}: ${names.join(', ')}`).join('   ')
+  }
+
+  private rarityLabel(rarity: ShopPackRoll['rarity']): string {
+    if (rarity === 'common') return 'Common'
+    if (rarity === 'rare') return 'Rare'
+    return 'Specialist'
   }
 
   // ─── Loadout panel ───────────────────────────────────────────────
@@ -242,7 +309,7 @@ export class ShopScene extends Phaser.Scene {
       fontSize: '13px', color: '#445577', fontFamily: 'monospace', fontStyle: 'bold',
     })
 
-    // Start button (always present, wired to current cart)
+    // Start button (always present, wired to current pack purchases)
     const btnY = PANEL_Y + PANEL_H - 54
     const startBtn = this.add.rectangle(PANEL_X + 16, btnY, PANEL_W - 32, 40, 0x112244)
       .setOrigin(0, 0).setInteractive({ useHandCursor: true })
@@ -263,35 +330,38 @@ export class ShopScene extends Phaser.Scene {
     this.loadoutGroup = []
 
     const startY = PANEL_Y + 44
-    const cartEntries = Object.entries(this.cart).filter(([, count]) => count > 0)
+    const packCounts = this.packPurchaseCounts()
+    const packEntries = Object.entries(packCounts).filter(([, count]) => count > 0)
 
-    if (cartEntries.length === 0) {
-      const t = this.add.text(PANEL_X + PANEL_W / 2, startY + 30, 'No units selected', {
+    if (packEntries.length === 0) {
+      const t = this.add.text(PANEL_X + PANEL_W / 2, startY + 30, 'No packs selected', {
         fontSize: '12px', color: '#334455', fontFamily: 'monospace',
       }).setOrigin(0.5)
       this.loadoutGroup.push(t)
     } else {
-      cartEntries.forEach(([id, count], i) => {
-        const data = this.unitMap[id]
+      packEntries.forEach(([id, count], i) => {
+        const pack = this.packs.find(p => p.id === id)
+        if (!pack) return
         const y = startY + i * 40
-        const color = Number(data.color)
+        const color = pack.rollTable.some(r => r.rarity === 'specialist') ? 0x8844aa : 0x3366aa
 
         const dot = this.add.graphics()
         dot.fillStyle(color, 1)
-        dot.fillCircle(PANEL_X + 26, y + 14, 7)
+        dot.fillRoundedRect(PANEL_X + 19, y + 7, 14, 14, 3)
         this.loadoutGroup.push(dot)
 
-        const label = this.add.text(PANEL_X + 42, y + 6, `${data.name}`, {
+        const label = this.add.text(PANEL_X + 42, y + 6, pack.name, {
           fontSize: '13px', color: '#aabbcc', fontFamily: 'monospace',
         })
         this.loadoutGroup.push(label)
 
-        const countText = this.add.text(PANEL_X + 42, y + 22, `× ${count}  (${count * data.cost} DC)`, {
+        const totalRolls = count * pack.rolls
+        const countText = this.add.text(PANEL_X + 42, y + 22, `x ${count}  ${totalRolls} hidden roll${totalRolls === 1 ? '' : 's'}  (${count * pack.cost} DC)`, {
           fontSize: '11px', color: '#556688', fontFamily: 'monospace',
         })
         this.loadoutGroup.push(countText)
 
-        // Remove [-] button
+        // Remove one unopened pack purchase.
         const remBtn = this.add.rectangle(PANEL_X + PANEL_W - 42, y + 10, 28, 22, 0x220e0e)
           .setOrigin(0, 0).setInteractive({ useHandCursor: true })
         this.loadoutGroup.push(remBtn)
@@ -304,9 +374,10 @@ export class ShopScene extends Phaser.Scene {
         remBtn.on('pointerover', () => remBtn.setFillStyle(0x331212))
         remBtn.on('pointerout', () => remBtn.setFillStyle(0x220e0e))
         remBtn.on('pointerdown', () => {
-          this.cart[id]--
-          this.dcSpent -= data.cost
-          if (this.cart[id] <= 0) delete this.cart[id]
+          const purchaseIndex = this.packPurchases.lastIndexOf(id)
+          if (purchaseIndex < 0) return
+          this.packPurchases.splice(purchaseIndex, 1)
+          this.dcSpent -= pack.cost
           this.refreshDCText()
           this.refreshLoadout()
         })
@@ -328,11 +399,14 @@ export class ShopScene extends Phaser.Scene {
     this.loadoutGroup.push(totalLabel)
   }
 
+  private packPurchaseCounts(): Record<string, number> {
+    const counts: Record<string, number> = {}
+    for (const packId of this.packPurchases) counts[packId] = (counts[packId] ?? 0) + 1
+    return counts
+  }
+
   private startRun() {
-    const loadout: string[] = []
-    for (const [id, count] of Object.entries(this.cart)) {
-      for (let i = 0; i < count; i++) loadout.push(id)
-    }
-    this.scene.start('GameScene', { loadout })
+    for (const packId of this.packPurchases) techState.incrementStat(`pack_${packId}_bought`)
+    this.scene.start('GameScene', { packs: [...this.packPurchases] })
   }
 }
