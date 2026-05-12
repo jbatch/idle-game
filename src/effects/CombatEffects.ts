@@ -109,6 +109,30 @@ export function playEnemySplashEffect(
   })
 }
 
+export function playCursorImpactEffect(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  knockbackTriggered: boolean,
+) {
+  const color = knockbackTriggered ? 0xffdd44 : 0xfff0aa
+  const gfx = scene.add.graphics().setPosition(x, y).setDepth(19)
+
+  gfx.lineStyle(knockbackTriggered ? 3 : 2, color, 0.9)
+  gfx.strokeCircle(0, 0, knockbackTriggered ? 14 : 9)
+  gfx.lineStyle(1, 0xffffff, 0.5)
+  gfx.strokeCircle(0, 0, knockbackTriggered ? 7 : 5)
+
+  scene.tweens.add({
+    targets: gfx,
+    alpha: 0,
+    scale: knockbackTriggered ? 1.9 : 1.45,
+    duration: knockbackTriggered ? 240 : 170,
+    ease: 'Quad.easeOut',
+    onComplete: () => gfx.destroy(),
+  })
+}
+
 function floatNumber(scene: Phaser.Scene, x: number, y: number, text: string, color: string) {
   const label = scene.add.text(x, y - 18, text, {
     fontSize: '14px',

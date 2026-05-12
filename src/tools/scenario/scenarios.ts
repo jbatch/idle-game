@@ -12,6 +12,13 @@ export type CombatScenario = {
   description: string
   units: ScenarioSpawn[]
   enemies: ScenarioSpawn[]
+  cursor?: {
+    damage: number
+    radius: number
+    cooldown: number
+    knockback: number
+    knockbackChance: number
+  }
 }
 
 export const combatScenarios: CombatScenario[] = [
@@ -95,5 +102,13 @@ export const combatScenarios: CombatScenario[] = [
       { id: 'archer', count: 2, radius: 80, angle: 80, spread: 42 },
     ],
     enemies: [{ id: 'archer_enemy', count: 3, radius: 275, angle: -90, spread: 80 }],
+  },
+  {
+    id: 'cursor_knockback_proc',
+    name: 'Cursor Knockback Proc',
+    description: 'Click the boss repeatedly; knockback should land sometimes, not every hit.',
+    cursor: { damage: 1, radius: 48, cooldown: 0.25, knockback: 280, knockbackChance: 0.35 },
+    units: [],
+    enemies: [{ id: 'boss_chapter1', count: 1, radius: 185, angle: -90 }],
   },
 ]

@@ -112,7 +112,8 @@ export interface BalanceData {
 }
 
 export interface TechEffect {
-  type: 'cursor_knockback' | 'cursor_cooldown' | 'cursor_damage' | 'tower_hp_bonus' | 'dc_budget_bonus'
+  type: 'cursor_knockback' | 'cursor_knockback_chance' | 'cursor_cooldown' | 'cursor_damage' | 'tower_hp_bonus' | 'dc_budget_bonus'
+       | 'pack_bonus_tier1_chance' | 'pack_bonus_tier2_chance'
        | 'unit_atk_bonus' | 'unit_hp_bonus' | 'unit_range_bonus'
        | 'unit_cooldown_mult' | 'unit_param_bonus'
   value: number
@@ -131,6 +132,7 @@ export interface TechNode {
   }
   requires: string[]
   questRequirement?: string
+  questRequirements?: string[]
   effect: TechEffect | TechEffect[]
   branch: string    // used by TechTreeScene for grouping
 }

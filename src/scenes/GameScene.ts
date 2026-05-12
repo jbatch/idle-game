@@ -7,11 +7,17 @@ import { WaveManager } from '../systems/WaveManager'
 import { DebugMenu } from '../ui/DebugMenu'
 import { debugState } from '../debug/DebugState'
 import type { ChapterData, EnemyData, UnitData, BalanceData, TechNode, ShopPackData, UnitSynergyData } from '../data/types'
-import { techState, applyCursorMods, applyTowerMods, applyUnitMods, checkStatQuests } from '../systems/TechState'
+import { techState, applyCursorMods, applyTowerMods, applyUnitMods, applyPackBonusMods, checkStatQuests } from '../systems/TechState'
 import { applyUnitSynergies } from '../systems/UnitSynergies'
 import { GAME_W, GAME_H, CX, CY, ARENA_RADIUS } from '../constants'
 
 const DEBUG_COOLDOWN = 0.05
+
+type PackRollResult = {
+  unitId: string
+  source: 'pack' | 'bonus'
+  tier: 1 | 2
+}
 
 export class GameScene extends Phaser.Scene {
   private tower!: Tower
@@ -67,9 +73,11 @@ export class GameScene extends Phaser.Scene {
     this.tower = new Tower(this, CX, CY, applyTowerMods(balance.towerHp, this.techNodes))
 
     // Open unopened shop packs at battle start, then spawn the rolled units.
-    const loadout = data.loadout ?? this.rollPacks(data.packs ?? [])
-    this.spawnUnits(loadout)
-    if (!data.loadout && data.packs?.length) this.showPackReveal(loadout)
+    const packResults = data.loadout
+      ? data.loadout.map(unitId => ({ unitId, source: 'pack' as const, tier: 1 as const }))
+      : this.rollPacks(data.packs ?? [])
+    this.spawnUnits(packResults.map(result => result.unitId))
+    if (!data.loadout && data.packs?.length) this.showPackReveal(packResults)
 
     // Cursor
     this.cursor = new CursorAttack(this, cursorStats)
@@ -150,10 +158,11 @@ export class GameScene extends Phaser.Scene {
     })
   }
 
-  private rollPacks(packIds: string[]): string[] {
+  private rollPacks(packIds: string[]): PackRollResult[] {
     const packs = (this.cache.json.get('shop_packs') as { packs: ShopPackData[] }).packs
     const packMap = new Map(packs.map(pack => [pack.id, pack]))
-    const loadout: string[] = []
+    const bonuses = applyPackBonusMods(this.techNodes)
+    const results: PackRollResult[] = []
 
     for (const packId of packIds) {
       const pack = packMap.get(packId)
@@ -162,13 +171,23 @@ export class GameScene extends Phaser.Scene {
         continue
       }
 
+      const tier = this.packTier(pack)
       for (let i = 0; i < pack.rolls; i++) {
         const roll = this.rollUnitId(pack)
-        if (roll) loadout.push(roll)
+        if (roll) results.push({ unitId: roll, source: 'pack', tier })
+      }
+
+      const bonusChance = tier === 1 ? bonuses.tier1Chance : bonuses.tier2Chance
+      const bonusUnits = tier === 1 ? bonuses.tier1BonusUnits : bonuses.tier2BonusUnits
+      if (bonusChance > 0 && bonusUnits > 0 && Math.random() < bonusChance) {
+        for (let i = 0; i < bonusUnits; i++) {
+          const roll = this.rollUnitId(pack)
+          if (roll) results.push({ unitId: roll, source: 'bonus', tier })
+        }
       }
     }
 
-    return loadout
+    return results
   }
 
   private rollUnitId(pack: ShopPackData): string | null {
@@ -184,26 +203,39 @@ export class GameScene extends Phaser.Scene {
     return pack.rollTable[pack.rollTable.length - 1]?.unitId ?? null
   }
 
-  private showPackReveal(loadout: string[]) {
-    if (loadout.length === 0) return
+  private packTier(pack: ShopPackData): 1 | 2 {
+    return pack.rollTable.some(roll => roll.rarity === 'specialist') ? 2 : 1
+  }
 
-    const names = loadout.map(id => {
-      const data = this.cache.json.get(id) as UnitData | undefined
-      return data?.name ?? id
-    })
-    const message = `PACKS OPENED: ${names.join(', ')}`
-    const reveal = this.add.text(GAME_W / 2, GAME_H / 2 - 150, message, {
+  private showPackReveal(results: PackRollResult[]) {
+    if (results.length === 0) return
+
+    const title = this.add.text(GAME_W / 2, GAME_H / 2 - 168, 'PACKS OPENED', {
       fontSize: '15px', color: '#ddaa22', fontFamily: 'monospace', fontStyle: 'bold',
-      wordWrap: { width: 620 },
       align: 'center',
     }).setOrigin(0.5).setDepth(30)
 
+    const rows = results.map((result, index) => {
+      const data = this.cache.json.get(result.unitId) as UnitData | undefined
+      const name = data?.name ?? result.unitId
+      const isBonus = result.source === 'bonus'
+      return this.add.text(GAME_W / 2, GAME_H / 2 - 144 + index * 18, isBonus ? `BONUS T${result.tier}: ${name}` : name, {
+        fontSize: isBonus ? '14px' : '13px',
+        color: isBonus ? '#7cff9f' : '#ccd4ff',
+        fontFamily: 'monospace',
+        fontStyle: isBonus ? 'bold' : '',
+        align: 'center',
+      }).setOrigin(0.5).setDepth(30)
+    })
+
+    const revealObjects = [title, ...rows]
+
     this.tweens.add({
-      targets: reveal,
+      targets: revealObjects,
       alpha: 0,
       duration: 2600,
       ease: 'Power2',
-      onComplete: () => reveal.destroy(),
+      onComplete: () => revealObjects.forEach(obj => obj.destroy()),
     })
   }
 

@@ -23,7 +23,7 @@ The `.claude/` directory is local-only and ignored by git.
 
 ## Current Status
 
-Layers 1–6 (content pass) are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, first-pass unopened shop packs, and same-unit synergy payoffs. This is the **v0.1.3 checkpoint**.
+Layers 1–6 (content pass) are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, first-pass unopened shop packs, same-unit synergy payoffs, cursor proc tuning, and supply pack-bonus tech. This is the **v0.1.4 checkpoint**.
 
 ### v0.1.2 Additions
 - Multi-entry Vite app structure: main game plus local-only side apps.
@@ -41,6 +41,13 @@ Layers 1–6 (content pass) are complete. The game is fully playable end-to-end 
 - First same-unit synergy system exists with stat, parameter, and cohesion behaviour effects. Archer Volley, Footsoldier Phalanx, and Shield Wall are configured.
 - Low-power repeatable tech levels now exist for early catch-up: Cursor Focus, Footsoldier Boot Camp, and Archer Fletching.
 - Shop and tech tree labels now use bounded fitting/wrapping to keep longer data-driven text inside cards and nodes.
+
+### v0.1.4 Additions
+- Cursor knockback is now repeatable proc chance tech instead of guaranteed control, scaling from 20% to 80%.
+- Cursor ready text has been removed from combat; cursor hits now show a damage impact effect, with a stronger ripple when knockback procs.
+- Repeatable tech nodes now show purchased level and current owned total, e.g. `LV 1/4` plus `(current: 20% knockback)`.
+- First supply tech nodes exist for battle-start pack rewards: Field Scavenging and Specialist Salvage add Tier 1 / Tier 2 bonus-unit chances when packs are opened.
+- Pack reveal rows now highlight bonus units separately from regular pack rolls.
 
 ### Development Workflow Notes
 - When adding or changing combat mechanics, enemy behavior, unit behavior, targeting, movement, effects, or balance-sensitive tuning, add or update at least one focused scenario fixture in `src/tools/scenario/scenarios.ts`.
@@ -76,7 +83,7 @@ Priority key:
 #### Core Combat Feel
 | Item | Impact | Complexity | Priority | Notes |
 |---|---:|---:|---:|---|
-| Boss knockback resistance | High | Low | P0 | Prevent cursor knockback from trivializing bosses. Small data/engine change. |
+| Cursor knockback proc chance | High | Low | P1 | First pass complete: Knockback is now a repeatable 20–80% proc instead of guaranteed control. Continue tuning before adding boss-specific resistance. |
 | Unit survivability mechanic | High | Medium | P1 | Respawn timer, healing drops, or crates. Units dying early makes builds feel flat. |
 | Enemy pathing variation | Medium | Medium | P1 | Start with wobble/arc approaches, not full pathfinding. |
 | Aggro/threat system | High | Medium | P1/P2 | Give enemies a stronger concept of threat so ranged units cannot free-fire forever without drawing pressure. |
@@ -141,7 +148,7 @@ Priority key:
    Add click-to-open crates or health drops. Then add support-unit crate behavior so players can invest in automation/passive utility.
 
 6. **Progression Expansion**
-   Expand cursor upgrades by chapter, add boss knockback resistance, and start tower self-defense tech. This is where the long-term tree starts feeling like a real idle game.
+   Continue cursor upgrades by chapter, revisit boss knockback resistance if proc tuning is not enough, and start tower self-defense tech. This is where the long-term tree starts feeling like a real idle game.
 
 ---
 
@@ -201,6 +208,7 @@ Exported functions:
 - `techState.level(nodeId)` / `techState.currentCost(node)` / `techState.isMaxed(node)` — repeatable tech helpers
 - `applyUnitMods(data, nodes)` — returns a modified UnitData with purchased bonuses applied
 - `applyDeploymentBudgetMods(baseBudget, nodes)` — returns the shop DC budget with purchased deployment bonuses applied
+- `applyPackBonusMods(nodes)` — returns purchased battle-start pack bonus-unit chances/counts
 - `checkStatQuests(nodes)` — parses `"unitId:stat:threshold"` quest IDs and completes them if stat threshold is met
 
 Quest ID formats:
@@ -210,9 +218,10 @@ Quest ID formats:
 Repeatable tech uses `repeatable: { maxLevel, costIncrease }` on a `TechNode`. Effects apply once per purchased level. Legacy one-time purchases without an explicit level still read as level 1 via `techState.level()`.
 
 ### Tech tree (`public/data/tech_tree.json`)
-**10 branches, 26 nodes total:**
-- **cursor** — Cursor Focus ×4 (10/18/26/34) → Knockback (25) → Rapid Strike (40) → Heavy Strike (65, quest: boss ch1)
+**11 branches, 28 nodes total:**
+- **cursor** — Cursor Focus ×4 (10/18/26/34) → Knockback ×4 (25/40/55/70, +20% proc chance per level) → Rapid Strike (40) → Heavy Strike (65, quest: boss ch1)
 - **deployment** — Deployment Drills (35) → Field Reserves (70, quest: boss ch1) → War Chest (110, quest: boss ch2)
+- **supply** — Field Scavenging ×3 (90/165/240, +12% T1 pack bonus-unit chance per level, requires Chapter 2 + 15 T1 Recruit buys) → Specialist Salvage ×3 (180/330/480, +9% T2 pack bonus-unit chance per level, requires Chapter 3 + 15 T2 Specialist buys)
 - **tower** — Fortify (30) → Reinforce (55) → Bastion (85, quest: boss ch2)
 - **footsoldier** — Boot Camp ×3 (12/20/28) → Battle-Hardened (30, 50 kills) → Iron Veteran (55, 100 kills)
 - **archer** — Fletching ×3 (12/20/28) → Sharpshooter (30, 30 kills) → Swift Quiver (55, 75 kills)
@@ -231,7 +240,7 @@ Current packs:
 - **Tier 2 Specialist Pack** — 2 DC, 1 roll, requires `boss_chapter1_killed`: Healer, Frost Mage, Sentinel, Bard at equal weights.
 - **Tier 2 Squad Pack** — 6 DC, 4 rolls, requires `boss_chapter1_killed` and `pack_tier2_specialist:bought:15`: same T2 roll table.
 
-Pack purchase stats are recorded when the player starts a run with unopened packs selected, using keys like `pack_tier1_recruit_bought`.
+Pack purchase stats are recorded when the player starts a run with unopened packs selected, using keys like `pack_tier1_recruit_bought`. Supply tech can add bonus rolls at battle start; bonus units are highlighted in the pack reveal before combat begins.
 
 ### Unit synergies
 `public/data/unit_synergies.json` defines same-unit thresholds and effects. `src/systems/UnitSynergies.ts` counts living units by ID and applies matching effects each combat tick. `GameScene` and the scenario sandbox both run this pass.
@@ -255,7 +264,7 @@ Branch-row layout with mousewheel scrolling. `buildContent()` groups nodes by `b
 ### Cursor attack (`src/input/CursorAttack.ts`)
 - Base cursor stats are in `public/data/balance.json` under `cursor`
 - Cursor tech effects are read from `public/data/tech_tree.json` by `applyCursorMods()`
-- Current tuning: 1.2s cooldown, 30px radius, 8 damage base; Rapid Strike makes cooldown 0.8s and adds +2 damage; Heavy Strike adds +5 more damage
+- Current tuning: 1.2s cooldown, 30px radius, 8 damage base; Knockback is a 280-force proc with repeatable 20% chance levels; Rapid Strike makes cooldown 0.8s and adds +2 damage; Heavy Strike adds +5 more damage
 - Debug fast mode: 0.05s
 
 ### Enemy behaviours (`src/entities/Enemy.ts`)
@@ -278,6 +287,7 @@ Each unit has an optional `statCallback?: (event: 'kill' | 'heal', amount: numbe
 ### Combat effects (`src/effects/CombatEffects.ts`)
 - Unit configs can set `effects.attack` to a named preset.
 - Current attack presets: `melee_slash`, `quick_projectile`.
+- Cursor attacks use `playCursorImpactEffect()`, with a stronger ripple when knockback procs.
 - Damage/heal numbers are emitted from `takeDamage()`/`heal()` on units, enemies, and tower.
 - Units and enemies mark `alive = false` immediately on death, then fade graphics out before destroying them.
 

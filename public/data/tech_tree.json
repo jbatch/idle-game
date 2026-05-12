@@ -13,10 +13,14 @@
     {
       "id": "cursor_knockback",
       "name": "Knockback",
-      "description": "Cursor blasts knock enemies back",
+      "description": "Cursor gains +20% knockback chance",
       "cost": 25,
+      "repeatable": { "maxLevel": 4, "costIncrease": 15 },
       "requires": ["cursor_focus"],
-      "effect": { "type": "cursor_knockback", "value": 280 },
+      "effect": [
+        { "type": "cursor_knockback", "value": 280 },
+        { "type": "cursor_knockback_chance", "value": 0.2 }
+      ],
       "branch": "cursor"
     },
     {
@@ -70,6 +74,29 @@
       "questRequirement": "boss_chapter2_killed",
       "effect": { "type": "dc_budget_bonus", "value": 1 },
       "branch": "deployment"
+    },
+
+    {
+      "id": "field_scavenging",
+      "name": "Field Scavenging",
+      "description": "T1 packs gain +12% bonus unit chance",
+      "cost": 90,
+      "repeatable": { "maxLevel": 3, "costIncrease": 75 },
+      "requires": ["deployment_drills"],
+      "questRequirements": ["boss_chapter1_killed", "pack_tier1_recruit:bought:15"],
+      "effect": { "type": "pack_bonus_tier1_chance", "value": 0.12 },
+      "branch": "supply"
+    },
+    {
+      "id": "specialist_salvage",
+      "name": "Specialist Salvage",
+      "description": "T2 packs gain +9% bonus unit chance",
+      "cost": 180,
+      "repeatable": { "maxLevel": 3, "costIncrease": 150 },
+      "requires": ["field_scavenging"],
+      "questRequirements": ["boss_chapter2_killed", "pack_tier2_specialist:bought:15"],
+      "effect": { "type": "pack_bonus_tier2_chance", "value": 0.09 },
+      "branch": "supply"
     },
 
     {

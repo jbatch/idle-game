@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { Enemy } from '../entities/Enemy'
+import { playCursorImpactEffect } from '../effects/CombatEffects'
 
 const FULL_CIRCLE = Math.PI * 2
 const RECHARGE_START_ANGLE = -Math.PI / 2
@@ -9,19 +10,22 @@ export interface CursorAttackConfig {
   radius: number
   cooldown: number
   knockback: number
+  knockbackChance: number
 }
 
 export class CursorAttack {
   private scene: Phaser.Scene
   private cooldownTimer: number = 0
   private pulseGraphics: Phaser.GameObjects.Graphics
-  private cooldownText: Phaser.GameObjects.Text
   private pulseAlpha: number = 0
+  private getEnemies: () => Enemy[] = () => []
+  private pointerHandler: (ptr: Phaser.Input.Pointer) => void
 
   radius: number
   damage: number
   cooldown: number
   knockback: number
+  knockbackChance: number
 
   constructor(scene: Phaser.Scene, config: CursorAttackConfig) {
     this.scene = scene
@@ -29,16 +33,13 @@ export class CursorAttack {
     this.damage = config.damage
     this.cooldown = config.cooldown
     this.knockback = config.knockback
+    this.knockbackChance = Phaser.Math.Clamp(config.knockbackChance, 0, 1)
+    this.pointerHandler = (ptr: Phaser.Input.Pointer) => {
+      this.tryFire(ptr.x, ptr.y, this.getEnemies())
+    }
     this.pulseGraphics = scene.add.graphics().setDepth(10)
-    this.cooldownText = scene.add.text(10, 10, '', {
-      fontSize: '13px',
-      color: '#aaaacc',
-      fontFamily: 'monospace',
-    }).setDepth(20)
 
-    scene.input.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
-      this.tryFire(ptr.x, ptr.y, [])
-    })
+    scene.input.on('pointerdown', this.pointerHandler)
   }
 
   configure(config: CursorAttackConfig) {
@@ -46,6 +47,7 @@ export class CursorAttack {
     this.damage = config.damage
     this.cooldown = config.cooldown
     this.knockback = config.knockback
+    this.knockbackChance = Phaser.Math.Clamp(config.knockbackChance, 0, 1)
   }
 
   tryFire(x: number, y: number, enemies: Enemy[]): boolean {
@@ -55,13 +57,15 @@ export class CursorAttack {
 
     const dmg = this.damage
     const kb  = this.knockback
+    const knockbackTriggered = kb > 0 && Math.random() < this.knockbackChance
     enemies.forEach(e => {
       if (!e.alive) return
       const dx = e.x - x
       const dy = e.y - y
       if (dx * dx + dy * dy <= this.radius * this.radius) {
         e.takeDamage(dmg)
-        if (kb > 0) e.applyKnockback(x, y, kb)
+        playCursorImpactEffect(this.scene, e.x, e.y, knockbackTriggered)
+        if (knockbackTriggered) e.applyKnockback(x, y, kb)
       }
     })
     return true
@@ -89,11 +93,6 @@ export class CursorAttack {
       this.pulseGraphics.strokeCircle(mouseX, mouseY, this.radius + 4)
     }
 
-    const ready = charge >= 1
-    this.cooldownText.setText(
-      ready ? 'CURSOR: READY' : `CURSOR: ${this.cooldownTimer.toFixed(1)}s`
-    )
-    this.cooldownText.setColor(ready ? '#ffdd44' : '#dde6ff')
   }
 
   private drawRecharge(x: number, y: number, charge: number) {
@@ -124,14 +123,11 @@ export class CursorAttack {
   }
 
   bindEnemies(getEnemies: () => Enemy[]) {
-    this.scene.input.off('pointerdown')
-    this.scene.input.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
-      this.tryFire(ptr.x, ptr.y, getEnemies())
-    })
+    this.getEnemies = getEnemies
   }
 
   destroy() {
+    this.scene.input.off('pointerdown', this.pointerHandler)
     this.pulseGraphics.destroy()
-    this.cooldownText.destroy()
   }
 }

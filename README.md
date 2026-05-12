@@ -53,7 +53,7 @@ The shop sells unopened packs. Rolled units are hidden in the shop and revealed 
 | Tier 2 Specialist Pack | 2 DC | 1 | Chapter 2 | Healer, Frost Mage, Sentinel, Bard |
 | Tier 2 Squad Pack | 6 DC | 4 | Chapter 2 + buy 15 Tier 2 Specialist Packs | Healer, Frost Mage, Sentinel, Bard |
 
-Squad packs give four rolls for the price of three singles. Pack purchases are tracked when a run starts, so buying singles is also how later discounted squad packs unlock.
+Squad packs give four rolls for the price of three singles. Pack purchases are tracked when a run starts, so buying singles is also how later discounted squad packs unlock. Supply tech can add bonus battle-start rolls, and those bonus units are highlighted in the pack reveal.
 
 ## Chapters
 
@@ -105,13 +105,14 @@ Synergy effects can alter stats, runtime behaviour parameters, or movement patte
 
 ## Tech Tree
 
-10 branches, 26 nodes. Spend PC to unlock permanent upgrades that persist across runs.
+11 branches, 28 nodes. Spend PC to unlock permanent upgrades that persist across runs.
 Some low-power upgrades are repeatable and increase in price each time.
 
 | Branch | Upgrades |
 |---|---|
-| Cursor | Cursor Focus ×4 → Knockback → Rapid Strike → Heavy Strike |
+| Cursor | Cursor Focus ×4 → Knockback ×4 → Rapid Strike → Heavy Strike |
 | Deployment | Deployment Drills → Field Reserves → War Chest |
+| Supply | Field Scavenging ×3 → Specialist Salvage ×3 |
 | Tower | Fortify → Reinforce → Bastion |
 | Per unit (×7) | Unit upgrades, many gated by stat quests |
 
@@ -120,6 +121,9 @@ Repeatable early upgrades:
 | Upgrade | Max | Cost | Effect |
 |---|---:|---|---|
 | Cursor Focus | 4 | 10, 18, 26, 34 PC | Cursor damage +2 per level |
+| Knockback | 4 | 25, 40, 55, 70 PC | Cursor knockback chance +20% per level |
+| Field Scavenging | 3 | 90, 165, 240 PC | Tier 1 pack chance for a bonus unit +12% per level |
+| Specialist Salvage | 3 | 180, 330, 480 PC | Tier 2 pack chance for a bonus unit +9% per level |
 | Boot Camp | 3 | 12, 20, 28 PC | Footsoldier HP +15 per level |
 | Fletching | 3 | 12, 20, 28 PC | Archer ATK +2 per level |
 
@@ -137,7 +141,7 @@ Press **\`** (backtick) in combat to open the in-game debug panel:
 
 Open **[CHEATS]** in the shop for the inspector panel:
 - **QUESTS tab** — view all quest IDs with completion status and progress
-- **TECH tab** — view all 26 tech nodes and owned status
+- **TECH tab** — view all 28 tech nodes and owned status
 - **STATS tab** — view per-unit kill/heal/summon counters
 - **+100 PC** — inject currency
 - **RESET ALL PROGRESS** — wipe localStorage and restart
@@ -150,7 +154,7 @@ Local-only side apps live under `tools/` and reuse game data from `public/data/`
 
 Open `/tools/scenario.html` while `pnpm dev` is running.
 
-- Press `1-5` to switch scenario fixtures.
+- Press number keys to switch scenario fixtures.
 - Press `R` to reset the current scenario.
 - Use this before and after behavior, targeting, combat readability, and balance changes.
 - Add focused fixtures in `src/tools/scenario/scenarios.ts` when introducing a new unit behavior, enemy behavior, effect, or combat mechanic.
@@ -199,7 +203,7 @@ public/data/
   balance.json          — dcBudget, towerHp, pcMultiplier
   shop_packs.json       — unopened pack definitions and weighted roll tables
   unit_synergies.json   — same-unit synergy thresholds and buffs
-  tech_tree.json        — 26 nodes across 10 branches
+  tech_tree.json        — 28 nodes across 11 branches
   chapters/             — chapter1.json, chapter2.json, chapter3.json
   enemies/              — 6 regular enemy types + 3 boss types
   units/                — footsoldier, archer, shieldbearer, healer, frost_mage, sentinel, bard

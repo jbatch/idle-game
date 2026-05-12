@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import type { TechNode } from '../data/types'
+import type { TechEffect, TechNode } from '../data/types'
 import { techState } from '../systems/TechState'
 import { GAME_W, GAME_H } from '../constants'
 import { addFittedText } from '../ui/fittedText'
@@ -17,6 +17,7 @@ const ROW_PAD_X = 20   // left edge of content area
 const BRANCH_LABELS: Record<string, string> = {
   cursor:       'CURSOR',
   deployment:   'DEPLOYMENT',
+  supply:       'SUPPLY',
   tower:        'TOWER',
   footsoldier:  'FOOTSOLDIER',
   archer:       'ARCHER',
@@ -27,7 +28,7 @@ const BRANCH_LABELS: Record<string, string> = {
   bard:         'BARD',
 }
 
-const BRANCH_ORDER = ['cursor', 'deployment', 'tower', 'footsoldier', 'archer', 'shieldbearer', 'healer', 'frost_mage', 'sentinel', 'bard']
+const BRANCH_ORDER = ['cursor', 'deployment', 'supply', 'tower', 'footsoldier', 'archer', 'shieldbearer', 'healer', 'frost_mage', 'sentinel', 'bard']
 
 export class TechTreeScene extends Phaser.Scene {
   private nodes: TechNode[] = []
@@ -159,6 +160,7 @@ export class TechTreeScene extends Phaser.Scene {
     const currentCost = techState.currentCost(node)
     const canAfford  = techState.pc >= currentCost
     const locked     = !purchased && !available
+    const unmetQuest = this.unmetQuestRequirement(node)
 
     let borderColor: number
     let bgColor: number
@@ -192,8 +194,8 @@ export class TechTreeScene extends Phaser.Scene {
     this.content.add(descText)
 
     // Quest requirement line
-    if (node.questRequirement && !techState.questDone(node.questRequirement)) {
-      const qLabel = this.formatQuestLabel(node.questRequirement)
+    if (unmetQuest) {
+      const qLabel = this.formatQuestLabel(unmetQuest)
       const qText = addFittedText(this, textX, ny + 55, qLabel, {
         fontSize: '9px', color: '#4a3322', fontFamily: 'monospace',
       }, { width: textW, maxLines: 1, minFontSize: 7, align: 'center' })
@@ -204,12 +206,12 @@ export class TechTreeScene extends Phaser.Scene {
     let statusStr: string
     let statusColor: string
     if (maxed && node.repeatable) {
-      statusStr = `LV ${level}/${node.repeatable.maxLevel} MAX`; statusColor = '#44cc88'
+      statusStr = this.repeatableStatusLabel(node, level, 'MAX'); statusColor = '#44cc88'
     } else if (purchased && node.repeatable) {
-      statusStr = `LV ${level}/${node.repeatable.maxLevel}  ${currentCost} PC`; statusColor = canAfford ? '#ddaa22' : '#664422'
+      statusStr = this.repeatableStatusLabel(node, level, `${currentCost} PC`); statusColor = canAfford ? '#ddaa22' : '#664422'
     } else if (purchased) {
       statusStr = '✓ OWNED'; statusColor = '#44cc88'
-    } else if (node.questRequirement && !techState.questDone(node.questRequirement)) {
+    } else if (unmetQuest) {
       statusStr = 'QUEST LOCKED'; statusColor = '#4a3322'
     } else if (locked) {
       statusStr = 'LOCKED'; statusColor = '#2a3a4a'
@@ -217,9 +219,11 @@ export class TechTreeScene extends Phaser.Scene {
       statusStr = `${currentCost} PC`
       statusColor = canAfford ? '#ddaa22' : '#664422'
     }
-    const costText = addFittedText(this, textX, ny + NODE_H - 18, statusStr, {
-      fontSize: '11px', color: statusColor, fontFamily: 'monospace',
-    }, { width: textW, maxLines: 1, minFontSize: 9, align: 'center' })
+    const isRepeatableOwned = Boolean(node.repeatable && level > 0)
+    const costText = addFittedText(this, textX, ny + NODE_H - (isRepeatableOwned ? 25 : 18), statusStr, {
+      fontSize: isRepeatableOwned ? '10px' : '11px', color: statusColor, fontFamily: 'monospace',
+      lineSpacing: -2,
+    }, { width: textW, maxLines: isRepeatableOwned ? 2 : 1, minFontSize: isRepeatableOwned ? 8 : 9, align: 'center' })
     this.content.add(costText)
 
     // Click to purchase
@@ -236,13 +240,60 @@ export class TechTreeScene extends Phaser.Scene {
   }
 
   private formatQuestLabel(req: string): string {
+    if (req === 'boss_chapter1_killed') return 'req: Chapter 2'
+    if (req === 'boss_chapter2_killed') return 'req: Chapter 3'
+
     const parts = req.split(':')
     if (parts.length !== 3) return req
     const [unitId, stat, threshold] = parts
-    const name = unitId.replace('_', ' ')
+    const name = this.humanizeId(unitId)
+    if (unitId.startsWith('pack_') && stat === 'bought') return `req: buy ${threshold} ${this.humanizeId(unitId.replace(/^pack_/, ''))} packs`
     if (stat === 'kills')    return `req: ${threshold} ${name} kills`
     if (stat === 'healed')   return `req: ${threshold} HP healed`
     if (stat === 'summoned') return `req: summon ${name} ×${threshold}`
     return req
+  }
+
+  private repeatableStatusLabel(node: TechNode, level: number, suffix: string): string {
+    const current = this.repeatableCurrentLabel(node, level)
+    const base = `LV ${level}/${node.repeatable?.maxLevel ?? level}  ${suffix}`
+    return current ? `${base}\n(current: ${current})` : base
+  }
+
+  private repeatableCurrentLabel(node: TechNode, level: number): string | null {
+    const effects = Array.isArray(node.effect) ? node.effect : [node.effect]
+    const totals = new Map<TechEffect['type'], number>()
+
+    for (const effect of effects) {
+      totals.set(effect.type, (totals.get(effect.type) ?? 0) + effect.value * level)
+    }
+
+    if (totals.has('cursor_knockback_chance')) return `${this.formatPercent(totals.get('cursor_knockback_chance') ?? 0)} knockback`
+    if (totals.has('cursor_damage')) return `+${totals.get('cursor_damage')} cursor damage`
+    if (totals.has('unit_atk_bonus')) return `+${totals.get('unit_atk_bonus')} attack`
+    if (totals.has('unit_hp_bonus')) return `+${totals.get('unit_hp_bonus')} HP`
+    if (totals.has('unit_range_bonus')) return `+${totals.get('unit_range_bonus')} range`
+    if (totals.has('dc_budget_bonus')) return `+${totals.get('dc_budget_bonus')} DC`
+    if (totals.has('tower_hp_bonus')) return `+${totals.get('tower_hp_bonus')} tower HP`
+    if (totals.has('pack_bonus_tier1_chance')) return `${this.formatPercent(totals.get('pack_bonus_tier1_chance') ?? 0)} T1 pack bonus`
+    if (totals.has('pack_bonus_tier2_chance')) return `${this.formatPercent(totals.get('pack_bonus_tier2_chance') ?? 0)} T2 pack bonus`
+
+    return null
+  }
+
+  private formatPercent(value: number): string {
+    return `${Math.round(value * 100)}%`
+  }
+
+  private unmetQuestRequirement(node: TechNode): string | null {
+    const questRequirements = [
+      ...(node.questRequirement ? [node.questRequirement] : []),
+      ...(node.questRequirements ?? []),
+    ]
+    return questRequirements.find(q => !techState.isQuestRequirementMet(q)) ?? null
+  }
+
+  private humanizeId(id: string): string {
+    return id.replace(/_/g, ' ')
   }
 }

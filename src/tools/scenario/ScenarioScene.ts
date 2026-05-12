@@ -4,6 +4,7 @@ import { Tower } from '../../entities/Tower'
 import { Unit } from '../../entities/Unit'
 import { ARENA_RADIUS, CX, CY, GAME_H, GAME_W } from '../../constants'
 import type { BalanceData, EnemyData, UnitData, UnitSynergyData } from '../../data/types'
+import { CursorAttack } from '../../input/CursorAttack'
 import { applyUnitSynergies } from '../../systems/UnitSynergies'
 import { combatScenarios, type CombatScenario, type ScenarioSpawn } from './scenarios'
 
@@ -11,6 +12,7 @@ export class ScenarioScene extends Phaser.Scene {
   private arenaGfx!: Phaser.GameObjects.Graphics
   private hudText!: Phaser.GameObjects.Text
   private tower!: Tower
+  private cursor?: CursorAttack
   private units: Unit[] = []
   private enemies: Enemy[] = []
   private unitSynergies: UnitSynergyData[] = []
@@ -58,6 +60,11 @@ export class ScenarioScene extends Phaser.Scene {
       if (!unit.alive) this.units.splice(i, 1)
     }
 
+    if (this.cursor) {
+      const ptr = this.input.activePointer
+      this.cursor.update(delta, ptr.x, ptr.y, this.enemies)
+    }
+
     this.updateHud()
   }
 
@@ -74,6 +81,11 @@ export class ScenarioScene extends Phaser.Scene {
     const scenario = combatScenarios[this.scenarioIndex]
     this.tower = new Tower(this, CX, CY, balance.towerHp)
     this.tower.godMode = true
+
+    if (scenario.cursor) {
+      this.cursor = new CursorAttack(this, scenario.cursor)
+      this.cursor.bindEnemies(() => this.enemies)
+    }
 
     for (const spawn of scenario.units) {
       this.spawnUnits(spawn)
@@ -137,6 +149,7 @@ export class ScenarioScene extends Phaser.Scene {
       `Scenario ${this.scenarioIndex + 1}/${combatScenarios.length}: ${scenario.name}`,
       scenario.description,
       `Units: ${this.units.length}   Enemies: ${this.enemies.length}`,
+      ...(scenario.cursor ? ['Cursor test active: click inside the arena'] : []),
     ])
   }
 
@@ -147,7 +160,9 @@ export class ScenarioScene extends Phaser.Scene {
   private destroyEntities() {
     for (const unit of this.units) unit.destroy()
     for (const enemy of this.enemies) enemy.destroy()
+    this.cursor?.destroy()
     if (this.tower) this.tower.destroy()
+    this.cursor = undefined
     this.units = []
     this.enemies = []
   }

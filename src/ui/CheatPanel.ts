@@ -148,7 +148,7 @@ export class CheatPanel {
     const out: Phaser.GameObjects.GameObject[] = []
     let y = 8
 
-    const nodesWithQuests = this.nodes.filter(n => n.questRequirement)
+    const nodeQuests = this.nodes.flatMap(n => this.nodeQuestRequirements(n))
     // Also show chapter boss quests not in node list
     const extraQuests = [
       'boss_chapter2_killed',
@@ -156,11 +156,11 @@ export class CheatPanel {
       'pack_tier1_recruit:bought:15',
       'pack_tier2_specialist:bought:15',
     ].filter(
-      q => !nodesWithQuests.find(n => n.questRequirement === q)
+      q => !nodeQuests.includes(q)
     )
 
     const allQuests: { id: string; label: string }[] = [
-      ...nodesWithQuests.map(n => ({ id: n.questRequirement!, label: this.formatQuestLabel(n.questRequirement!) })),
+      ...nodeQuests.map(q => ({ id: q, label: this.formatQuestLabel(q) })),
       ...extraQuests.map(q => ({ id: q, label: q })),
     ]
 
@@ -212,6 +212,13 @@ export class CheatPanel {
     if (stat === 'healed')   return `${name}: ${threshold} HP healed`
     if (stat === 'summoned') return `${name}: summoned ×${threshold}`
     return req
+  }
+
+  private nodeQuestRequirements(node: TechNode): string[] {
+    return [
+      ...(node.questRequirement ? [node.questRequirement] : []),
+      ...(node.questRequirements ?? []),
+    ]
   }
 
   // ─── TECH ────────────────────────────────────────────────────────

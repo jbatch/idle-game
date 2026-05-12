@@ -119,7 +119,7 @@ export const techState = {
   isAvailable(node: TechNode): boolean {
     if (this.isMaxed(node)) return false
     if (node.requires.some(r => !this.has(r))) return false
-    if (node.questRequirement && !this.isQuestRequirementMet(node.questRequirement)) return false
+    if (nodeQuestRequirements(node).some(q => !this.isQuestRequirementMet(q))) return false
     return true
   },
 
@@ -137,6 +137,13 @@ function nodeEffects(node: TechNode): TechEffect[] {
   return Array.isArray(node.effect) ? node.effect : [node.effect]
 }
 
+function nodeQuestRequirements(node: TechNode): string[] {
+  return [
+    ...(node.questRequirement ? [node.questRequirement] : []),
+    ...(node.questRequirements ?? []),
+  ]
+}
+
 function purchasedEffects(nodes: TechNode[]): TechEffect[] {
   return nodes.flatMap(node => {
     const level = techState.level(node.id)
@@ -151,14 +158,16 @@ export function applyCursorMods(base: BalanceData['cursor'], nodes: TechNode[]) 
   let cooldown = base.cooldown
   let radius = base.radius
   let knockback = 0
+  let knockbackChance = 0
 
   for (const effect of purchasedEffects(nodes)) {
     if (effect.type === 'cursor_damage') damage += effect.value
     if (effect.type === 'cursor_cooldown') cooldown = Math.min(cooldown, effect.value)
-    if (effect.type === 'cursor_knockback') knockback += effect.value
+    if (effect.type === 'cursor_knockback') knockback = Math.max(knockback, effect.value)
+    if (effect.type === 'cursor_knockback_chance') knockbackChance += effect.value
   }
 
-  return { damage, cooldown, radius, knockback }
+  return { damage, cooldown, radius, knockback, knockbackChance: Math.min(knockbackChance, 1) }
 }
 
 export function applyTowerMods(baseHp: number, nodes: TechNode[]): number {
@@ -175,6 +184,23 @@ export function applyDeploymentBudgetMods(baseBudget: number, nodes: TechNode[])
     if (effect.type === 'dc_budget_bonus') budget += effect.value
   }
   return budget
+}
+
+export function applyPackBonusMods(nodes: TechNode[]) {
+  let tier1Chance = 0
+  let tier2Chance = 0
+
+  for (const effect of purchasedEffects(nodes)) {
+    if (effect.type === 'pack_bonus_tier1_chance') tier1Chance += effect.value
+    if (effect.type === 'pack_bonus_tier2_chance') tier2Chance += effect.value
+  }
+
+  return {
+    tier1Chance: Math.min(tier1Chance, 1),
+    tier2Chance: Math.min(tier2Chance, 1),
+    tier1BonusUnits: tier1Chance > 0 ? 1 : 0,
+    tier2BonusUnits: tier2Chance > 0 ? 1 : 0,
+  }
 }
 
 // ─── Unit mod application ──────────────────────────────────────────
@@ -221,8 +247,9 @@ export function applyUnitMods(data: UnitData, nodes: TechNode[]): UnitData {
 // Quest format: "unitId:stat:threshold"  (e.g. "footsoldier:kills:50")
 export function checkStatQuests(nodes: TechNode[]) {
   for (const node of nodes) {
-    const q = node.questRequirement
-    if (!q || techState.questDone(q)) continue
-    techState.isQuestRequirementMet(q)
+    for (const q of nodeQuestRequirements(node)) {
+      if (techState.questDone(q)) continue
+      techState.isQuestRequirementMet(q)
+    }
   }
 }
