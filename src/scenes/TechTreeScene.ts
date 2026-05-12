@@ -153,7 +153,7 @@ export class TechTreeScene extends Phaser.Scene {
   }
 
   private buildNode(node: TechNode, nx: number, ny: number) {
-    const level = techState.level(node.id)
+    const level = techState.effectiveLevel(node)
     const purchased = level > 0
     const maxed = techState.isMaxed(node)
     const available = techState.isAvailable(node)

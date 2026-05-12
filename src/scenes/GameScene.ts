@@ -9,6 +9,7 @@ import { debugState } from '../debug/DebugState'
 import type { ChapterData, EnemyData, UnitData, BalanceData, TechNode, ShopPackData, UnitSynergyData } from '../data/types'
 import { techState, applyCursorMods, applyTowerMods, applyUnitMods, applyPackBonusMods, checkStatQuests } from '../systems/TechState'
 import { applyUnitSynergies } from '../systems/UnitSynergies'
+import type { CampaignPackRollLog } from '../systems/CampaignLog'
 import { GAME_W, GAME_H, CX, CY, ARENA_RADIUS } from '../constants'
 
 const DEBUG_COOLDOWN = 0.05
@@ -39,12 +40,14 @@ export class GameScene extends Phaser.Scene {
   private bossSpawned: boolean = false
   private pcMultiplier: number = 1
   private skippedWaveThisFrame: boolean = false
+  private campaignRunId?: string
+  private openedUnits: CampaignPackRollLog[] = []
 
   constructor() {
     super({ key: 'GameScene' })
   }
 
-  create(data: { loadout?: string[], packs?: string[] }) {
+  create(data: { loadout?: string[], packs?: string[], campaignRunId?: string }) {
     this.gameOver = false
     this.enemies = []
     this.units = []
@@ -53,6 +56,8 @@ export class GameScene extends Phaser.Scene {
     this.elapsed = 0
     this.bossSpawned = false
     this.skippedWaveThisFrame = false
+    this.campaignRunId = data.campaignRunId
+    this.openedUnits = []
 
     const balance = this.cache.json.get('balance')  as BalanceData
     this.pcMultiplier = balance.pcMultiplier
@@ -76,6 +81,7 @@ export class GameScene extends Phaser.Scene {
     const packResults = data.loadout
       ? data.loadout.map(unitId => ({ unitId, source: 'pack' as const, tier: 1 as const }))
       : this.rollPacks(data.packs ?? [])
+    this.openedUnits = packResults.map(result => ({ ...result }))
     this.spawnUnits(packResults.map(result => result.unitId))
     if (!data.loadout && data.packs?.length) this.showPackReveal(packResults)
 
@@ -354,6 +360,10 @@ export class GameScene extends Phaser.Scene {
         wavesCleared: this.waves.waveFired,
         totalWaves: this.waves.waveTotal,
         chapter: debugState.chapter,
+        towerHp: Math.round(this.tower.hp),
+        unitsAlive: this.units.length,
+        campaignRunId: this.campaignRunId,
+        openedUnits: this.openedUnits,
       })
     })
   }

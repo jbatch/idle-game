@@ -1,4 +1,5 @@
 import type { BalanceData, TechEffect, TechNode, UnitData } from '../data/types'
+import { campaignLog } from './CampaignLog'
 
 const PC_KEY     = 'siegeloop_pc'
 const TECH_KEY   = 'siegeloop_tech'
@@ -55,27 +56,44 @@ export const techState = {
     if (explicitLevel !== undefined) return explicitLevel
     return this.purchased.has(nodeId) ? 1 : 0
   },
+  effectiveLevel(node: TechNode): number {
+    return Math.min(this.level(node.id), maxLevel(node))
+  },
   currentCost(node: TechNode): number {
-    return node.cost + this.level(node.id) * (node.repeatable?.costIncrease ?? 0)
+    return node.cost + this.effectiveLevel(node) * (node.repeatable?.costIncrease ?? 0)
   },
   isMaxed(node: TechNode): boolean {
-    return this.level(node.id) >= maxLevel(node)
+    return this.effectiveLevel(node) >= maxLevel(node)
   },
   purchase(node: TechNode) {
     const cost = this.currentCost(node)
     if (cost > this.pc || this.isMaxed(node)) return
+    const currentLevel = this.effectiveLevel(node)
 
     const p = this.purchased
     p.add(node.id)
     localStorage.setItem(TECH_KEY, JSON.stringify([...p]))
 
     const levels = this.levels
-    levels[node.id] = this.level(node.id) + 1
+    levels[node.id] = currentLevel + 1
     localStorage.setItem(TECH_LEVELS_KEY, JSON.stringify(levels))
     localStorage.setItem(PC_KEY, String(this.pc - cost))
   },
   has(nodeId: string): boolean {
     return this.level(nodeId) > 0
+  },
+  normalizeLevels(nodes: TechNode[]) {
+    const levels = this.levels
+    let changed = false
+    for (const node of nodes) {
+      const rawLevel = levels[node.id]
+      if (rawLevel === undefined) continue
+      const clamped = Math.min(rawLevel, maxLevel(node))
+      if (rawLevel === clamped) continue
+      levels[node.id] = clamped
+      changed = true
+    }
+    if (changed) localStorage.setItem(TECH_LEVELS_KEY, JSON.stringify(levels))
   },
 
   // ─── Quests ────────────────────────────────────────────────────
@@ -130,6 +148,7 @@ export const techState = {
     localStorage.removeItem(TECH_LEVELS_KEY)
     localStorage.removeItem(QUESTS_KEY)
     localStorage.removeItem(STATS_KEY)
+    campaignLog.clear()
   },
 }
 
@@ -146,7 +165,7 @@ function nodeQuestRequirements(node: TechNode): string[] {
 
 function purchasedEffects(nodes: TechNode[]): TechEffect[] {
   return nodes.flatMap(node => {
-    const level = techState.level(node.id)
+    const level = techState.effectiveLevel(node)
     if (level <= 0) return []
     return Array.from({ length: level }, () => nodeEffects(node)).flat()
   })
@@ -209,7 +228,7 @@ export function applyUnitMods(data: UnitData, nodes: TechNode[]): UnitData {
   const paramBonuses: Record<string, number> = {}
 
   for (const node of nodes) {
-    const level = techState.level(node.id)
+    const level = techState.effectiveLevel(node)
     if (level <= 0) continue
     const effects = nodeEffects(node)
     for (let i = 0; i < level; i++) for (const e of effects) {

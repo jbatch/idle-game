@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { techState } from '../systems/TechState'
+import { campaignLog, type CampaignPackRollLog } from '../systems/CampaignLog'
 import { GAME_W, GAME_H } from '../constants'
 
 interface RunResult {
@@ -9,6 +10,10 @@ interface RunResult {
   wavesCleared: number
   totalWaves: number
   chapter: string
+  towerHp: number
+  unitsAlive: number
+  campaignRunId?: string
+  openedUnits: CampaignPackRollLog[]
 }
 
 export class GameOverScene extends Phaser.Scene {
@@ -22,6 +27,17 @@ export class GameOverScene extends Phaser.Scene {
     if (data.won) {
       techState.completeQuest(`boss_${data.chapter}_killed`)
     }
+    campaignLog.completeRun(data.campaignRunId, {
+      won: data.won,
+      pcEarned: data.pc,
+      pcAfter: techState.pc,
+      elapsed: data.elapsed,
+      wavesCleared: data.wavesCleared,
+      totalWaves: data.totalWaves,
+      towerHp: data.towerHp,
+      unitsAlive: data.unitsAlive,
+      openedUnits: data.openedUnits ?? [],
+    })
 
     this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 0x000000, 0.75)
 

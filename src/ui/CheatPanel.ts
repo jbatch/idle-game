@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import type { TechNode } from '../data/types'
 import { techState, checkStatQuests } from '../systems/TechState'
+import { campaignLog, type CampaignRunRecord } from '../systems/CampaignLog'
 import { GAME_W, GAME_H } from '../constants'
 
 const PX = 50
@@ -13,7 +14,7 @@ const TAB_H    = 32
 const CONTENT_Y = TAB_Y + TAB_H + 8
 const CONTENT_H = PH - (CONTENT_Y - PY) - 56   // leave room for footer
 
-const TABS = ['QUESTS', 'TECH', 'STATS'] as const
+const TABS = ['QUESTS', 'TECH', 'STATS', 'RUNS'] as const
 type Tab = typeof TABS[number]
 
 export class CheatPanel {
@@ -70,7 +71,7 @@ export class CheatPanel {
     tabSep.lineBetween(0, TAB_Y - PY + TAB_H, PW, TAB_Y - PY + TAB_H)
 
     this.tabBtns = TABS.map((tab, i) => {
-      const x = 16 + i * 110
+      const x = 16 + i * 96
       const y = TAB_Y - PY
       const btn = this.scene.add.text(x + 52, y + TAB_H / 2, tab, {
         fontSize: '12px', color: '#445577', fontFamily: 'monospace', fontStyle: 'bold',
@@ -138,7 +139,8 @@ export class CheatPanel {
     this.contentContainer.removeAll(true)
     const items = this.activeTab === 'QUESTS' ? this.buildQuestsContent()
                 : this.activeTab === 'TECH'   ? this.buildTechContent()
-                :                               this.buildStatsContent()
+                : this.activeTab === 'STATS'  ? this.buildStatsContent()
+                :                               this.buildRunsContent()
     items.forEach(obj => this.contentContainer.add(obj))
   }
 
@@ -239,7 +241,7 @@ export class CheatPanel {
         lastBranch = node.branch
       }
 
-      const level = techState.level(node.id)
+      const level = techState.effectiveLevel(node)
       const owned = level > 0
       const maxed = techState.isMaxed(node)
       const tick = this.scene.add.text(24, y, owned ? '✓' : '─', {
@@ -270,7 +272,7 @@ export class CheatPanel {
     const rows: [string, string][] = [
       ['PC (total)',       String(techState.pc)],
       ['Nodes purchased',  String(techState.purchased.size)],
-      ['Tech levels',      String(Object.values(techState.levels).reduce((sum, level) => sum + level, 0))],
+      ['Tech levels',      String(this.nodes.reduce((sum, node) => sum + techState.effectiveLevel(node), 0))],
       ['Quests completed', String(techState.completedQuests.size)],
       ['─────────────', ''],
     ]
@@ -309,10 +311,128 @@ export class CheatPanel {
     return out
   }
 
+  // ─── RUNS ────────────────────────────────────────────────────────
+
+  private buildRunsContent(): Phaser.GameObjects.GameObject[] {
+    const out: Phaser.GameObjects.GameObject[] = []
+    let y = 8
+
+    const records = campaignLog.records
+    const summary = this.scene.add.text(16, y, `${records.length} recorded run${records.length === 1 ? '' : 's'}`, {
+      fontSize: '12px', color: '#8899aa', fontFamily: 'monospace',
+    })
+    out.push(summary)
+
+    const copyText = this.scene.add.text(PW - 300, y, '[ COPY TEXT ]', {
+      fontSize: '11px', color: '#446688', fontFamily: 'monospace',
+    }).setInteractive({ useHandCursor: true })
+    copyText.on('pointerover', () => copyText.setColor('#88aacc'))
+    copyText.on('pointerout',  () => copyText.setColor('#446688'))
+    copyText.on('pointerdown', () => this.copyRunLog(campaignLog.exportText()))
+    out.push(copyText)
+
+    const copyJson = this.scene.add.text(PW - 190, y, '[ COPY JSON ]', {
+      fontSize: '11px', color: '#446688', fontFamily: 'monospace',
+    }).setInteractive({ useHandCursor: true })
+    copyJson.on('pointerover', () => copyJson.setColor('#88aacc'))
+    copyJson.on('pointerout',  () => copyJson.setColor('#446688'))
+    copyJson.on('pointerdown', () => this.copyRunLog(campaignLog.exportJson()))
+    out.push(copyJson)
+
+    const clear = this.scene.add.text(PW - 86, y, '[ CLEAR ]', {
+      fontSize: '11px', color: '#662222', fontFamily: 'monospace',
+    }).setInteractive({ useHandCursor: true })
+    clear.on('pointerover', () => clear.setColor('#cc4444'))
+    clear.on('pointerout',  () => clear.setColor('#662222'))
+    clear.on('pointerdown', () => {
+      campaignLog.clear()
+      this.rebuildContent()
+    })
+    out.push(clear)
+
+    y += 28
+
+    const recent = [...records].slice(-24).reverse()
+    if (recent.length === 0) {
+      const empty = this.scene.add.text(16, y, 'Start and finish a run to record campaign data.', {
+        fontSize: '12px', color: '#334455', fontFamily: 'monospace',
+      })
+      out.push(empty)
+      y += 22
+    }
+
+    for (const record of recent) {
+      const result = record.won === undefined ? 'incomplete' : record.won ? 'win' : 'loss'
+      const title = this.scene.add.text(16, y, `Run ${record.runNumber}  ${record.chapter}  ${result}`, {
+        fontSize: '12px', color: record.won ? '#44cc88' : '#aabbcc', fontFamily: 'monospace', fontStyle: 'bold',
+      })
+      out.push(title)
+      y += 18
+
+      const line1 = this.scene.add.text(28, y, `PC +${record.pcEarned ?? 0}  bank ${record.pcAfter ?? record.pcBefore}  tower ${Math.round(record.towerHp ?? 0)}  waves ${record.wavesCleared ?? 0}/${record.totalWaves ?? 0}`, {
+        fontSize: '11px', color: '#667799', fontFamily: 'monospace',
+      })
+      out.push(line1)
+      y += 16
+
+      const line2 = this.scene.add.text(28, y, `bought ${this.formatCounts(record.selectedPacks)}  opened ${this.formatOpened(record)}`, {
+        fontSize: '11px', color: '#667799', fontFamily: 'monospace',
+      })
+      out.push(line2)
+      y += 16
+
+      const line3 = this.scene.add.text(28, y, `tech ${Object.keys(record.techLevels).length} nodes  available ${record.availableTech.length}  packs ${record.unlockedPacks.join(', ') || '(none)'}`, {
+        fontSize: '11px', color: '#445566', fontFamily: 'monospace',
+      })
+      out.push(line3)
+      y += 16
+
+      const line4 = this.scene.add.text(28, y, `tech bought ${this.formatTechDelta(record.techPurchasedSincePreviousRun)}`, {
+        fontSize: '11px', color: '#445566', fontFamily: 'monospace',
+      })
+      out.push(line4)
+      y += 24
+    }
+
+    this.contentHeight = y + 8
+    return out
+  }
+
+  private copyRunLog(text: string) {
+    if (navigator.clipboard) {
+      void navigator.clipboard.writeText(text).catch(() => console.log(text))
+      return
+    }
+    console.log(text)
+  }
+
+  private formatOpened(record: CampaignRunRecord): string {
+    const base = this.formatCounts(record.openedUnits.map(unit => unit.unitId))
+    const bonus = this.formatCounts(record.openedUnits.filter(unit => unit.source === 'bonus').map(unit => unit.unitId))
+    return bonus === '(none)' ? base : `${base} bonus ${bonus}`
+  }
+
+  private formatCounts(items: string[]): string {
+    const counts = items.reduce<Record<string, number>>((acc, id) => {
+      acc[id] = (acc[id] ?? 0) + 1
+      return acc
+    }, {})
+    const entries = Object.entries(counts).filter(([, count]) => count > 0)
+    if (entries.length === 0) return '(none)'
+    return entries.sort(([a], [b]) => a.localeCompare(b)).map(([id, count]) => `${id}x${count}`).join(' ')
+  }
+
+  private formatTechDelta(levels: Record<string, number>): string {
+    const entries = Object.entries(levels).filter(([, level]) => level > 0)
+    if (entries.length === 0) return '(none)'
+    return entries.sort(([a], [b]) => a.localeCompare(b)).map(([id, level]) => `${id}+${level}`).join(', ')
+  }
+
   // ─── Public API ──────────────────────────────────────────────────
 
-  open() {
+  open(tab?: Tab) {
     if (this.isOpen) return
+    if (tab) this.activeTab = tab
     this.isOpen = true
     this.scrollY = 0
     this.contentContainer.y = CONTENT_Y - PY

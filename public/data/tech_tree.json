@@ -4,8 +4,8 @@
       "id": "cursor_focus",
       "name": "Cursor Focus",
       "description": "Cursor damage +2",
-      "cost": 10,
-      "repeatable": { "maxLevel": 4, "costIncrease": 8 },
+      "cost": 8,
+      "repeatable": { "maxLevel": 4, "costIncrease": 6 },
       "requires": [],
       "effect": { "type": "cursor_damage", "value": 2 },
       "branch": "cursor"
@@ -14,8 +14,8 @@
       "id": "cursor_knockback",
       "name": "Knockback",
       "description": "Cursor gains +20% knockback chance",
-      "cost": 25,
-      "repeatable": { "maxLevel": 4, "costIncrease": 15 },
+      "cost": 18,
+      "repeatable": { "maxLevel": 4, "costIncrease": 12 },
       "requires": ["cursor_focus"],
       "effect": [
         { "type": "cursor_knockback", "value": 280 },
@@ -49,30 +49,30 @@
     {
       "id": "deployment_drills",
       "name": "Deployment Drills",
-      "description": "Starting DC +1",
+      "description": "Starting DC +2",
       "cost": 35,
       "requires": [],
-      "effect": { "type": "dc_budget_bonus", "value": 1 },
+      "effect": { "type": "dc_budget_bonus", "value": 2 },
       "branch": "deployment"
     },
     {
       "id": "deployment_reserves",
       "name": "Field Reserves",
-      "description": "Starting DC +1",
+      "description": "Starting DC +2",
       "cost": 70,
       "requires": ["deployment_drills"],
       "questRequirement": "boss_chapter1_killed",
-      "effect": { "type": "dc_budget_bonus", "value": 1 },
+      "effect": { "type": "dc_budget_bonus", "value": 2 },
       "branch": "deployment"
     },
     {
       "id": "deployment_warchest",
       "name": "War Chest",
-      "description": "Starting DC +1",
+      "description": "Starting DC +2",
       "cost": 110,
       "requires": ["deployment_reserves"],
       "questRequirement": "boss_chapter2_killed",
-      "effect": { "type": "dc_budget_bonus", "value": 1 },
+      "effect": { "type": "dc_budget_bonus", "value": 2 },
       "branch": "deployment"
     },
 
@@ -132,8 +132,8 @@
       "id": "footsoldier_boot_camp",
       "name": "Boot Camp",
       "description": "Footsoldier HP +15",
-      "cost": 12,
-      "repeatable": { "maxLevel": 3, "costIncrease": 8 },
+      "cost": 8,
+      "repeatable": { "maxLevel": 3, "costIncrease": 6 },
       "requires": [],
       "effect": { "type": "unit_hp_bonus", "value": 15, "unitId": "footsoldier" },
       "branch": "footsoldier"
@@ -163,8 +163,8 @@
       "id": "archer_fletching",
       "name": "Fletching",
       "description": "Archer ATK +2",
-      "cost": 12,
-      "repeatable": { "maxLevel": 3, "costIncrease": 8 },
+      "cost": 8,
+      "repeatable": { "maxLevel": 3, "costIncrease": 6 },
       "requires": [],
       "effect": { "type": "unit_atk_bonus", "value": 2, "unitId": "archer" },
       "branch": "archer"

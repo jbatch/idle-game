@@ -3,6 +3,7 @@ import type { UnitData, BalanceData, TechNode, ShopPackData, ShopPackRoll } from
 import { GAME_W, GAME_H } from '../constants'
 import { debugState } from '../debug/DebugState'
 import { techState, applyDeploymentBudgetMods } from '../systems/TechState'
+import { campaignLog } from '../systems/CampaignLog'
 import { CheatPanel } from '../ui/CheatPanel'
 import { addFittedText } from '../ui/fittedText'
 
@@ -54,6 +55,7 @@ export class ShopScene extends Phaser.Scene {
     this.dcSpent  = 0
 
     const nodes = (this.cache.json.get('tech_tree') as { nodes: TechNode[] }).nodes
+    techState.normalizeLevels(nodes)
     this.dcBudget = applyDeploymentBudgetMods(this.balance.dcBudget, nodes)
 
     this.add.rectangle(0, 0, GAME_W, GAME_H, 0x080810).setOrigin(0, 0)
@@ -88,6 +90,13 @@ export class ShopScene extends Phaser.Scene {
     cheatsBtn.on('pointerover', () => cheatsBtn.setColor('#557755'))
     cheatsBtn.on('pointerout',  () => cheatsBtn.setColor('#334433'))
     cheatsBtn.on('pointerdown', () => this.cheatPanel.open())
+
+    const runsBtn = this.add.text(GAME_W - 20, 74, '[ RUN LOG ]', {
+      fontSize: '11px', color: '#334455', fontFamily: 'monospace',
+    }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true })
+    runsBtn.on('pointerover', () => runsBtn.setColor('#6688aa'))
+    runsBtn.on('pointerout',  () => runsBtn.setColor('#334455'))
+    runsBtn.on('pointerdown', () => this.cheatPanel.open('RUNS'))
 
     // Chapter selector — one button per chapter
     const chapterY = 60
@@ -406,7 +415,26 @@ export class ShopScene extends Phaser.Scene {
   }
 
   private startRun() {
+    const techNodes = (this.cache.json.get('tech_tree') as { nodes: TechNode[] }).nodes
+    const run = campaignLog.beginRun({
+      chapter: debugState.chapter,
+      pcBefore: techState.pc,
+      dcBudget: this.dcBudget,
+      dcSpent: this.dcSpent,
+      selectedPacks: [...this.packPurchases],
+      unlockedPacks: this.packs.filter(pack => this.isPackUnlocked(pack)).map(pack => pack.id),
+      unlockedChapters: CHAPTER_DEFS
+        .filter(def => !def.questReq || techState.questDone(def.questReq))
+        .map(def => def.id),
+      availableTech: techNodes.filter(node => techState.isAvailable(node)).map(node => node.id),
+      techLevels: Object.fromEntries(
+        techNodes
+          .map(node => [node.id, techState.effectiveLevel(node)] as const)
+          .filter(([, level]) => level > 0)
+      ),
+      completedQuests: [...techState.completedQuests],
+    })
     for (const packId of this.packPurchases) techState.incrementStat(`pack_${packId}_bought`)
-    this.scene.start('GameScene', { packs: [...this.packPurchases] })
+    this.scene.start('GameScene', { packs: [...this.packPurchases], campaignRunId: run.id })
   }
 }
