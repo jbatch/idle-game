@@ -8,7 +8,7 @@ This file gives a new Claude session everything it needs to continue development
 pnpm dev   # http://localhost:5173 by default
 pnpm exec tsc --noEmit   # type check before committing
 pnpm build # production build verification
-pnpm sim -- --chapter chapter1 --packs tier1_recruit:4 --trials 100
+pnpm sim -- --campaigns 100 --max-runs 60
 ```
 
 Dev server is Vite with HMR. If port 5173 is occupied, Vite will pick the next open port.
@@ -54,7 +54,7 @@ Layers 1–6 (content pass) are complete. The game is fully playable end-to-end 
 ### Development Workflow Notes
 - When adding or changing combat mechanics, enemy behavior, unit behavior, targeting, movement, effects, or balance-sensitive tuning, add or update at least one focused scenario fixture in `src/tools/scenario/scenarios.ts`.
 - Use the scenario sandbox for quick visual verification before relying on a full game run.
-- Use `pnpm sim -- --chapter chapter1 --packs tier1_recruit:4 --trials 100` or a focused `--loadout` run for fast numeric balance checks when changing combat, waves, packs, tech, or unit stats.
+- Use `pnpm sim -- --campaigns 100 --max-runs 60` or `pnpm sim -- --trace-campaign --seed example --max-runs 60` for numeric balance checks when changing combat, waves, packs, tech, or unit stats.
 - Keep scenario fixtures small and diagnostic: one behavior question per fixture is better than a large chaotic showcase.
 - Run `pnpm exec tsc --noEmit` before committing code changes. Run `pnpm build` when touching app entrypoints, Vite config, shared boot/loading code, or anything used by both the game and tools.
 
@@ -301,15 +301,11 @@ Each unit has an optional `statCallback?: (event: 'kill' | 'heal', amount: numbe
 - Use this tool before and after behavior/mechanic changes. If a change cannot be quickly seen in an existing fixture, add a new focused fixture.
 
 ### Balance simulator
-- CLI: `pnpm sim -- --chapter chapter1 --packs tier1_recruit:4 --trials 100`.
-- Direct loadouts: `pnpm sim -- --chapter chapter1 --loadout footsoldier,archer,shieldbearer`.
-- Tech levels: `--tech cursor_focus:2,archer_fletching:3,cursor_knockback:1`.
-- Progression profiles: `pnpm sim -- --profile chapter1:late --trials 100`.
-- List profiles: `pnpm sim -- --list-profiles`.
-- Chapter gate report: `pnpm sim -- --chapter-gates --trials 100`. Start profiles should stay below `--start-max` and late profiles should reach `--target`.
-- Pack sweeps: `pnpm sim -- --chapter chapter1 --sweep-packs tier1_recruit --max-packs 8 --trials 100`.
-- Implementation lives in `tools/balance-sim.mjs`. It loads JSON data from `public/data`, rolls packs, applies tech levels, runs fixed-step combat without Phaser rendering, and drives cursor attacks with a simple bot priority: support enemies, clustered hits, tower pressure, killable targets, then low HP.
-- Output includes win rate, average tower HP, common rolled loadouts, and rough power estimates split into squad, cursor, tower, and total power. Treat the power formula as a calibration yardstick, not final truth; update weights as sim outcomes and playtest feel diverge.
+- CLI: `pnpm sim -- --campaigns 100 --max-runs 60`.
+- Trace one campaign: `pnpm sim -- --trace-campaign --seed example --max-runs 60`.
+- JSON output: `pnpm sim -- --campaigns 200 --max-runs 100 --json`.
+- CLI wrapper lives in `tools/balance-sim.mjs`; implementation modules live under `tools/sim/`. `game-sim.mjs` runs fixed-step combat without Phaser rendering, `campaign-sim.mjs` simulates fresh-save campaign state and progression decisions, `campaign-report.mjs` runs/aggregates campaign trials, and `data.mjs` loads JSON data from `public/data`.
+- Output includes chapter clear rates, median and p90 clear runs, average chapter entry run, common tech at chapter clear, and incomplete-campaign last-attempt distribution.
 
 ### Chapter unlock system
 `ChapterData.questRequirement` gates access. `ShopScene` shows all 3 chapters; locked ones show as "???" and are not interactive. Chapter 2 requires `boss_chapter1_killed`, Chapter 3 requires `boss_chapter2_killed`. Both are completed in `GameOverScene` via `techState.completeQuest('boss_chapterN_killed')`.

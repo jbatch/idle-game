@@ -17,7 +17,7 @@ pnpm install
 pnpm dev        # http://localhost:5173 by default
 pnpm exec tsc --noEmit   # type check
 pnpm build      # production build verification
-pnpm sim -- --chapter chapter1 --packs tier1_recruit:4 --trials 100
+pnpm sim -- --campaigns 100 --max-runs 60
 ```
 
 Vite may pick the next open port if `5173` is already in use.
@@ -165,19 +165,16 @@ Open `/tools/scenario.html` while `pnpm dev` is running.
 Run headless combat simulations from the CLI:
 
 ```bash
-pnpm sim -- --chapter chapter1 --packs tier1_recruit:4 --trials 100
-pnpm sim -- --chapter chapter1 --loadout footsoldier,archer,shieldbearer
-pnpm sim -- --chapter chapter1 --tech cursor_focus:2,archer_fletching:3 --packs tier1_recruit:4
-pnpm sim -- --chapter chapter1 --sweep-packs tier1_recruit --max-packs 8 --trials 100
-pnpm sim -- --profile chapter1:late --trials 100
-pnpm sim -- --chapter-gates --trials 100
+pnpm sim -- --campaigns 100 --max-runs 60
+pnpm sim -- --trace-campaign --seed example --max-runs 60
+pnpm sim -- --campaigns 200 --max-runs 100 --json
 ```
 
-The simulator loads the same JSON content as the game, rolls unopened packs, applies selected tech levels, runs fixed-step combat without Phaser rendering, and uses a simple bot cursor policy. Output includes win rate, average tower HP, common rolled loadouts, and rough power estimates split into squad, cursor, tower, and total power.
+The simulator starts from a fresh in-memory save, buys packs, runs fixed-step combat without Phaser rendering, awards PC, records summon/kill/heal/pack-buy stats, completes quest gates, unlocks chapters, and greedily buys tech between runs. Use the default aggregate report for pacing across many simulated players and `--trace-campaign` for one readable run-by-run timeline.
 
-Progression profiles encode rough start/mid/late assumptions for each chapter, including pack access and tech levels. `--chapter-gates` runs all chapter profiles and marks whether chapter starts are still too hard to clear while late profiles reach the target win rate.
+The CLI wrapper is `tools/balance-sim.mjs`; implementation modules live under `tools/sim/`.
 
-This is a calibration tool, not exact game parity yet. Treat the power number as a stable internal yardstick that should be tuned against sim results and playtest feel over time.
+This is a calibration tool, not exact game parity yet. Treat campaign clear rates and trace timelines as stable signals to tune against playtest feel over time.
 
 ## File Structure
 
