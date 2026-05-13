@@ -30,6 +30,7 @@ export const gameDataAssets: DataAsset[] = [
   { key: 'chapter2', path: '/data/chapters/chapter2.json' },
   { key: 'chapter3', path: '/data/chapters/chapter3.json' },
   { key: 'tech_tree', path: '/data/tech_tree.json' },
+  { key: 'tech_tree_layout', path: '/data/tech_tree_layout.json' },
 ]
 
 export function loadGameData(scene: Phaser.Scene): void {

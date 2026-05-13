@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import type { TechEffect, TechNode } from '../data/types'
+import type { TechEdgeLayout, TechEffect, TechNode, TechNodeAnchor, TechNodeLayout, TechTreeLayoutData } from '../data/types'
 import { techState } from '../systems/TechState'
 import { GAME_W, GAME_H } from '../constants'
 import { addFittedText } from '../ui/fittedText'
@@ -12,12 +12,14 @@ const NODE_H    = 82
 const NODE_GAP  = 28   // horizontal gap between nodes
 const ROW_H     = NODE_H + 26  // vertical space per branch row
 const ROW_PAD_X = 20   // left edge of content area
+const VIEW_PAD  = 28
 
 // Branch display names
 const BRANCH_LABELS: Record<string, string> = {
   cursor:       'CURSOR',
   deployment:   'DEPLOYMENT',
   supply:       'SUPPLY',
+  crates:       'CRATES',
   tower:        'TOWER',
   footsoldier:  'FOOTSOLDIER',
   archer:       'ARCHER',
@@ -28,14 +30,23 @@ const BRANCH_LABELS: Record<string, string> = {
   bard:         'BARD',
 }
 
-const BRANCH_ORDER = ['cursor', 'deployment', 'supply', 'tower', 'footsoldier', 'archer', 'shieldbearer', 'healer', 'frost_mage', 'sentinel', 'bard']
+const BRANCH_ORDER = ['cursor', 'deployment', 'supply', 'crates', 'tower', 'footsoldier', 'archer', 'shieldbearer', 'healer', 'frost_mage', 'sentinel', 'bard']
 
 export class TechTreeScene extends Phaser.Scene {
   private nodes: TechNode[] = []
+  private layouts = new Map<string, TechNodeLayout>()
+  private edgeLayouts = new Map<string, TechEdgeLayout>()
   private content!: Phaser.GameObjects.Container
   private pcText!: Phaser.GameObjects.Text
+  private scrollX: number = 0
   private scrollY: number = 0
+  private totalContentW: number = 0
   private totalContentH: number = 0
+  private isPanning = false
+  private panStartPointerX = 0
+  private panStartPointerY = 0
+  private panStartScrollX = 0
+  private panStartScrollY = 0
 
   constructor() {
     super({ key: 'TechTreeScene' })
@@ -43,8 +54,13 @@ export class TechTreeScene extends Phaser.Scene {
 
   create() {
     const data = this.cache.json.get('tech_tree') as { nodes: TechNode[] }
+    const layoutData = this.cache.json.get('tech_tree_layout') as TechTreeLayoutData | undefined
     this.nodes = data.nodes
+    this.layouts = new Map((layoutData?.nodes ?? []).map(layout => [layout.id, layout]))
+    this.edgeLayouts = new Map((layoutData?.edges ?? []).map(edge => [this.edgeKey(edge.from, edge.to), edge]))
+    this.scrollX = 0
     this.scrollY = 0
+    this.isPanning = false
 
     this.add.rectangle(0, 0, GAME_W, GAME_H, 0x080810).setOrigin(0, 0)
 
@@ -69,7 +85,7 @@ export class TechTreeScene extends Phaser.Scene {
     footerLine.lineStyle(1, 0x1a2244, 1)
     footerLine.lineBetween(20, GAME_H - FOOTER_H, GAME_W - 20, GAME_H - FOOTER_H)
 
-    const scrollHint = this.add.text(GAME_W / 2, GAME_H - FOOTER_H + 12, 'scroll to see more', {
+    const scrollHint = this.add.text(GAME_W / 2, GAME_H - FOOTER_H + 12, 'drag empty space or middle-drag to pan', {
       fontSize: '10px', color: '#2a3355', fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(10)
 
@@ -84,15 +100,41 @@ export class TechTreeScene extends Phaser.Scene {
     this.content = this.add.container(0, HEADER_H)
     this.buildContent()
 
-    // ── Scroll input ──
-    this.input.on('wheel', (_p: unknown, _go: unknown, _dx: unknown, deltaY: number) => {
-      const maxScroll = Math.max(0, this.totalContentH - (GAME_H - HEADER_H - FOOTER_H))
-      this.scrollY = Phaser.Math.Clamp(this.scrollY + deltaY * 0.6, 0, maxScroll)
-      this.content.y = HEADER_H - this.scrollY
+    // ── Pan / scroll input ──
+    this.input.on('wheel', (_p: unknown, _go: unknown, deltaX: number, deltaY: number) => {
+      this.scrollX += deltaX * 0.6
+      this.scrollY += deltaY * 0.6
+      this.clampScroll()
+      this.updateContentPosition()
     })
 
-    // Hide scroll hint if content fits
-    if (this.totalContentH <= GAME_H - HEADER_H - FOOTER_H) scrollHint.setVisible(false)
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer, gameObjects: Phaser.GameObjects.GameObject[]) => {
+      if (!this.isInScrollableArea(pointer)) return
+
+      const middleDrag = pointer.middleButtonDown()
+      const emptyLeftDrag = pointer.leftButtonDown() && gameObjects.length === 0
+      if (!middleDrag && !emptyLeftDrag) return
+
+      this.isPanning = true
+      this.panStartPointerX = pointer.x
+      this.panStartPointerY = pointer.y
+      this.panStartScrollX = this.scrollX
+      this.panStartScrollY = this.scrollY
+      this.input.setDefaultCursor('grabbing')
+    })
+
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      if (!this.isPanning) return
+      this.scrollX = this.panStartScrollX - (pointer.x - this.panStartPointerX)
+      this.scrollY = this.panStartScrollY - (pointer.y - this.panStartPointerY)
+      this.clampScroll()
+      this.updateContentPosition()
+    })
+
+    this.input.on('pointerup', () => this.stopPanning())
+    this.input.on('pointerupoutside', () => this.stopPanning())
+
+    if (this.totalContentW <= GAME_W && this.totalContentH <= GAME_H - HEADER_H - FOOTER_H) scrollHint.setVisible(false)
     void footerBg  // referenced to avoid lint warning
   }
 
@@ -103,6 +145,15 @@ export class TechTreeScene extends Phaser.Scene {
   private buildContent() {
     // Destroy previous content
     this.content.removeAll(true)
+    this.totalContentW = 0
+    this.totalContentH = 0
+
+    if (this.layouts.size > 0) {
+      this.buildSpatialContent()
+      this.clampScroll()
+      this.updateContentPosition()
+      return
+    }
 
     // Group nodes by branch, preserving BRANCH_ORDER
     const byBranch = new Map<string, TechNode[]>()
@@ -123,6 +174,74 @@ export class TechTreeScene extends Phaser.Scene {
     }
 
     this.totalContentH = rowY + 8
+    this.clampScroll()
+    this.updateContentPosition()
+  }
+
+  private buildSpatialContent() {
+    this.ensureRuntimeLayouts()
+    const visibleNodes = this.nodes.filter(node => this.shouldShowNode(node))
+    const visibleById = new Map(visibleNodes.map(node => [node.id, node]))
+
+    for (const node of visibleNodes) {
+      const layout = this.layouts.get(node.id)
+      if (!layout) continue
+      this.totalContentW = Math.max(this.totalContentW, layout.x + NODE_W + VIEW_PAD)
+      this.totalContentH = Math.max(this.totalContentH, layout.y + NODE_H + VIEW_PAD)
+    }
+
+    for (const edge of this.edgeLayouts.values()) {
+      if (!edge.elbow) continue
+      this.totalContentW = Math.max(this.totalContentW, edge.elbow.x + VIEW_PAD)
+      this.totalContentH = Math.max(this.totalContentH, edge.elbow.y + VIEW_PAD)
+    }
+
+    for (const node of visibleNodes) {
+      const layout = this.layouts.get(node.id)
+      if (!layout) continue
+
+      for (const requiredId of node.requires) {
+        const requiredNode = visibleById.get(requiredId)
+        const requiredLayout = requiredNode ? this.layouts.get(requiredNode.id) : undefined
+        if (!requiredNode || !requiredLayout) continue
+
+        const line = this.add.graphics()
+        const connected = techState.has(requiredNode.id) && techState.has(node.id)
+        line.lineStyle(2, connected ? 0x44cc88 : 0x1a2244, 1)
+        this.drawEdgeLine(line, requiredLayout, layout, this.edgeLayouts.get(this.edgeKey(requiredId, node.id)))
+        this.content.add(line)
+      }
+    }
+
+    for (const node of visibleNodes) {
+      const layout = this.layouts.get(node.id)
+      if (!layout) continue
+      this.buildNode(node, layout.x, layout.y)
+    }
+  }
+
+  private shouldShowNode(node: TechNode): boolean {
+    const mode = this.layouts.get(node.id)?.visibleWhen ?? 'always'
+    if (mode === 'available') return techState.effectiveLevel(node) > 0 || techState.isAvailable(node)
+    if (mode === 'purchased') return techState.effectiveLevel(node) > 0
+    return true
+  }
+
+  private ensureRuntimeLayouts() {
+    for (const [nodeIndex, node] of this.nodes.entries()) {
+      if (this.layouts.has(node.id)) continue
+      const branchIndex = Math.max(0, BRANCH_ORDER.indexOf(node.branch))
+      const branchCount = this.nodes
+        .slice(0, nodeIndex)
+        .filter(previous => previous.branch === node.branch)
+        .length
+      this.layouts.set(node.id, {
+        id: node.id,
+        x: ROW_PAD_X + LABEL_W + branchCount * (NODE_W + NODE_GAP),
+        y: 8 + branchIndex * (ROW_H + 8),
+        visibleWhen: 'always',
+      })
+    }
   }
 
   private buildRow(branch: string, nodes: TechNode[], rowY: number) {
@@ -137,6 +256,7 @@ export class TechTreeScene extends Phaser.Scene {
     nodes.forEach((node, idx) => {
       const nx = nodesX + idx * (NODE_W + NODE_GAP)
       const ny = rowY
+      this.totalContentW = Math.max(this.totalContentW, nx + NODE_W + VIEW_PAD)
 
       // Connector line to previous node
       if (idx > 0) {
@@ -172,6 +292,7 @@ export class TechTreeScene extends Phaser.Scene {
     else                 { borderColor = 0x885522; bgColor = 0x1a0e08 }
 
     const bg = this.add.rectangle(nx, ny, NODE_W, NODE_H, bgColor).setOrigin(0, 0)
+      .setInteractive({ useHandCursor: available && canAfford })
     const border = this.add.graphics()
     border.lineStyle(purchased ? 2 : 1, borderColor, 1)
     border.strokeRect(nx, ny, NODE_W, NODE_H)
@@ -228,10 +349,10 @@ export class TechTreeScene extends Phaser.Scene {
 
     // Click to purchase
     if (available && canAfford) {
-      bg.setInteractive({ useHandCursor: true })
       bg.on('pointerover', () => bg.setFillStyle(bgColor + 0x0a0a0a))
       bg.on('pointerout',  () => bg.setFillStyle(bgColor))
-      bg.on('pointerdown', () => {
+      bg.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+        if (!pointer.leftButtonDown()) return
         techState.purchase(node)
         this.refreshPcText()
         this.buildContent()
@@ -296,5 +417,83 @@ export class TechTreeScene extends Phaser.Scene {
 
   private humanizeId(id: string): string {
     return id.replace(/_/g, ' ')
+  }
+
+  private isInScrollableArea(pointer: Phaser.Input.Pointer): boolean {
+    return pointer.y >= HEADER_H && pointer.y <= GAME_H - FOOTER_H
+  }
+
+  private stopPanning() {
+    if (!this.isPanning) return
+    this.isPanning = false
+    this.input.setDefaultCursor('default')
+  }
+
+  private clampScroll() {
+    const viewportH = GAME_H - HEADER_H - FOOTER_H
+    const maxX = Math.max(0, this.totalContentW - GAME_W)
+    const maxY = Math.max(0, this.totalContentH - viewportH)
+    this.scrollX = Phaser.Math.Clamp(this.scrollX, 0, maxX)
+    this.scrollY = Phaser.Math.Clamp(this.scrollY, 0, maxY)
+  }
+
+  private updateContentPosition() {
+    this.content.setPosition(-this.scrollX, HEADER_H - this.scrollY)
+  }
+
+  private drawEdgeLine(
+    graphics: Phaser.GameObjects.Graphics,
+    fromLayout: TechNodeLayout,
+    toLayout: TechNodeLayout,
+    edge?: TechEdgeLayout,
+  ) {
+    const points = this.edgePath(fromLayout, toLayout, edge)
+    if (points.length < 2) return
+
+    graphics.beginPath()
+    graphics.moveTo(points[0].x, points[0].y)
+    for (const point of points.slice(1)) {
+      graphics.lineTo(point.x, point.y)
+    }
+    graphics.strokePath()
+  }
+
+  private edgePath(
+    fromLayout: TechNodeLayout,
+    toLayout: TechNodeLayout,
+    edge?: TechEdgeLayout,
+  ): Array<{ x: number, y: number }> {
+    const fromAnchor = edge?.fromAnchor ?? 'right'
+    const toAnchor = edge?.toAnchor ?? 'left'
+    const start = this.anchorPoint(fromLayout, fromAnchor)
+    const end = this.anchorPoint(toLayout, toAnchor)
+    const elbow = edge?.elbow
+
+    if (!elbow) return [start, end]
+
+    const fromHorizontal = fromAnchor === 'left' || fromAnchor === 'right'
+    const toHorizontal = toAnchor === 'left' || toAnchor === 'right'
+    const first = fromHorizontal ? { x: elbow.x, y: start.y } : { x: start.x, y: elbow.y }
+    const last = toHorizontal ? { x: elbow.x, y: end.y } : { x: end.x, y: elbow.y }
+
+    return this.removeDuplicatePoints([start, first, elbow, last, end])
+  }
+
+  private anchorPoint(layout: TechNodeLayout, anchor: TechNodeAnchor): { x: number, y: number } {
+    if (anchor === 'left') return { x: layout.x, y: layout.y + NODE_H / 2 }
+    if (anchor === 'right') return { x: layout.x + NODE_W, y: layout.y + NODE_H / 2 }
+    if (anchor === 'top') return { x: layout.x + NODE_W / 2, y: layout.y }
+    return { x: layout.x + NODE_W / 2, y: layout.y + NODE_H }
+  }
+
+  private removeDuplicatePoints(points: Array<{ x: number, y: number }>): Array<{ x: number, y: number }> {
+    return points.filter((point, index) => {
+      const previous = points[index - 1]
+      return !previous || previous.x !== point.x || previous.y !== point.y
+    })
+  }
+
+  private edgeKey(from: string, to: string): string {
+    return `${from}->${to}`
   }
 }

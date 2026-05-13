@@ -140,6 +140,7 @@
       "effect": { "type": "pack_bonus_tier2_chance", "value": 0.09 },
       "branch": "supply"
     },
+
     {
       "id": "cache_scavenging",
       "name": "Cache Scavenging",

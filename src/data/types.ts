@@ -166,6 +166,31 @@ export interface TechEffect {
   param?: string    // for unit_param_bonus
 }
 
+export type TechNodeAnchor = 'left' | 'right' | 'top' | 'bottom'
+
+export interface TechEdgeLayout {
+  from: string
+  to: string
+  fromAnchor?: TechNodeAnchor
+  toAnchor?: TechNodeAnchor
+  elbow?: {
+    x: number
+    y: number
+  }
+}
+
+export interface TechNodeLayout {
+  id: string
+  x: number
+  y: number
+  visibleWhen?: 'always' | 'available' | 'purchased'
+}
+
+export interface TechTreeLayoutData {
+  nodes: TechNodeLayout[]
+  edges: TechEdgeLayout[]
+}
+
 export interface TechNode {
   id: string
   name: string
