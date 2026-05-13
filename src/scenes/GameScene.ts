@@ -8,7 +8,7 @@ import { WaveManager } from '../systems/WaveManager'
 import { DebugMenu } from '../ui/DebugMenu'
 import { debugState } from '../debug/DebugState'
 import type { ChapterData, EnemyData, UnitData, BalanceData, TechNode, ShopPackData, UnitSynergyData, CrateDropData, CrateKindData, CrateRewardData, ShopPackRoll } from '../data/types'
-import { techState, applyCursorMods, applyTowerMods, applyUnitMods, applyPackBonusMods, applyCrateMods, checkStatQuests } from '../systems/TechState'
+import { techState, applyCursorMods, applyTowerBattleMods, applyUnitMods, applyPackBonusMods, applyCrateMods, checkStatQuests } from '../systems/TechState'
 import { applyUnitSynergies } from '../systems/UnitSynergies'
 import type { CampaignPackRollLog } from '../systems/CampaignLog'
 import { GAME_W, GAME_H, CX, CY, ARENA_RADIUS } from '../constants'
@@ -92,8 +92,11 @@ export class GameScene extends Phaser.Scene {
     this.arenaGfx = this.add.graphics()
     this.drawArena()
 
-    // Tower — apply tech HP bonus
-    this.tower = new Tower(this, CX, CY, applyTowerMods(balance.towerHp, this.techNodes))
+    // Tower — apply tech HP, shield, and self-defense bonuses.
+    const towerMods = applyTowerBattleMods(balance.towerHp, this.techNodes)
+    this.tower = new Tower(this, CX, CY, towerMods.maxHp)
+    this.tower.thornsDamage = towerMods.thornsDamage
+    if (towerMods.startingShield > 0) this.tower.applyShield(towerMods.startingShield)
 
     // Open unopened shop packs at battle start, then spawn the rolled units.
     const packResults = data.loadout

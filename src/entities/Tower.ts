@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import type { Targetable } from '../data/types'
 import { floatDamageNumber, floatHealNumber } from '../effects/CombatEffects'
 
 const RADIUS = 28
@@ -14,9 +15,11 @@ export class Tower {
   hp: number
   maxHp: number
   shield: number = 0
+  thornsDamage: number = 0
   radius: number = RADIUS
   alive: boolean = true
   godMode: boolean = false
+  targetType: 'tower' = 'tower'
 
   constructor(scene: Phaser.Scene, x: number, y: number, maxHp: number) {
     this.hp = maxHp
@@ -35,13 +38,17 @@ export class Tower {
     this.draw()
   }
 
-  takeDamage(amount: number) {
+  takeDamage(amount: number, attacker?: Targetable) {
     if (!this.alive || this.godMode) return
     const absorbed = Math.min(this.shield, amount)
     this.shield -= absorbed
     const remaining = amount - absorbed
     if (remaining > 0) this.hp = Math.max(0, this.hp - remaining)
     floatDamageNumber(this.graphics.scene, this.x, this.y, amount)
+    if (this.thornsDamage > 0 && attacker?.alive) {
+      attacker.takeDamage(this.thornsDamage)
+      this.playThornsEffect(attacker.x, attacker.y)
+    }
     if (this.hp <= 0) this.alive = false
     this.draw()
   }
@@ -59,6 +66,20 @@ export class Tower {
     this.shield += amount
     floatHealNumber(this.graphics.scene, this.x, this.y - 14, amount)
     this.draw()
+  }
+
+  private playThornsEffect(targetX: number, targetY: number) {
+    const line = this.graphics.scene.add.graphics().setDepth(9)
+    line.lineStyle(2, 0x88ddff, 0.85)
+    line.lineBetween(this.x, this.y, targetX, targetY)
+    line.strokeCircle(targetX, targetY, 10)
+    this.graphics.scene.tweens.add({
+      targets: line,
+      alpha: 0,
+      duration: 220,
+      ease: 'Quad.easeOut',
+      onComplete: () => line.destroy(),
+    })
   }
 
   private draw() {

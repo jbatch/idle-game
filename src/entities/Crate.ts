@@ -12,6 +12,7 @@ export class Crate implements Targetable {
   alive: boolean = true
   data: CrateKindData
   reward: CrateRewardData
+  targetType: 'crate' = 'crate'
 
   private color: number
   private graphics: Phaser.GameObjects.Graphics

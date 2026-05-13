@@ -13,12 +13,20 @@ export type CombatScenario = {
   units: ScenarioSpawn[]
   enemies: ScenarioSpawn[]
   crates?: Array<ScenarioSpawn & { rewardId?: string }>
+  tower?: {
+    hp?: number
+    godMode?: boolean
+    startingShield?: number
+    thornsDamage?: number
+  }
   cursor?: {
     damage: number
     radius: number
     cooldown: number
     knockback: number
     knockbackChance: number
+    bossDamageMultiplier?: number
+    crateDamageMultiplier?: number
   }
 }
 
@@ -126,6 +134,45 @@ export const combatScenarios: CombatScenario[] = [
       { id: 'field_cache', rewardId: 'unit_mending', count: 1, radius: 150, angle: 45 },
       { id: 'reinforced_cache', rewardId: 'free_tier1_roll', count: 1, radius: 190, angle: 120 },
       { id: 'aegis_cache', rewardId: 'squad_aegis', count: 1, radius: 230, angle: 200 },
+    ],
+  },
+  {
+    id: 'cursor_siegebreaker',
+    name: 'Cursor: Siegebreaker',
+    description: 'Wide cursor should hit the boss and cache harder than regular enemies.',
+    cursor: {
+      damage: 12,
+      radius: 52,
+      cooldown: 0.35,
+      knockback: 0,
+      knockbackChance: 0,
+      bossDamageMultiplier: 1.4,
+      crateDamageMultiplier: 1.4,
+    },
+    units: [],
+    enemies: [
+      { id: 'boss_chapter1', count: 1, radius: 175, angle: -88 },
+      { id: 'brute', count: 1, radius: 215, angle: -120 },
+    ],
+    crates: [{ id: 'field_cache', rewardId: 'tower_patch', count: 1, radius: 205, angle: -58 }],
+  },
+  {
+    id: 'tower_thorns',
+    name: 'Tower: Retaliating Stone',
+    description: 'Small rush enemies should take return damage each time they hit the tower.',
+    tower: { hp: 320, godMode: false, thornsDamage: 7 },
+    units: [],
+    enemies: [{ id: 'runner', count: 8, radius: 315, angle: -90, spread: 72 }],
+  },
+  {
+    id: 'tower_guard_pulse',
+    name: 'Tower: Guard Pulse',
+    description: 'Tower should start with a visible shield that absorbs the first attacks.',
+    tower: { hp: 360, godMode: false, startingShield: 150 },
+    units: [{ id: 'shieldbearer', count: 1, radius: 96, angle: -96 }],
+    enemies: [
+      { id: 'grunt', count: 6, radius: 320, angle: -90, spread: 78 },
+      { id: 'brute', count: 1, radius: 320, angle: -25 },
     ],
   },
 ]

@@ -22,13 +22,16 @@ export function runGameSimulation(data, options, rng) {
   }
   cursor.baseDamage = cursor.damage
   cursor.baseCooldown = cursor.cooldown
+  const towerMods = applyTowerBattleMods(data.balance.towerHp, tech)
   const tower = {
+    kind: 'tower',
     x: CX,
     y: CY,
     radius: TOWER_RADIUS,
-    hp: applyTowerMods(data.balance.towerHp, tech),
-    maxHp: applyTowerMods(data.balance.towerHp, tech),
-    shield: 0,
+    hp: towerMods.maxHp,
+    maxHp: towerMods.maxHp,
+    shield: towerMods.startingShield,
+    thornsDamage: towerMods.thornsDamage,
     alive: true,
   }
 
@@ -184,13 +187,18 @@ function applyCursorMods(base, tech) {
     radius: base.radius,
     knockback: 0,
     knockbackChance: 0,
+    bossDamageMultiplier: 1,
+    crateDamageMultiplier: 1,
   }
 
   for (const effect of purchasedEffects(tech)) {
     if (effect.type === 'cursor_damage') cursor.damage += effect.value
     if (effect.type === 'cursor_cooldown') cursor.cooldown = Math.min(cursor.cooldown, effect.value)
+    if (effect.type === 'cursor_radius_bonus') cursor.radius += effect.value
     if (effect.type === 'cursor_knockback') cursor.knockback = Math.max(cursor.knockback, effect.value)
     if (effect.type === 'cursor_knockback_chance') cursor.knockbackChance += effect.value
+    if (effect.type === 'cursor_boss_damage_mult') cursor.bossDamageMultiplier *= effect.value
+    if (effect.type === 'cursor_crate_damage_mult') cursor.crateDamageMultiplier *= effect.value
   }
   cursor.knockbackChance = clamp(cursor.knockbackChance, 0, 1)
   return cursor
@@ -202,6 +210,18 @@ function applyTowerMods(baseHp, tech) {
     if (effect.type === 'tower_hp_bonus') hp += effect.value
   }
   return hp
+}
+
+function applyTowerBattleMods(baseHp, tech) {
+  let maxHp = baseHp
+  let startingShield = 0
+  let thornsDamage = 0
+  for (const effect of purchasedEffects(tech)) {
+    if (effect.type === 'tower_hp_bonus') maxHp += effect.value
+    if (effect.type === 'tower_starting_shield') startingShield += effect.value
+    if (effect.type === 'tower_thorns_damage') thornsDamage += effect.value
+  }
+  return { maxHp, startingShield, thornsDamage }
 }
 
 function applyPackBonusMods(tech) {
@@ -297,6 +317,7 @@ function maybeSpawnCrate(crates, crateData, tech, enemy, rng) {
   const pos = clampCratePosition(enemy.x, enemy.y, crateKind.radius)
   crates.push({
     kind: 'crate',
+    targetType: 'crate',
     id: crateKind.id,
     x: pos.x,
     y: pos.y,
@@ -362,6 +383,7 @@ function spawnRewardUnits(reward, crate, units, unitData, tech, unitStats, rng) 
     const radius = 24 + i * 10
     units.push({
       kind: 'unit',
+      targetType: 'unit',
       id: data.id,
       x: crate.x + Math.cos(angle) * radius,
       y: crate.y + Math.sin(angle) * radius,
@@ -427,6 +449,7 @@ function spawnUnits(loadout, unitData, tech, rng) {
     const angle = angleOffset + (index / Math.max(loadout.length, 1)) * Math.PI * 2
     return {
       kind: 'unit',
+      targetType: 'unit',
       id: data.id,
       x: CX + Math.cos(angle) * radius,
       y: CY + Math.sin(angle) * radius,
@@ -455,6 +478,7 @@ function spawnEnemies(event, enemyData, baseMultiplier, rng) {
 
   return spawnPositions(event, rng).map(pos => ({
     kind: 'enemy',
+    targetType: 'enemy',
     id: data.id,
     x: pos.x,
     y: pos.y,
@@ -509,15 +533,21 @@ function fireBotCursor(cursor, enemies, crates, rng) {
   for (const enemy of enemies) {
     if (!enemy.alive) continue
     if (distanceSq(enemy.x, enemy.y, target.x, target.y) > cursor.radius * cursor.radius) continue
-    damage(enemy, cursor.damage)
+    damage(enemy, cursorDamageFor(cursor, enemy))
     if (knockbackTriggered) applyKnockback(enemy, target.x, target.y, cursor.knockback)
   }
   for (const crate of crates) {
     if (!crate.alive) continue
     if (distanceSq(crate.x, crate.y, target.x, target.y) > cursor.radius * cursor.radius) continue
-    damage(crate, cursor.damage)
+    damage(crate, cursorDamageFor(cursor, crate))
   }
   return true
+}
+
+function cursorDamageFor(cursor, target) {
+  if (target.targetType === 'crate') return Math.round(cursor.damage * cursor.crateDamageMultiplier)
+  if (target.targetType === 'enemy' && target.isBoss) return Math.round(cursor.damage * cursor.bossDamageMultiplier)
+  return cursor.damage
 }
 
 function chooseCursorTarget(cursor, enemies, crates) {
@@ -548,7 +578,7 @@ function chooseCursorTarget(cursor, enemies, crates) {
     const supportBonus = isSupportEnemy(enemy) ? 320 : 0
     const bossBonus = enemy.isBoss ? 80 : 0
     const towerPressure = Math.max(0, 380 - distance(enemy.x, enemy.y, CX, CY)) * 0.35
-    const killableBonus = enemy.hp <= cursor.damage ? 60 : 0
+    const killableBonus = enemy.hp <= cursorDamageFor(cursor, enemy) ? 60 : 0
     const clusterBonus = clusterWeight >= 2 ? clusterWeight * 120 : clusterWeight * 35
     const score = supportBonus + bossBonus + towerPressure + killableBonus + clusterBonus + lowHpWeight * 25 - enemy.hp * 0.2
     if (score > bestScore) {
@@ -603,6 +633,7 @@ function runEnemyRushTower(enemy, dt, tower, speed, units) {
     enemy.attackTimer -= dt
     if (enemy.attackTimer <= 0) {
       damage(tower, enemy.damage)
+      applyTowerThorns(tower, enemy)
       if (enemy.data.behaviour === 'rush_tower_aoe') {
         const splash = enemy.data.params?.splashRadius ?? 80
         const splashDamage = enemy.data.params?.splashDamage ?? 8
@@ -615,6 +646,11 @@ function runEnemyRushTower(enemy, dt, tower, speed, units) {
       enemy.attackTimer = enemy.attackCooldown
     }
   }
+}
+
+function applyTowerThorns(tower, enemy) {
+  if (!enemy.alive || tower.thornsDamage <= 0) return
+  damage(enemy, tower.thornsDamage)
 }
 
 function runEnemyHealer(enemy, dt, tower, allies, speed) {

@@ -36,6 +36,35 @@
       "branch": "cursor"
     },
     {
+      "id": "cursor_reach",
+      "name": "Cursor Reach",
+      "description": "Cursor radius +6",
+      "cost": 18,
+      "requires": ["cursor_focus"],
+      "effect": { "type": "cursor_radius_bonus", "value": 6 },
+      "branch": "cursor"
+    },
+    {
+      "id": "cursor_reach_advanced",
+      "name": "Wide Arc",
+      "description": "Cursor radius +8",
+      "cost": 55,
+      "requires": ["cursor_reach"],
+      "questRequirement": "boss_chapter1_killed",
+      "effect": { "type": "cursor_radius_bonus", "value": 8 },
+      "branch": "cursor"
+    },
+    {
+      "id": "cursor_reach_mastery",
+      "name": "Battlefield Sweep",
+      "description": "Cursor radius +8",
+      "cost": 100,
+      "requires": ["cursor_reach_advanced"],
+      "questRequirement": "boss_chapter2_killed",
+      "effect": { "type": "cursor_radius_bonus", "value": 8 },
+      "branch": "cursor"
+    },
+    {
       "id": "cursor_heavy",
       "name": "Heavy Strike",
       "description": "Cursor damage +5",
@@ -43,6 +72,19 @@
       "requires": ["cursor_fast"],
       "questRequirement": "boss_chapter1_killed",
       "effect": { "type": "cursor_damage", "value": 5 },
+      "branch": "cursor"
+    },
+    {
+      "id": "cursor_siegebreaker",
+      "name": "Siegebreaker",
+      "description": "Cursor deals 40% more damage to bosses and crates",
+      "cost": 95,
+      "requires": ["cursor_heavy"],
+      "questRequirement": "boss_chapter1_killed",
+      "effect": [
+        { "type": "cursor_boss_damage_mult", "value": 1.4 },
+        { "type": "cursor_crate_damage_mult", "value": 1.4 }
+      ],
       "branch": "cursor"
     },
 
@@ -145,6 +187,35 @@
       "cost": 55,
       "requires": ["tower_fortify"],
       "effect": { "type": "tower_hp_bonus", "value": 200 },
+      "branch": "tower"
+    },
+    {
+      "id": "tower_retaliating_stone",
+      "name": "Retaliating Stone",
+      "description": "Tower deals 3 damage back when hit",
+      "cost": 45,
+      "requires": ["tower_fortify"],
+      "effect": { "type": "tower_thorns_damage", "value": 3 },
+      "branch": "tower"
+    },
+    {
+      "id": "tower_guard_pulse",
+      "name": "Guard Pulse",
+      "description": "Battle start tower shield +90",
+      "cost": 70,
+      "requires": ["tower_reinforce"],
+      "questRequirement": "boss_chapter1_killed",
+      "effect": { "type": "tower_starting_shield", "value": 90 },
+      "branch": "tower"
+    },
+    {
+      "id": "tower_sharpened_battlements",
+      "name": "Sharpened Battlements",
+      "description": "Tower thorns damage +4",
+      "cost": 90,
+      "requires": ["tower_retaliating_stone"],
+      "questRequirement": "boss_chapter1_killed",
+      "effect": { "type": "tower_thorns_damage", "value": 4 },
       "branch": "tower"
     },
     {

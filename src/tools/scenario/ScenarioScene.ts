@@ -87,8 +87,10 @@ export class ScenarioScene extends Phaser.Scene {
 
     const balance = this.cache.json.get('balance') as BalanceData
     const scenario = combatScenarios[this.scenarioIndex]
-    this.tower = new Tower(this, CX, CY, balance.towerHp)
-    this.tower.godMode = true
+    this.tower = new Tower(this, CX, CY, scenario.tower?.hp ?? balance.towerHp)
+    this.tower.godMode = scenario.tower?.godMode ?? true
+    this.tower.thornsDamage = scenario.tower?.thornsDamage ?? 0
+    if (scenario.tower?.startingShield) this.tower.applyShield(scenario.tower.startingShield)
 
     if (scenario.cursor) {
       this.cursor = new CursorAttack(this, scenario.cursor)

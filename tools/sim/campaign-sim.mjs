@@ -271,6 +271,8 @@ function techPriorityScore(node, state, lastResult) {
     if (effect.type === 'crate_drop_chance_bonus') score += lastResult.unitsAlive <= 1 ? 14 : 8
     if (effect.type?.startsWith('cursor')) score += 8
     if (effect.type === 'tower_hp_bonus') score += lastResult.outcome === 'tower_destroyed' ? 12 : 5
+    if (effect.type === 'tower_starting_shield') score += lastResult.outcome === 'tower_destroyed' ? 11 : 5
+    if (effect.type === 'tower_thorns_damage') score += lastResult.outcome === 'tower_destroyed' ? 9 : 4
     if (effect.type?.startsWith('unit')) {
       const summoned = state.stats[statKey(effect.unitId, 'summoned')] ?? 0
       const recent = lastResult.loadout.filter(unitId => unitId === effect.unitId).length
@@ -282,6 +284,7 @@ function techPriorityScore(node, state, lastResult) {
   if (node.branch === 'supply') score += 4
   if (node.branch === 'crates') score += 4
   if (node.branch === 'cursor') score += 3
+  if (node.branch === 'tower') score += 2
   if (['footsoldier', 'archer'].includes(node.branch)) score += 2
   return score
 }

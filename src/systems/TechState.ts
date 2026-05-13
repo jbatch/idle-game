@@ -178,15 +178,28 @@ export function applyCursorMods(base: BalanceData['cursor'], nodes: TechNode[]) 
   let radius = base.radius
   let knockback = 0
   let knockbackChance = 0
+  let bossDamageMultiplier = 1
+  let crateDamageMultiplier = 1
 
   for (const effect of purchasedEffects(nodes)) {
     if (effect.type === 'cursor_damage') damage += effect.value
     if (effect.type === 'cursor_cooldown') cooldown = Math.min(cooldown, effect.value)
+    if (effect.type === 'cursor_radius_bonus') radius += effect.value
     if (effect.type === 'cursor_knockback') knockback = Math.max(knockback, effect.value)
     if (effect.type === 'cursor_knockback_chance') knockbackChance += effect.value
+    if (effect.type === 'cursor_boss_damage_mult') bossDamageMultiplier *= effect.value
+    if (effect.type === 'cursor_crate_damage_mult') crateDamageMultiplier *= effect.value
   }
 
-  return { damage, cooldown, radius, knockback, knockbackChance: Math.min(knockbackChance, 1) }
+  return {
+    damage,
+    cooldown,
+    radius,
+    knockback,
+    knockbackChance: Math.min(knockbackChance, 1),
+    bossDamageMultiplier,
+    crateDamageMultiplier,
+  }
 }
 
 export function applyTowerMods(baseHp: number, nodes: TechNode[]): number {
@@ -195,6 +208,20 @@ export function applyTowerMods(baseHp: number, nodes: TechNode[]): number {
     if (effect.type === 'tower_hp_bonus') hp += effect.value
   }
   return hp
+}
+
+export function applyTowerBattleMods(baseHp: number, nodes: TechNode[]) {
+  let maxHp = baseHp
+  let startingShield = 0
+  let thornsDamage = 0
+
+  for (const effect of purchasedEffects(nodes)) {
+    if (effect.type === 'tower_hp_bonus') maxHp += effect.value
+    if (effect.type === 'tower_starting_shield') startingShield += effect.value
+    if (effect.type === 'tower_thorns_damage') thornsDamage += effect.value
+  }
+
+  return { maxHp, startingShield, thornsDamage }
 }
 
 export function applyDeploymentBudgetMods(baseBudget: number, nodes: TechNode[]): number {

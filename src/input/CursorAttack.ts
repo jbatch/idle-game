@@ -12,6 +12,8 @@ export interface CursorAttackConfig {
   cooldown: number
   knockback: number
   knockbackChance: number
+  bossDamageMultiplier?: number
+  crateDamageMultiplier?: number
 }
 
 export class CursorAttack {
@@ -27,6 +29,8 @@ export class CursorAttack {
   cooldown: number
   knockback: number
   knockbackChance: number
+  bossDamageMultiplier: number
+  crateDamageMultiplier: number
 
   constructor(scene: Phaser.Scene, config: CursorAttackConfig) {
     this.scene = scene
@@ -35,6 +39,8 @@ export class CursorAttack {
     this.cooldown = config.cooldown
     this.knockback = config.knockback
     this.knockbackChance = Phaser.Math.Clamp(config.knockbackChance, 0, 1)
+    this.bossDamageMultiplier = config.bossDamageMultiplier ?? 1
+    this.crateDamageMultiplier = config.crateDamageMultiplier ?? 1
     this.pointerHandler = (ptr: Phaser.Input.Pointer) => {
       this.tryFire(ptr.x, ptr.y, this.getTargets())
     }
@@ -49,6 +55,8 @@ export class CursorAttack {
     this.cooldown = config.cooldown
     this.knockback = config.knockback
     this.knockbackChance = Phaser.Math.Clamp(config.knockbackChance, 0, 1)
+    this.bossDamageMultiplier = config.bossDamageMultiplier ?? 1
+    this.crateDamageMultiplier = config.crateDamageMultiplier ?? 1
   }
 
   tryFire(x: number, y: number, targets: Targetable[]): boolean {
@@ -56,7 +64,6 @@ export class CursorAttack {
     this.cooldownTimer = this.cooldown
     this.pulseAlpha = 1
 
-    const dmg = this.damage
     const kb  = this.knockback
     const knockbackTriggered = kb > 0 && Math.random() < this.knockbackChance
     targets.forEach(target => {
@@ -64,12 +71,20 @@ export class CursorAttack {
       const dx = target.x - x
       const dy = target.y - y
       if (dx * dx + dy * dy <= this.radius * this.radius) {
-        target.takeDamage(dmg)
+        target.takeDamage(this.damageFor(target))
         playCursorImpactEffect(this.scene, target.x, target.y, knockbackTriggered)
         if (knockbackTriggered && target.applyKnockback) target.applyKnockback(x, y, kb)
       }
     })
     return true
+  }
+
+  private damageFor(target: Targetable): number {
+    if (target.targetType === 'crate') return Math.round(this.damage * this.crateDamageMultiplier)
+    if (target.targetType === 'enemy' && 'isBoss' in target && target.isBoss) {
+      return Math.round(this.damage * this.bossDamageMultiplier)
+    }
+    return this.damage
   }
 
   update(delta: number, mouseX: number, mouseY: number, _enemies: Enemy[]) {

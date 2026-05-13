@@ -37,6 +37,7 @@ export class Enemy implements Targetable {
   private destroyed: boolean = false
 
   alive: boolean = true
+  targetType: 'enemy' = 'enemy'
 
   constructor(scene: Phaser.Scene, x: number, y: number, data: EnemyData) {
     this.scene = scene
@@ -120,7 +121,7 @@ export class Enemy implements Targetable {
       this.attackTimer -= dt
       if (this.attackTimer <= 0) {
         this.playAttackEffect(tower)
-        tower.takeDamage(this.damage)
+        tower.takeDamage(this.damage, this)
         // AOE splash damages units around tower
         if (this.data.behaviour === 'rush_tower_aoe') {
           const splash = this.data.params?.splashRadius ?? 80

@@ -25,7 +25,7 @@ The `.claude/` directory is local-only and ignored by git.
 
 ## Current Status
 
-Layers 1–7 (recovery pass) are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, first-pass unopened shop packs, same-unit synergy payoffs, cursor proc tuning, supply pack-bonus tech, and breakable battlefield crates. This is the **v0.1.5 checkpoint**.
+Layers 1–8 (recovery + progression pass) are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, first-pass unopened shop packs, same-unit synergy payoffs, cursor proc tuning, supply pack-bonus tech, breakable battlefield crates, and a first-pass cursor/tower progression expansion. This is the **v0.1.6 checkpoint**.
 
 ### v0.1.2 Additions
 - Multi-entry Vite app structure: main game plus local-only side apps.
@@ -57,6 +57,15 @@ Layers 1–7 (recovery pass) are complete. The game is fully playable end-to-end
 - New crate tech branch exists: Cache Scavenging increases drop chance, Cache Prospecting unlocks reinforced crates/cursor quickening/free rolls, and Shielded Caches unlocks aegis crates plus shield rewards.
 - Tower and units now support shield absorb pools with blue visual rings/bars.
 - Scenario sandbox includes a focused crate fixture, the in-combat debug menu can spawn test crates, and the headless simulator now spawns/auto-clicks crates and applies crate rewards.
+
+### v0.1.6 Additions
+- First progression-expansion slice is complete: cursor reach, boss/crate cursor damage, tower thorns, and battle-start tower shield tech now exist.
+- New cursor tech nodes: Cursor Reach, Wide Arc, Battlefield Sweep, and Siegebreaker.
+- New tower self-defense nodes: Retaliating Stone, Guard Pulse, and Sharpened Battlements.
+- Cursor damage is now target-aware for boss and crate multipliers through the shared `Targetable` contract.
+- Tower thorns trigger from enemy tower hits and show a short return-strike effect; tower starting shields use the existing blue shield visuals.
+- Scenario sandbox includes focused fixtures for Siegebreaker, Retaliating Stone, and Guard Pulse.
+- Headless simulator mirrors the new cursor/tower effects and campaign purchase scoring now values tower shield/thorns.
 
 ### Development Workflow Notes
 - When adding or changing combat mechanics, enemy behavior, unit behavior, targeting, movement, effects, or balance-sensitive tuning, add or update at least one focused scenario fixture in `src/tools/scenario/scenarios.ts`.
@@ -116,9 +125,9 @@ Priority key:
 |---|---:|---:|---:|---|
 | Unit packs replacing direct buys | Very High | High | P1 | First pass exists: unopened packs replace direct buys. Continue balancing unlocks and quest thresholds. |
 | Single/multipack/mega-pack structure | Very High | High | P1 | First pass exists: singles unlock squad packs via purchase-count quests; T2 singles unlock with Chapter 2. Mega packs later. |
-| More cursor upgrades by chapter | High | Medium | P1 | Cursor is constant, so add many small chapter-gated upgrades: range, damage, CD, knockback, stun chance. |
+| More cursor upgrades by chapter | High | Medium | P1 | First pass exists: Cursor Reach/Wide Arc/Battlefield Sweep expand radius by chapter and Siegebreaker boosts boss/crate damage. Continue with stun/control or support modes later. |
 | Cursor power modes | High | High | P2 | Weak knockback AOE, stun/control, heal/support pulse, strong single-target. Decide pre-run vs hot-swap vs tech branches. |
-| Tower self-defense tree | Medium/High | Medium | P2 | Retaliation after hits, thorns, splash, shield pulse, low-HP panic blast. |
+| Tower self-defense tree | Medium/High | Medium | P2 | First pass exists: Retaliating Stone/Sharpened Battlements add thorns and Guard Pulse adds a battle-start shield. Later: splash, shield pulses, low-HP panic blast. |
 | Achievement system | Medium | Medium | P2 | Track notable events: big Archer group, big AOE hit, monster kill goals, speed clears, low-HP wins, crate runs. |
 | Prestige/Ascension | Very High | High | P3 | Late-game reset layer with higher difficulty and higher-level permanent unlocks. |
 
@@ -157,8 +166,8 @@ Priority key:
 5. [DONE] **Drops / Crates / Recovery**
    First pass complete: breakable crates have HP, spawn from enemy deaths, and apply data-driven recovery/buff/reinforcement/shield rewards. Continue tuning drop rates and reward weights, then add support-unit crate behavior so players can invest in automation/passive utility.
 
-6. **Progression Expansion**
-   Continue cursor upgrades by chapter, revisit boss knockback resistance if proc tuning is not enough, and start tower self-defense tech. This is where the long-term tree starts feeling like a real idle game.
+6. [DONE] **Progression Expansion**
+   First pass complete: chapter-gated cursor reach, Siegebreaker boss/crate damage, tower thorns, and battle-start tower shield tech. Continue tuning after playthroughs, then consider stun/control cursor upgrades and tower panic-blast style passives.
 
 ---
 
@@ -219,6 +228,7 @@ Exported functions:
 - `applyUnitMods(data, nodes)` — returns a modified UnitData with purchased bonuses applied
 - `applyDeploymentBudgetMods(baseBudget, nodes)` — returns the shop DC budget with purchased deployment bonuses applied
 - `applyPackBonusMods(nodes)` — returns purchased battle-start pack bonus-unit chances/counts
+- `applyTowerBattleMods(baseHp, nodes)` — returns tower max HP, battle-start shield, and thorns damage for combat setup
 - `checkStatQuests(nodes)` — parses `"unitId:stat:threshold"` quest IDs and completes them if stat threshold is met
 
 Quest ID formats:
@@ -228,11 +238,11 @@ Quest ID formats:
 Repeatable tech uses `repeatable: { maxLevel, costIncrease }` on a `TechNode`. Effects apply once per purchased level. Legacy one-time purchases without an explicit level still read as level 1 via `techState.level()`.
 
 ### Tech tree (`public/data/tech_tree.json`)
-**11 branches, 28 nodes total:**
-- **cursor** — Cursor Focus ×4 (10/18/26/34) → Knockback ×4 (25/40/55/70, +20% proc chance per level) → Rapid Strike (40) → Heavy Strike (65, quest: boss ch1)
+**11 branches, 35 nodes total:**
+- **cursor** — Cursor Focus ×4 (10/18/26/34) → Knockback ×4 (25/40/55/70, +20% proc chance per level) → Rapid Strike (40) → Heavy Strike (65, quest: boss ch1) → Siegebreaker (95, +40% boss/crate cursor damage); Cursor Reach (18) → Wide Arc (55, quest: boss ch1) → Battlefield Sweep (100, quest: boss ch2)
 - **deployment** — Deployment Drills (35) → Field Reserves (70, quest: boss ch1) → War Chest (110, quest: boss ch2)
 - **supply** — Field Scavenging ×3 (90/165/240, +12% T1 pack bonus-unit chance per level, requires Chapter 2 + 15 T1 Recruit buys) → Specialist Salvage ×3 (180/330/480, +9% T2 pack bonus-unit chance per level, requires Chapter 3 + 15 T2 Specialist buys)
-- **tower** — Fortify (30) → Reinforce (55) → Bastion (85, quest: boss ch2)
+- **tower** — Fortify (30) → Reinforce (55) → Bastion (85, quest: boss ch2); Retaliating Stone (45, +3 thorns) → Sharpened Battlements (90, +4 thorns, quest: boss ch1); Guard Pulse (70, +90 battle-start shield, quest: boss ch1)
 - **footsoldier** — Boot Camp ×3 (12/20/28) → Battle-Hardened (30, 50 kills) → Iron Veteran (55, 100 kills)
 - **archer** — Fletching ×3 (12/20/28) → Sharpshooter (30, 30 kills) → Swift Quiver (55, 75 kills)
 - **shieldbearer** — Aegis (30, 5 summons) → Iron Bulwark (55, 15 summons)
@@ -284,7 +294,7 @@ Branch-row layout with mousewheel scrolling. `buildContent()` groups nodes by `b
 ### Cursor attack (`src/input/CursorAttack.ts`)
 - Base cursor stats are in `public/data/balance.json` under `cursor`
 - Cursor tech effects are read from `public/data/tech_tree.json` by `applyCursorMods()`
-- Current tuning: 1.2s cooldown, 30px radius, 8 damage base; Knockback is a 280-force proc with repeatable 20% chance levels; Rapid Strike makes cooldown 0.8s and adds +2 damage; Heavy Strike adds +5 more damage
+- Current tuning: 1.2s cooldown, 30px radius, 8 damage base; Knockback is a 280-force proc with repeatable 20% chance levels; Rapid Strike makes cooldown 0.8s and adds +2 damage; Heavy Strike adds +5 more damage; Cursor Reach/Wide Arc/Battlefield Sweep increase radius by +22 total; Siegebreaker adds +40% cursor damage to bosses and crates
 - Debug fast mode: 0.05s
 
 ### Enemy behaviours (`src/entities/Enemy.ts`)

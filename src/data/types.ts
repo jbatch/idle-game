@@ -3,6 +3,7 @@ export interface Targetable {
   y: number
   radius: number
   alive: boolean
+  targetType?: 'enemy' | 'crate' | 'unit' | 'tower'
   takeDamage(amount: number): void
   applyKnockback?(fromX: number, fromY: number, force: number): void
 }
@@ -153,7 +154,9 @@ export interface BalanceData {
 }
 
 export interface TechEffect {
-  type: 'cursor_knockback' | 'cursor_knockback_chance' | 'cursor_cooldown' | 'cursor_damage' | 'tower_hp_bonus' | 'dc_budget_bonus'
+  type: 'cursor_knockback' | 'cursor_knockback_chance' | 'cursor_cooldown' | 'cursor_damage' | 'cursor_radius_bonus'
+       | 'cursor_boss_damage_mult' | 'cursor_crate_damage_mult'
+       | 'tower_hp_bonus' | 'tower_starting_shield' | 'tower_thorns_damage' | 'dc_budget_bonus'
        | 'pack_bonus_tier1_chance' | 'pack_bonus_tier2_chance'
        | 'crate_drop_chance_bonus'
        | 'unit_atk_bonus' | 'unit_hp_bonus' | 'unit_range_bonus'
