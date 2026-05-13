@@ -268,6 +268,7 @@ function techPriorityScore(node, state, lastResult) {
   for (const effect of effects) {
     if (effect.type === 'dc_budget_bonus') score += 20
     if (effect.type?.startsWith('pack_bonus')) score += 15
+    if (effect.type === 'crate_drop_chance_bonus') score += lastResult.unitsAlive <= 1 ? 14 : 8
     if (effect.type?.startsWith('cursor')) score += 8
     if (effect.type === 'tower_hp_bonus') score += lastResult.outcome === 'tower_destroyed' ? 12 : 5
     if (effect.type?.startsWith('unit')) {
@@ -279,6 +280,7 @@ function techPriorityScore(node, state, lastResult) {
   if (node.repeatable && techNodeLevel(node, state) === 0) score += 3
   if (node.branch === 'deployment') score += 7
   if (node.branch === 'supply') score += 4
+  if (node.branch === 'crates') score += 4
   if (node.branch === 'cursor') score += 3
   if (['footsoldier', 'archer'].includes(node.branch)) score += 2
   return score

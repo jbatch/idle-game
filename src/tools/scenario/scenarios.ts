@@ -12,6 +12,7 @@ export type CombatScenario = {
   description: string
   units: ScenarioSpawn[]
   enemies: ScenarioSpawn[]
+  crates?: Array<ScenarioSpawn & { rewardId?: string }>
   cursor?: {
     damage: number
     radius: number
@@ -110,5 +111,21 @@ export const combatScenarios: CombatScenario[] = [
     cursor: { damage: 1, radius: 48, cooldown: 0.25, knockback: 280, knockbackChance: 0.35 },
     units: [],
     enemies: [{ id: 'boss_chapter1', count: 1, radius: 185, angle: -90 }],
+  },
+  {
+    id: 'crates_click_to_open',
+    name: 'Crates: Click To Open',
+    description: 'Break crates with cursor hits; the tougher cache should take several early clicks.',
+    cursor: { damage: 8, radius: 34, cooldown: 0.35, knockback: 0, knockbackChance: 0 },
+    units: [
+      { id: 'footsoldier', count: 2, radius: 115, angle: -105, spread: 34 },
+      { id: 'archer', count: 1, radius: 85, angle: 70 },
+    ],
+    enemies: [{ id: 'grunt', count: 2, radius: 315, angle: -90, spread: 45 }],
+    crates: [
+      { id: 'field_cache', rewardId: 'unit_mending', count: 1, radius: 150, angle: 45 },
+      { id: 'reinforced_cache', rewardId: 'free_tier1_roll', count: 1, radius: 190, angle: 120 },
+      { id: 'aegis_cache', rewardId: 'squad_aegis', count: 1, radius: 230, angle: 200 },
+    ],
   },
 ]

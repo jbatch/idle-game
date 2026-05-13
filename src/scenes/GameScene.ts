@@ -2,12 +2,13 @@ import Phaser from 'phaser'
 import { Tower } from '../entities/Tower'
 import { Enemy } from '../entities/Enemy'
 import { Unit } from '../entities/Unit'
-import { CursorAttack } from '../input/CursorAttack'
+import { Crate } from '../entities/Crate'
+import { CursorAttack, type CursorAttackConfig } from '../input/CursorAttack'
 import { WaveManager } from '../systems/WaveManager'
 import { DebugMenu } from '../ui/DebugMenu'
 import { debugState } from '../debug/DebugState'
-import type { ChapterData, EnemyData, UnitData, BalanceData, TechNode, ShopPackData, UnitSynergyData } from '../data/types'
-import { techState, applyCursorMods, applyTowerMods, applyUnitMods, applyPackBonusMods, checkStatQuests } from '../systems/TechState'
+import type { ChapterData, EnemyData, UnitData, BalanceData, TechNode, ShopPackData, UnitSynergyData, CrateDropData, CrateKindData, CrateRewardData, ShopPackRoll } from '../data/types'
+import { techState, applyCursorMods, applyTowerMods, applyUnitMods, applyPackBonusMods, applyCrateMods, checkStatQuests } from '../systems/TechState'
 import { applyUnitSynergies } from '../systems/UnitSynergies'
 import type { CampaignPackRollLog } from '../systems/CampaignLog'
 import { GAME_W, GAME_H, CX, CY, ARENA_RADIUS } from '../constants'
@@ -20,10 +21,17 @@ type PackRollResult = {
   tier: 1 | 2
 }
 
+type CursorTimedBuff = {
+  type: 'damage' | 'cooldown'
+  value: number
+  remaining: number
+}
+
 export class GameScene extends Phaser.Scene {
   private tower!: Tower
   private enemies: Enemy[] = []
   private units: Unit[] = []
+  private crates: Crate[] = []
   private boss: Enemy | null = null
   private cursor!: CursorAttack
   private waves!: WaveManager
@@ -34,6 +42,9 @@ export class GameScene extends Phaser.Scene {
 
   private techNodes: TechNode[] = []
   private unitSynergies: UnitSynergyData[] = []
+  private crateData!: CrateDropData
+  private baseCursorStats!: CursorAttackConfig
+  private cursorBuffs: CursorTimedBuff[] = []
   private runPc: number = 0
   private elapsed: number = 0
   private gameOver: boolean = false
@@ -51,7 +62,9 @@ export class GameScene extends Phaser.Scene {
     this.gameOver = false
     this.enemies = []
     this.units = []
+    this.crates = []
     this.boss = null
+    this.cursorBuffs = []
     this.runPc = 0
     this.elapsed = 0
     this.bossSpawned = false
@@ -64,7 +77,12 @@ export class GameScene extends Phaser.Scene {
     const chapter = this.cache.json.get(debugState.chapter) as ChapterData
     this.techNodes = (this.cache.json.get('tech_tree') as { nodes: TechNode[] }).nodes
     this.unitSynergies = (this.cache.json.get('unit_synergies') as { synergies: UnitSynergyData[] }).synergies
+    this.crateData = this.cache.json.get('crates') as CrateDropData
     const cursorStats = applyCursorMods(balance.cursor, this.techNodes)
+    this.baseCursorStats = {
+      ...cursorStats,
+      cooldown: debugState.fastCursor ? DEBUG_COOLDOWN : cursorStats.cooldown,
+    }
     const enemyIds = ['grunt', 'runner', 'brute', 'archer_enemy', 'shaman', 'siege_golem', 'boss_chapter1', 'boss_chapter2', 'boss_chapter3']
     const enemyMap: Record<string, EnemyData> = Object.fromEntries(
       enemyIds.map(id => [id, this.cache.json.get(id)])
@@ -86,8 +104,8 @@ export class GameScene extends Phaser.Scene {
     if (!data.loadout && data.packs?.length) this.showPackReveal(packResults)
 
     // Cursor
-    this.cursor = new CursorAttack(this, cursorStats)
-    this.cursor.bindEnemies(() => this.enemies)
+    this.cursor = new CursorAttack(this, this.baseCursorStats)
+    this.cursor.bindTargets(() => [...this.enemies, ...this.crates])
 
     // Wave manager
     this.waves = new WaveManager(this, chapter, enemyMap)
@@ -111,8 +129,7 @@ export class GameScene extends Phaser.Scene {
 
     // Apply tech + debug state to cursor
     this.cursor.configure({
-      ...cursorStats,
-      cooldown: debugState.fastCursor ? DEBUG_COOLDOWN : cursorStats.cooldown,
+      ...this.baseCursorStats,
     })
     this.tower.godMode       = debugState.godMode
 
@@ -122,7 +139,8 @@ export class GameScene extends Phaser.Scene {
         active: debugState.fastCursor,
         onToggle: (on) => {
           debugState.fastCursor = on
-          this.cursor.cooldown = on ? DEBUG_COOLDOWN : cursorStats.cooldown
+          this.baseCursorStats.cooldown = on ? DEBUG_COOLDOWN : cursorStats.cooldown
+          this.refreshCursorConfig()
         },
       },
       {
@@ -133,6 +151,10 @@ export class GameScene extends Phaser.Scene {
           this.tower.godMode = on
         },
       },
+      {
+        label: 'Spawn Crate',
+        onPress: () => this.spawnCheatCrate(),
+      },
     ])
   }
 
@@ -142,26 +164,28 @@ export class GameScene extends Phaser.Scene {
     const angleOffset = Math.random() * Math.PI * 2
 
     loadout.forEach((id, i) => {
-      const raw = this.cache.json.get(id) as UnitData
-      if (!raw) { console.warn(`Unknown unit id: ${id}`); return }
-
-      // Track summon stats + apply tech mods
-      techState.incrementStat(`${id}_summoned`)
-      checkStatQuests(this.techNodes)
-      const data = applyUnitMods(raw, this.techNodes)
-
       const angle = angleOffset + (i / Math.max(count, 1)) * Math.PI * 2
       const x = CX + Math.cos(angle) * unitRadius
       const y = CY + Math.sin(angle) * unitRadius
-
-      const unit = new Unit(this, x, y, data)
-      unit.statCallback = (event, amount) => {
-        const statKey = event === 'kill' ? `${id}_kills` : `${id}_healed`
-        techState.incrementStat(statKey, amount)
-        checkStatQuests(this.techNodes)
-      }
-      this.units.push(unit)
+      this.spawnUnitAt(id, x, y)
     })
+  }
+
+  private spawnUnitAt(id: string, x: number, y: number) {
+    const raw = this.cache.json.get(id) as UnitData
+    if (!raw) { console.warn(`Unknown unit id: ${id}`); return }
+
+    techState.incrementStat(`${id}_summoned`)
+    checkStatQuests(this.techNodes)
+    const data = applyUnitMods(raw, this.techNodes)
+
+    const unit = new Unit(this, x, y, data)
+    unit.statCallback = (event, amount) => {
+      const statKey = event === 'kill' ? `${id}_kills` : `${id}_healed`
+      techState.incrementStat(statKey, amount)
+      checkStatQuests(this.techNodes)
+    }
+    this.units.push(unit)
   }
 
   private rollPacks(packIds: string[]): PackRollResult[] {
@@ -284,6 +308,7 @@ export class GameScene extends Phaser.Scene {
       e.update(delta, this.tower, this.units, this.enemies)
       if (!e.alive) {
         this.runPc += Math.round(e.reward * this.pcMultiplier)
+        this.maybeSpawnCrate(e.x, e.y, e.isBoss)
         this.enemies.splice(i, 1)
         if (e === this.boss) this.boss = null
       }
@@ -297,10 +322,15 @@ export class GameScene extends Phaser.Scene {
       if (!u.alive) this.units.splice(i, 1)
     }
 
+    for (let i = this.crates.length - 1; i >= 0; i--) {
+      if (!this.crates[i].alive) this.crates.splice(i, 1)
+    }
+
     this.skippedWaveThisFrame = this.shouldSkipToNextWave()
       ? this.waves.skipToNextWave()
       : false
 
+    this.tickCursorBuffs(delta / 1000)
     this.cursor.update(delta, ptr.x, ptr.y, [])
     this.updateHUD()
 
@@ -328,6 +358,8 @@ export class GameScene extends Phaser.Scene {
       `PC: ${this.runPc}`,
       this.skippedWaveThisFrame ? `${waveStr}  (advanced)` : waveStr,
       this.units.length > 0 ? `Units: ${this.units.length}` : '',
+      this.crates.length > 0 ? `Crates: ${this.crates.length}` : '',
+      this.cursorBuffLabel(),
     ])
 
     this.bossBarGfx.clear()
@@ -366,5 +398,168 @@ export class GameScene extends Phaser.Scene {
         openedUnits: this.openedUnits,
       })
     })
+  }
+
+  private maybeSpawnCrate(x: number, y: number, isBoss: boolean) {
+    if (!this.crateData || this.crates.length >= this.crateData.maxActive) return
+    const { dropChance } = applyCrateMods(this.crateData.baseDropChance, this.techNodes)
+    const chance = isBoss ? Math.min(1, dropChance * 2.5) : dropChance
+    if (Math.random() >= chance) return
+
+    this.spawnCrateAt(x, y)
+  }
+
+  private spawnCheatCrate() {
+    const angle = Math.random() * Math.PI * 2
+    const radius = 130 + Math.random() * 90
+    this.spawnCrateAt(CX + Math.cos(angle) * radius, CY + Math.sin(angle) * radius)
+  }
+
+  private spawnCrateAt(x: number, y: number) {
+    const crateKind = this.rollCrateKind()
+    if (!crateKind) return
+    const reward = this.rollCrateReward(crateKind)
+    if (!reward) return
+
+    const pos = this.clampCratePosition(x, y, crateKind.radius)
+    this.crates.push(new Crate(this, pos.x, pos.y, crateKind, reward, crate => this.openCrate(crate)))
+  }
+
+  private rollCrateKind(): CrateKindData | null {
+    const available = this.crateData.crates.filter(crate => !crate.requiresTechId || techState.has(crate.requiresTechId))
+    return this.weightedPick(available, crate => crate.spawnWeight)
+  }
+
+  private rollCrateReward(crateKind: CrateKindData): CrateRewardData | null {
+    const rewards = new Map(this.crateData.rewards.map(reward => [reward.id, reward]))
+    const available = crateKind.rewardTable
+      .map(entry => ({ entry, reward: rewards.get(entry.rewardId) }))
+      .filter((item): item is { entry: { rewardId: string, weight: number }, reward: CrateRewardData } =>
+        Boolean(item.reward) && (!item.reward?.requiresTechId || techState.has(item.reward.requiresTechId))
+      )
+    const picked = this.weightedPick(available, item => item.entry.weight * item.reward.weight)
+    return picked?.reward ?? null
+  }
+
+  private openCrate(crate: Crate) {
+    const reward = crate.reward
+    switch (reward.type) {
+      case 'tower_heal':
+        this.tower.heal(reward.value)
+        break
+      case 'heal_all_units':
+        this.units.forEach(unit => unit.heal(reward.value))
+        break
+      case 'random_unit':
+        this.openRandomUnitReward(reward, crate.x, crate.y)
+        break
+      case 'cursor_damage_buff':
+        this.cursorBuffs.push({ type: 'damage', value: reward.value, remaining: reward.duration ?? 8 })
+        this.refreshCursorConfig()
+        break
+      case 'cursor_cooldown_buff':
+        this.cursorBuffs.push({ type: 'cooldown', value: reward.value, remaining: reward.duration ?? 8 })
+        this.refreshCursorConfig()
+        break
+      case 'shield_all_units':
+        this.units.forEach(unit => unit.applyShield(reward.value))
+        break
+      case 'shield_tower':
+        this.tower.applyShield(reward.value)
+        break
+    }
+    this.showCrateReward(reward, crate.x, crate.y)
+  }
+
+  private openRandomUnitReward(reward: CrateRewardData, x: number, y: number) {
+    if (!reward.rollTable?.length) return
+    const count = reward.count ?? Math.max(1, reward.value)
+    for (let i = 0; i < count; i++) {
+      const unitId = this.rollWeightedUnit(reward.rollTable)
+      if (!unitId) continue
+      const angle = Math.random() * Math.PI * 2
+      const radius = 24 + i * 10
+      this.spawnUnitAt(unitId, x + Math.cos(angle) * radius, y + Math.sin(angle) * radius)
+    }
+  }
+
+  private rollWeightedUnit(rollTable: ShopPackRoll[]): string | null {
+    return this.weightedPick(rollTable, roll => roll.weight)?.unitId ?? null
+  }
+
+  private tickCursorBuffs(dt: number) {
+    let changed = false
+    for (let i = this.cursorBuffs.length - 1; i >= 0; i--) {
+      this.cursorBuffs[i].remaining -= dt
+      if (this.cursorBuffs[i].remaining <= 0) {
+        this.cursorBuffs.splice(i, 1)
+        changed = true
+      }
+    }
+    if (changed) this.refreshCursorConfig()
+  }
+
+  private cursorBuffLabel(): string {
+    if (this.cursorBuffs.length === 0) return ''
+    const labels = this.cursorBuffs.map(buff => {
+      const remaining = `${Math.max(0, buff.remaining).toFixed(1)}s`
+      if (buff.type === 'damage') return `+${buff.value} dmg ${remaining}`
+      return `${Math.round(buff.value * 100)}% cd ${remaining}`
+    })
+    return `Cursor buffs: ${labels.join('  ')}`
+  }
+
+  private refreshCursorConfig() {
+    const damageBonus = this.cursorBuffs
+      .filter(buff => buff.type === 'damage')
+      .reduce((sum, buff) => sum + buff.value, 0)
+    const cooldownMult = this.cursorBuffs
+      .filter(buff => buff.type === 'cooldown')
+      .reduce((mult, buff) => mult * buff.value, 1)
+    this.cursor.configure({
+      ...this.baseCursorStats,
+      damage: this.baseCursorStats.damage + damageBonus,
+      cooldown: this.baseCursorStats.cooldown * cooldownMult,
+    })
+  }
+
+  private clampCratePosition(x: number, y: number, radius: number): { x: number, y: number } {
+    const maxDist = ARENA_RADIUS - radius - 8
+    const dx = x - CX
+    const dy = y - CY
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    if (dist <= maxDist) return { x, y }
+    return {
+      x: CX + (dx / Math.max(1, dist)) * maxDist,
+      y: CY + (dy / Math.max(1, dist)) * maxDist,
+    }
+  }
+
+  private showCrateReward(reward: CrateRewardData, x: number, y: number) {
+    const text = this.add.text(x, y - 34, reward.name, {
+      fontSize: '12px',
+      color: '#ffe1a3',
+      fontFamily: 'monospace',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(30)
+    this.tweens.add({
+      targets: text,
+      y: y - 58,
+      alpha: 0,
+      duration: 1200,
+      ease: 'Quad.easeOut',
+      onComplete: () => text.destroy(),
+    })
+  }
+
+  private weightedPick<T>(items: T[], weightFor: (item: T) => number): T | null {
+    const total = items.reduce((sum, item) => sum + weightFor(item), 0)
+    if (total <= 0) return null
+    let pick = Math.random() * total
+    for (const item of items) {
+      pick -= weightFor(item)
+      if (pick <= 0) return item
+    }
+    return items[items.length - 1] ?? null
   }
 }

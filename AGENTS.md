@@ -25,7 +25,7 @@ The `.claude/` directory is local-only and ignored by git.
 
 ## Current Status
 
-Layers 1–6 (content pass) are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, first-pass unopened shop packs, same-unit synergy payoffs, cursor proc tuning, and supply pack-bonus tech. This is the **v0.1.4 checkpoint**.
+Layers 1–7 (recovery pass) are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, first-pass unopened shop packs, same-unit synergy payoffs, cursor proc tuning, supply pack-bonus tech, and breakable battlefield crates. This is the **v0.1.5 checkpoint**.
 
 ### v0.1.2 Additions
 - Multi-entry Vite app structure: main game plus local-only side apps.
@@ -50,6 +50,13 @@ Layers 1–6 (content pass) are complete. The game is fully playable end-to-end 
 - Repeatable tech nodes now show purchased level and current owned total, e.g. `LV 1/4` plus `(current: 20% knockback)`.
 - First supply tech nodes exist for battle-start pack rewards: Field Scavenging and Specialist Salvage add Tier 1 / Tier 2 bonus-unit chances when packs are opened.
 - Pack reveal rows now highlight bonus units separately from regular pack rolls.
+
+### v0.1.5 Additions
+- Breakable battlefield crates now spawn from enemy deaths and have HP, so early crates can require multiple cursor clicks.
+- Crate content is data-driven in `public/data/crates.json`, with reward hooks for tower repair, all-unit healing, temporary cursor damage/cooldown buffs, free random unit rolls, tower shields, and squad shields.
+- New crate tech branch exists: Cache Scavenging increases drop chance, Cache Prospecting unlocks reinforced crates/cursor quickening/free rolls, and Shielded Caches unlocks aegis crates plus shield rewards.
+- Tower and units now support shield absorb pools with blue visual rings/bars.
+- Scenario sandbox includes a focused crate fixture, the in-combat debug menu can spawn test crates, and the headless simulator now spawns/auto-clicks crates and applies crate rewards.
 
 ### Development Workflow Notes
 - When adding or changing combat mechanics, enemy behavior, unit behavior, targeting, movement, effects, or balance-sensitive tuning, add or update at least one focused scenario fixture in `src/tools/scenario/scenarios.ts`.
@@ -87,7 +94,7 @@ Priority key:
 | Item | Impact | Complexity | Priority | Notes |
 |---|---:|---:|---:|---|
 | Cursor knockback proc chance | High | Low | P1 | First pass complete: Knockback is now a repeatable 20–80% proc instead of guaranteed control. Continue tuning before adding boss-specific resistance. |
-| Unit survivability mechanic | High | Medium | P1 | Respawn timer, healing drops, or crates. Units dying early makes builds feel flat. |
+| Unit survivability mechanic | High | Medium | P1 | First pass complete: breakable crates can heal, shield, buff cursor, or add units. Continue tuning drop rates/reward weights and consider respawn/healing drops later. |
 | Enemy pathing variation | Medium | Medium | P1 | Start with wobble/arc approaches, not full pathfinding. |
 | Aggro/threat system | High | Medium | P1/P2 | Give enemies a stronger concept of threat so ranged units cannot free-fire forever without drawing pressure. |
 | Unit collision/separation | High | Medium | P1 | First pass exists. Continue tuning before multipacks/mega packs create large unit blobs. |
@@ -101,7 +108,7 @@ Priority key:
 | Distinct unit strategies | High | Medium | P1 | First pass exists. Continue deepening targeting, positioning, and idle behavior. |
 | Same-unit synergy groups | High | Medium/High | P2 | First pass exists: Archer Volley, Footsoldier Phalanx, and Shield Wall. Continue tuning and adding payoffs selectively. |
 | Unit idle behavior/squads | Medium | Medium | P2 | Same-type units loosely cluster near tower with small idle drift. |
-| Support units opening crates | Medium | Medium | P2 | Support/passive units beeline to crates and open them for the player. |
+| Support units opening crates | Medium | Medium | P2 | Still TODO: support/passive units should beeline to crates and open them for the player. Sim currently auto-clicks crates when no healer enemy target exists. |
 | Necromancer unit | Medium/High | Medium/High | P2/P3 | Targets dead allied units/corpses and revives them as temporary zombie or skeleton units. Requires corpse/dead-unit tracking. |
 
 #### Shop / Progression
@@ -147,8 +154,8 @@ Priority key:
 4. **Unit Synergy + Pack Payoffs**
    First pass exists: data-driven synergies can apply cooldown, damage, parameter, and cohesion effects. Archer Volley, Footsoldier Phalanx, and Shield Wall are configured. Continue tuning and adding same-unit payoffs selectively so pack randomness feels exciting instead of punishing.
 
-5. **Drops / Crates / Recovery**
-   Add click-to-open crates or health drops. Then add support-unit crate behavior so players can invest in automation/passive utility.
+5. [DONE] **Drops / Crates / Recovery**
+   First pass complete: breakable crates have HP, spawn from enemy deaths, and apply data-driven recovery/buff/reinforcement/shield rewards. Continue tuning drop rates and reward weights, then add support-unit crate behavior so players can invest in automation/passive utility.
 
 6. **Progression Expansion**
    Continue cursor upgrades by chapter, revisit boss knockback resistance if proc tuning is not enough, and start tower self-defense tech. This is where the long-term tree starts feeling like a real idle game.
@@ -260,6 +267,16 @@ Current synergies:
 - **Shield Wall** — 2+ living Shieldbearers gain wider guard/taunt radii and cohesion.
 
 Bard haste and cooldown synergies stack multiplicatively in `Unit.effectiveCooldown()`.
+
+### Battlefield crates
+`public/data/crates.json` defines the crate layer:
+- `baseDropChance` and `maxActive` control baseline frequency.
+- `crates[]` defines crate HP, radius, spawn weight, optional `requiresTechId`, and crate-specific reward tables.
+- `rewards[]` defines data-driven reward hooks. Current supported types are `tower_heal`, `heal_all_units`, `random_unit`, `cursor_damage_buff`, `cursor_cooldown_buff`, `shield_all_units`, and `shield_tower`.
+
+Crates spawn from enemy deaths in `GameScene` and are damaged by cursor clicks through the shared `Targetable` contract. Crate reward unlocks are gated by tech IDs in the crate data. Tower and units have a simple shield absorb pool, shown as a blue ring/bar.
+
+The simulator mirrors the same crate data. Its cursor bot targets crates when no healer/support enemy is available, applies crate rewards, and reports `cratesOpened` plus `crateRewards` in run results.
 
 ### TechTreeScene
 Branch-row layout with mousewheel scrolling. `buildContent()` groups nodes by `branch` field, renders each branch as a horizontal row. Rebuilds on purchase. Layout is placeholder — user wants spatial DAG later.

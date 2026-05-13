@@ -222,6 +222,18 @@ export function applyPackBonusMods(nodes: TechNode[]) {
   }
 }
 
+export function applyCrateMods(baseDropChance: number, nodes: TechNode[]) {
+  let dropChance = baseDropChance
+
+  for (const effect of purchasedEffects(nodes)) {
+    if (effect.type === 'crate_drop_chance_bonus') dropChance += effect.value
+  }
+
+  return {
+    dropChance: Math.min(dropChance, 1),
+  }
+}
+
 // ─── Unit mod application ──────────────────────────────────────────
 export function applyUnitMods(data: UnitData, nodes: TechNode[]): UnitData {
   let atkBonus = 0, hpBonus = 0, rangeBonus = 0, cooldownMult = 1.0

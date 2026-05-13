@@ -24,6 +24,7 @@ export const gameDataAssets: DataAsset[] = [
   { key: 'bard', path: '/data/units/bard.json' },
   { key: 'balance', path: '/data/balance.json' },
   { key: 'shop_packs', path: '/data/shop_packs.json' },
+  { key: 'crates', path: '/data/crates.json' },
   { key: 'unit_synergies', path: '/data/unit_synergies.json' },
   { key: 'chapter1', path: '/data/chapters/chapter1.json' },
   { key: 'chapter2', path: '/data/chapters/chapter2.json' },

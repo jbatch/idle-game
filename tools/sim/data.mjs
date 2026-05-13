@@ -11,6 +11,7 @@ export function loadData() {
   const chapters = loadDirMap('chapters')
   const balance = readJson(path.join(DATA_DIR, 'balance.json'))
   const shopPacks = readJson(path.join(DATA_DIR, 'shop_packs.json')).packs
+  const crates = readJson(path.join(DATA_DIR, 'crates.json'))
   const techNodes = readJson(path.join(DATA_DIR, 'tech_tree.json')).nodes
   const unitSynergies = readJson(path.join(DATA_DIR, 'unit_synergies.json')).synergies
 
@@ -20,6 +21,7 @@ export function loadData() {
     chapters,
     balance,
     shopPacks,
+    crates,
     techNodes,
     unitSynergies,
   }

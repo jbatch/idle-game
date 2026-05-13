@@ -1,9 +1,10 @@
 import Phaser from 'phaser'
+import { Crate } from '../../entities/Crate'
 import { Enemy } from '../../entities/Enemy'
 import { Tower } from '../../entities/Tower'
 import { Unit } from '../../entities/Unit'
 import { ARENA_RADIUS, CX, CY, GAME_H, GAME_W } from '../../constants'
-import type { BalanceData, EnemyData, UnitData, UnitSynergyData } from '../../data/types'
+import type { BalanceData, CrateDropData, CrateKindData, CrateRewardData, EnemyData, ShopPackRoll, UnitData, UnitSynergyData } from '../../data/types'
 import { CursorAttack } from '../../input/CursorAttack'
 import { applyUnitSynergies } from '../../systems/UnitSynergies'
 import { combatScenarios, type CombatScenario, type ScenarioSpawn } from './scenarios'
@@ -15,7 +16,9 @@ export class ScenarioScene extends Phaser.Scene {
   private cursor?: CursorAttack
   private units: Unit[] = []
   private enemies: Enemy[] = []
+  private crates: Crate[] = []
   private unitSynergies: UnitSynergyData[] = []
+  private crateData!: CrateDropData
   private scenarioIndex = 0
 
   constructor() {
@@ -25,6 +28,7 @@ export class ScenarioScene extends Phaser.Scene {
   create() {
     this.arenaGfx = this.add.graphics()
     this.unitSynergies = (this.cache.json.get('unit_synergies') as { synergies: UnitSynergyData[] }).synergies
+    this.crateData = this.cache.json.get('crates') as CrateDropData
     this.hudText = this.add.text(12, 12, '', {
       fontSize: '13px',
       color: '#d8d8f0',
@@ -60,9 +64,13 @@ export class ScenarioScene extends Phaser.Scene {
       if (!unit.alive) this.units.splice(i, 1)
     }
 
+    for (let i = this.crates.length - 1; i >= 0; i--) {
+      if (!this.crates[i].alive) this.crates.splice(i, 1)
+    }
+
     if (this.cursor) {
       const ptr = this.input.activePointer
-      this.cursor.update(delta, ptr.x, ptr.y, this.enemies)
+      this.cursor.update(delta, ptr.x, ptr.y, [])
     }
 
     this.updateHud()
@@ -84,7 +92,7 @@ export class ScenarioScene extends Phaser.Scene {
 
     if (scenario.cursor) {
       this.cursor = new CursorAttack(this, scenario.cursor)
-      this.cursor.bindEnemies(() => this.enemies)
+      this.cursor.bindTargets(() => [...this.enemies, ...this.crates])
     }
 
     for (const spawn of scenario.units) {
@@ -93,6 +101,10 @@ export class ScenarioScene extends Phaser.Scene {
 
     for (const spawn of scenario.enemies) {
       this.spawnEnemies(spawn)
+    }
+
+    for (const spawn of scenario.crates ?? []) {
+      this.spawnCrates(spawn)
     }
 
     this.updateHud()
@@ -110,6 +122,17 @@ export class ScenarioScene extends Phaser.Scene {
     const data = this.cache.json.get(spawn.id) as EnemyData
     for (const position of this.spawnPositions(spawn)) {
       this.enemies.push(new Enemy(this, position.x, position.y, data))
+    }
+  }
+
+  private spawnCrates(spawn: ScenarioSpawn & { rewardId?: string }) {
+    const crateKind = this.crateData.crates.find(crate => crate.id === spawn.id)
+    if (!crateKind) return
+
+    for (const position of this.spawnPositions(spawn)) {
+      const reward = this.scenarioReward(crateKind, spawn.rewardId)
+      if (!reward) continue
+      this.crates.push(new Crate(this, position.x, position.y, crateKind, reward, crate => this.openCrate(crate)))
     }
   }
 
@@ -148,9 +171,61 @@ export class ScenarioScene extends Phaser.Scene {
     this.hudText.setText([
       `Scenario ${this.scenarioIndex + 1}/${combatScenarios.length}: ${scenario.name}`,
       scenario.description,
-      `Units: ${this.units.length}   Enemies: ${this.enemies.length}`,
+      `Units: ${this.units.length}   Enemies: ${this.enemies.length}   Crates: ${this.crates.length}`,
       ...(scenario.cursor ? ['Cursor test active: click inside the arena'] : []),
     ])
+  }
+
+  private scenarioReward(crateKind: CrateKindData, rewardId?: string): CrateRewardData | null {
+    const rewards = new Map(this.crateData.rewards.map(reward => [reward.id, reward]))
+    if (rewardId) return rewards.get(rewardId) ?? null
+    const entry = crateKind.rewardTable[0]
+    return entry ? rewards.get(entry.rewardId) ?? null : null
+  }
+
+  private openCrate(crate: Crate) {
+    switch (crate.reward.type) {
+      case 'tower_heal':
+        this.tower.heal(crate.reward.value)
+        break
+      case 'heal_all_units':
+        this.units.forEach(unit => unit.heal(crate.reward.value))
+        break
+      case 'random_unit':
+        this.openRandomUnitReward(crate.reward, crate.x, crate.y)
+        break
+      case 'shield_all_units':
+        this.units.forEach(unit => unit.applyShield(crate.reward.value))
+        break
+      case 'shield_tower':
+        this.tower.applyShield(crate.reward.value)
+        break
+      case 'cursor_damage_buff':
+      case 'cursor_cooldown_buff':
+        break
+    }
+  }
+
+  private openRandomUnitReward(reward: CrateRewardData, x: number, y: number) {
+    if (!reward.rollTable?.length) return
+    const count = reward.count ?? Math.max(1, reward.value)
+    for (let i = 0; i < count; i++) {
+      const unitId = this.rollWeightedUnit(reward.rollTable)
+      if (!unitId) continue
+      const data = this.cache.json.get(unitId) as UnitData
+      const angle = Phaser.Math.DegToRad(i * 37 + 20)
+      this.units.push(new Unit(this, x + Math.cos(angle) * 32, y + Math.sin(angle) * 32, data))
+    }
+  }
+
+  private rollWeightedUnit(rollTable: ShopPackRoll[]): string | null {
+    const total = rollTable.reduce((sum, roll) => sum + roll.weight, 0)
+    let pick = Math.random() * total
+    for (const roll of rollTable) {
+      pick -= roll.weight
+      if (pick <= 0) return roll.unitId
+    }
+    return rollTable[rollTable.length - 1]?.unitId ?? null
   }
 
   private currentScenario(): CombatScenario {
@@ -160,10 +235,12 @@ export class ScenarioScene extends Phaser.Scene {
   private destroyEntities() {
     for (const unit of this.units) unit.destroy()
     for (const enemy of this.enemies) enemy.destroy()
+    for (const crate of this.crates) crate.destroy()
     this.cursor?.destroy()
     if (this.tower) this.tower.destroy()
     this.cursor = undefined
     this.units = []
     this.enemies = []
+    this.crates = []
   }
 }

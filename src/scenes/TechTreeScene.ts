@@ -277,6 +277,7 @@ export class TechTreeScene extends Phaser.Scene {
     if (totals.has('tower_hp_bonus')) return `+${totals.get('tower_hp_bonus')} tower HP`
     if (totals.has('pack_bonus_tier1_chance')) return `${this.formatPercent(totals.get('pack_bonus_tier1_chance') ?? 0)} T1 pack bonus`
     if (totals.has('pack_bonus_tier2_chance')) return `${this.formatPercent(totals.get('pack_bonus_tier2_chance') ?? 0)} T2 pack bonus`
+    if (totals.has('crate_drop_chance_bonus')) return `${this.formatPercent(totals.get('crate_drop_chance_bonus') ?? 0)} crate drops`
 
     return null
   }
