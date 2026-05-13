@@ -16,6 +16,7 @@ Browser-based incremental roguelike with tower-defense mechanics. Defend a centr
 pnpm install
 pnpm dev        # http://localhost:5173 by default
 pnpm exec tsc --noEmit   # type check
+pnpm validate:data       # JSON content/schema consistency checks
 pnpm build      # production build verification
 pnpm sim -- --campaigns 100 --max-runs 60
 ```
@@ -29,6 +30,8 @@ Local app entrypoints:
 | `/` | Main SiegeLoop game |
 | `/tools/` | Local-only tools hub |
 | `/tools/scenario.html` | Scenario sandbox for combat and behavior verification |
+| `/tools/tech-editor.html` | Tech tree data/layout editor |
+| `/tools/unit-editor.html` | Unit data editor with live dummy preview |
 
 ## Game Flow
 
@@ -106,15 +109,16 @@ Synergy effects can alter stats, runtime behaviour parameters, or movement patte
 
 ## Tech Tree
 
-11 branches, 28 nodes. Spend PC to unlock permanent upgrades that persist across runs.
+12 branches, 38 nodes. Spend PC to unlock permanent upgrades that persist across runs.
 Some low-power upgrades are repeatable and increase in price each time.
 
 | Branch | Upgrades |
 |---|---|
-| Cursor | Cursor Focus ×4 → Knockback ×4 → Rapid Strike → Heavy Strike |
+| Cursor | Cursor Focus ×4 → Knockback ×4 → Rapid Strike → Heavy Strike → Siegebreaker, plus Cursor Reach → Wide Arc → Battlefield Sweep |
 | Deployment | Deployment Drills → Field Reserves → War Chest |
 | Supply | Field Scavenging ×3 → Specialist Salvage ×3 |
-| Tower | Fortify → Reinforce → Bastion |
+| Crates | Cache Scavenging → Cache Prospecting → Shielded Caches |
+| Tower | Fortify → Reinforce → Bastion, plus Retaliating Stone → Sharpened Battlements and Guard Pulse |
 | Per unit (×7) | Unit upgrades, many gated by stat quests |
 
 Repeatable early upgrades:
@@ -142,7 +146,7 @@ Press **\`** (backtick) in combat to open the in-game debug panel:
 
 Open **[CHEATS]** in the shop for the inspector panel:
 - **QUESTS tab** — view all quest IDs with completion status and progress
-- **TECH tab** — view all 28 tech nodes and owned status
+- **TECH tab** — view all tech nodes and owned status
 - **STATS tab** — view per-unit kill/heal/summon counters
 - **+100 PC** — inject currency
 - **RESET ALL PROGRESS** — wipe localStorage and restart
@@ -150,6 +154,8 @@ Open **[CHEATS]** in the shop for the inspector panel:
 ## Local Tools
 
 Local-only side apps live under `tools/` and reuse game data from `public/data/`.
+
+Roadmap and backlog tracking live in `TODO.md`.
 
 ### Scenario Sandbox
 
@@ -159,6 +165,23 @@ Open `/tools/scenario.html` while `pnpm dev` is running.
 - Press `R` to reset the current scenario.
 - Use this before and after behavior, targeting, combat readability, and balance changes.
 - Add focused fixtures in `src/tools/scenario/scenarios.ts` when introducing a new unit behavior, enemy behavior, effect, or combat mechanic.
+
+### Tech Tree Editor
+
+Open `/tools/tech-editor.html` while `pnpm dev` is running.
+
+- Edit tech node definitions in `public/data/tech_tree.json`.
+- Drag nodes, route dependency edges, and save runtime layout metadata in `public/data/tech_tree_layout.json`.
+- Use this for visual DAG layout work instead of hand-editing positions.
+
+### Unit Editor
+
+Open `/tools/unit-editor.html` while `pnpm dev` is running.
+
+- Create, duplicate, delete, reorder, and tune unit data from a GUI.
+- Edit core stats, behaviour, attack effect, tags, color, `params`, and `effects`.
+- Preview the selected unit against a dummy tower to check radius, color, range, attack cadence, and simple attack/heal/aura effects.
+- Saves unit files in `public/data/units/` and updates `public/data/unit_manifest.json`.
 
 ### Balance Simulator
 
@@ -185,6 +208,8 @@ src/
   apps/
     game/main.ts        — main game app entrypoint
     scenario/main.ts    — scenario sandbox app entrypoint
+    tech-editor/main.ts — tech tree editor app entrypoint
+    unit-editor/main.ts — unit editor app entrypoint
   data/
     types.ts            — TypeScript interfaces for all data schemas
   debug/
@@ -197,7 +222,7 @@ src/
     Unit.ts             — Unit entity (behaviours, steering, haste buff, heal, stat tracking)
   game/
     createPhaserGame.ts — shared Phaser game factory
-    loadGameData.ts     — shared JSON data manifest/loader
+    loadGameData.ts     — shared JSON data loader plus unit manifest loading
   input/
     CursorAttack.ts     — Mouse AOE attack (cooldown, knockback, damage)
   scenes/
@@ -220,7 +245,9 @@ public/data/
   balance.json          — dcBudget, towerHp, pcMultiplier
   shop_packs.json       — unopened pack definitions and weighted roll tables
   unit_synergies.json   — same-unit synergy thresholds and buffs
-  tech_tree.json        — 28 nodes across 11 branches
+  unit_manifest.json    — ordered list of unit IDs to load
+  tech_tree.json        — 38 nodes across 12 branches
+  tech_tree_layout.json — explicit tech tree node positions and edge routes
   chapters/             — chapter1.json, chapter2.json, chapter3.json
   enemies/              — 6 regular enemy types + 3 boss types
   units/                — footsoldier, archer, shieldbearer, healer, frost_mage, sentinel, bard
@@ -229,4 +256,7 @@ tools/
   index.html            — local tools hub
   balance-sim.mjs       — headless combat simulator CLI
   scenario.html         — scenario sandbox HTML entrypoint
+  tech-editor.html      — tech tree editor HTML entrypoint
+  unit-editor.html      — unit editor HTML entrypoint
+  validate-data.mjs     — JSON content/schema consistency checks
 ```
