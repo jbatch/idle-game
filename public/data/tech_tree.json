@@ -98,6 +98,36 @@
       "effect": { "type": "pack_bonus_tier2_chance", "value": 0.09 },
       "branch": "supply"
     },
+    {
+      "id": "cache_scavenging",
+      "name": "Cache Scavenging",
+      "description": "Enemies are more likely to leave breakable battlefield crates.",
+      "cost": 20,
+      "repeatable": { "maxLevel": 3, "costIncrease": 18 },
+      "requires": [],
+      "effect": { "type": "crate_drop_chance_bonus", "value": 0.05 },
+      "branch": "crates"
+    },
+    {
+      "id": "cache_prospecting",
+      "name": "Cache Prospecting",
+      "description": "Unlocks tougher reinforced crates with stronger cursor and reinforcement rewards.",
+      "cost": 60,
+      "requires": ["cache_scavenging"],
+      "questRequirement": "boss_chapter1_killed",
+      "effect": { "type": "crate_drop_chance_bonus", "value": 0.03 },
+      "branch": "crates"
+    },
+    {
+      "id": "shielded_caches",
+      "name": "Shielded Caches",
+      "description": "Unlocks aegis crates and shield rewards for the tower and squad.",
+      "cost": 105,
+      "requires": ["cache_prospecting"],
+      "questRequirement": "boss_chapter2_killed",
+      "effect": { "type": "crate_drop_chance_bonus", "value": 0.02 },
+      "branch": "crates"
+    },
 
     {
       "id": "tower_fortify",

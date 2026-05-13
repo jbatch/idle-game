@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { Enemy } from '../entities/Enemy'
+import type { Targetable } from '../data/types'
 import { playCursorImpactEffect } from '../effects/CombatEffects'
 
 const FULL_CIRCLE = Math.PI * 2
@@ -18,7 +19,7 @@ export class CursorAttack {
   private cooldownTimer: number = 0
   private pulseGraphics: Phaser.GameObjects.Graphics
   private pulseAlpha: number = 0
-  private getEnemies: () => Enemy[] = () => []
+  private getTargets: () => Targetable[] = () => []
   private pointerHandler: (ptr: Phaser.Input.Pointer) => void
 
   radius: number
@@ -35,7 +36,7 @@ export class CursorAttack {
     this.knockback = config.knockback
     this.knockbackChance = Phaser.Math.Clamp(config.knockbackChance, 0, 1)
     this.pointerHandler = (ptr: Phaser.Input.Pointer) => {
-      this.tryFire(ptr.x, ptr.y, this.getEnemies())
+      this.tryFire(ptr.x, ptr.y, this.getTargets())
     }
     this.pulseGraphics = scene.add.graphics().setDepth(10)
 
@@ -50,7 +51,7 @@ export class CursorAttack {
     this.knockbackChance = Phaser.Math.Clamp(config.knockbackChance, 0, 1)
   }
 
-  tryFire(x: number, y: number, enemies: Enemy[]): boolean {
+  tryFire(x: number, y: number, targets: Targetable[]): boolean {
     if (this.cooldownTimer > 0) return false
     this.cooldownTimer = this.cooldown
     this.pulseAlpha = 1
@@ -58,14 +59,14 @@ export class CursorAttack {
     const dmg = this.damage
     const kb  = this.knockback
     const knockbackTriggered = kb > 0 && Math.random() < this.knockbackChance
-    enemies.forEach(e => {
-      if (!e.alive) return
-      const dx = e.x - x
-      const dy = e.y - y
+    targets.forEach(target => {
+      if (!target.alive) return
+      const dx = target.x - x
+      const dy = target.y - y
       if (dx * dx + dy * dy <= this.radius * this.radius) {
-        e.takeDamage(dmg)
-        playCursorImpactEffect(this.scene, e.x, e.y, knockbackTriggered)
-        if (knockbackTriggered) e.applyKnockback(x, y, kb)
+        target.takeDamage(dmg)
+        playCursorImpactEffect(this.scene, target.x, target.y, knockbackTriggered)
+        if (knockbackTriggered && target.applyKnockback) target.applyKnockback(x, y, kb)
       }
     })
     return true
@@ -123,7 +124,11 @@ export class CursorAttack {
   }
 
   bindEnemies(getEnemies: () => Enemy[]) {
-    this.getEnemies = getEnemies
+    this.getTargets = getEnemies
+  }
+
+  bindTargets(getTargets: () => Targetable[]) {
+    this.getTargets = getTargets
   }
 
   destroy() {

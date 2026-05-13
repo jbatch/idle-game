@@ -10,8 +10,9 @@ const CLOSED_X = GAME_W + 4
 
 export interface DebugToggle {
   label: string
-  active: boolean
-  onToggle: (active: boolean) => void
+  active?: boolean
+  onToggle?: (active: boolean) => void
+  onPress?: () => void
 }
 
 export class DebugMenu {
@@ -51,13 +52,16 @@ export class DebugMenu {
   private buildButton(scene: Phaser.Scene, toggle: DebugToggle, y: number) {
     const activeBg  = 0x0e2211
     const inactiveBg = 0x0e0e1e
+    const actionBg = 0x181321
     const activeHover  = 0x163318
     const inactiveHover = 0x16162e
+    const actionHover = 0x241a31
+    const isAction = Boolean(toggle.onPress)
 
     const btn = scene.add.rectangle(
       PANEL_PAD, y,
       PANEL_W - PANEL_PAD * 2, BTN_H,
-      toggle.active ? activeBg : inactiveBg
+      isAction ? actionBg : toggle.active ? activeBg : inactiveBg
     ).setOrigin(0, 0).setInteractive({ useHandCursor: true })
 
     const lbl = scene.add.text(PANEL_PAD + 8, y + BTN_H / 2, toggle.label, {
@@ -65,26 +69,28 @@ export class DebugMenu {
     }).setOrigin(0, 0.5)
 
     const ind = scene.add.text(PANEL_W - PANEL_PAD - 8, y + BTN_H / 2,
-      toggle.active ? 'ON' : 'OFF', {
+      isAction ? 'RUN' : toggle.active ? 'ON' : 'OFF', {
         fontSize: '11px',
-        color: toggle.active ? '#44ff88' : '#554444',
+        color: isAction ? '#ddaa22' : toggle.active ? '#44ff88' : '#554444',
         fontFamily: 'monospace',
         fontStyle: 'bold',
       }
     ).setOrigin(1, 0.5)
 
-    btn.on('pointerover', () =>
-      btn.setFillStyle(toggle.active ? activeHover : inactiveHover)
-    )
+    btn.on('pointerover', () => btn.setFillStyle(isAction ? actionHover : toggle.active ? activeHover : inactiveHover))
     btn.on('pointerout', () =>
-      btn.setFillStyle(toggle.active ? activeBg : inactiveBg)
+      btn.setFillStyle(isAction ? actionBg : toggle.active ? activeBg : inactiveBg)
     )
     btn.on('pointerdown', () => {
+      if (isAction) {
+        toggle.onPress?.()
+        return
+      }
       toggle.active = !toggle.active
       btn.setFillStyle(toggle.active ? activeBg : inactiveBg)
       ind.setText(toggle.active ? 'ON' : 'OFF')
       ind.setColor(toggle.active ? '#44ff88' : '#554444')
-      toggle.onToggle(toggle.active)
+      toggle.onToggle?.(toggle.active)
     })
 
     this.container.add([btn, lbl, ind])

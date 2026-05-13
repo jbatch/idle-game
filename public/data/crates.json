@@ -1,0 +1,122 @@
+{
+  "baseDropChance": 0.08,
+  "maxActive": 4,
+  "crates": [
+    {
+      "id": "field_cache",
+      "name": "Field Cache",
+      "hp": 18,
+      "radius": 15,
+      "color": "0xcc8f3a",
+      "spawnWeight": 100,
+      "rewardTable": [
+        { "rewardId": "tower_patch", "weight": 20 },
+        { "rewardId": "unit_mending", "weight": 30 },
+        { "rewardId": "cursor_whetstone", "weight": 35 },
+        { "rewardId": "free_tier1_roll", "weight": 15 }
+      ]
+    },
+    {
+      "id": "reinforced_cache",
+      "name": "Reinforced Cache",
+      "hp": 42,
+      "radius": 18,
+      "color": "0x8cb8ff",
+      "spawnWeight": 35,
+      "requiresTechId": "cache_prospecting",
+      "rewardTable": [
+        { "rewardId": "tower_patch", "weight": 20 },
+        { "rewardId": "unit_mending", "weight": 25 },
+        { "rewardId": "cursor_quickening", "weight": 20 },
+        { "rewardId": "free_tier1_roll", "weight": 25 },
+        { "rewardId": "tower_aegis", "weight": 10 }
+      ]
+    },
+    {
+      "id": "aegis_cache",
+      "name": "Aegis Cache",
+      "hp": 70,
+      "radius": 20,
+      "color": "0x77f2d1",
+      "spawnWeight": 20,
+      "requiresTechId": "shielded_caches",
+      "rewardTable": [
+        { "rewardId": "unit_mending", "weight": 20 },
+        { "rewardId": "cursor_quickening", "weight": 15 },
+        { "rewardId": "free_tier1_roll", "weight": 20 },
+        { "rewardId": "tower_aegis", "weight": 20 },
+        { "rewardId": "squad_aegis", "weight": 25 }
+      ]
+    }
+  ],
+  "rewards": [
+    {
+      "id": "tower_patch",
+      "name": "Tower Patch",
+      "description": "Repairs the tower.",
+      "type": "tower_heal",
+      "weight": 1,
+      "value": 70
+    },
+    {
+      "id": "unit_mending",
+      "name": "Field Mending",
+      "description": "Heals all living units.",
+      "type": "heal_all_units",
+      "weight": 1,
+      "value": 28
+    },
+    {
+      "id": "cursor_whetstone",
+      "name": "Cursor Whetstone",
+      "description": "Temporarily increases cursor damage.",
+      "type": "cursor_damage_buff",
+      "weight": 1,
+      "value": 5,
+      "duration": 20
+    },
+    {
+      "id": "cursor_quickening",
+      "name": "Cursor Quickening",
+      "description": "Temporarily reduces cursor cooldown.",
+      "type": "cursor_cooldown_buff",
+      "weight": 1,
+      "value": 0.78,
+      "duration": 18,
+      "requiresTechId": "cache_prospecting"
+    },
+    {
+      "id": "free_tier1_roll",
+      "name": "Loose Reinforcement",
+      "description": "Adds one random Tier 1 unit to the current run.",
+      "type": "random_unit",
+      "weight": 1,
+      "value": 1,
+      "count": 1,
+      "requiresTechId": "cache_prospecting",
+      "rollTable": [
+        { "unitId": "footsoldier", "weight": 45, "rarity": "common" },
+        { "unitId": "archer", "weight": 45, "rarity": "common" },
+        { "unitId": "shieldbearer", "weight": 10, "rarity": "rare" }
+      ]
+    },
+    {
+      "id": "tower_aegis",
+      "name": "Tower Aegis",
+      "description": "Adds a temporary tower shield.",
+      "type": "shield_tower",
+      "weight": 1,
+      "value": 95,
+      "requiresTechId": "shielded_caches"
+    },
+    {
+      "id": "squad_aegis",
+      "name": "Squad Aegis",
+      "description": "Adds shields to all living units.",
+      "type": "shield_all_units",
+      "weight": 1,
+      "value": 35,
+      "requiresTechId": "shielded_caches"
+    }
+  ]
+}

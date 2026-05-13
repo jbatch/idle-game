@@ -4,6 +4,7 @@ export interface Targetable {
   radius: number
   alive: boolean
   takeDamage(amount: number): void
+  applyKnockback?(fromX: number, fromY: number, force: number): void
 }
 
 export interface StatusEffect {
@@ -17,6 +18,15 @@ export interface UnitBuff {
   duration: number
   magnitude: number   // cooldown reduction e.g. 0.5 = half cooldown
 }
+
+export type CrateRewardType =
+  | 'tower_heal'
+  | 'heal_all_units'
+  | 'random_unit'
+  | 'cursor_damage_buff'
+  | 'cursor_cooldown_buff'
+  | 'shield_all_units'
+  | 'shield_tower'
 
 export type UnitAttackEffect = 'melee_slash' | 'quick_projectile'
 
@@ -78,6 +88,37 @@ export interface ShopPackData {
   rollTable: ShopPackRoll[]
 }
 
+export interface CrateRewardData {
+  id: string
+  name: string
+  description: string
+  type: CrateRewardType
+  weight: number
+  value: number
+  duration?: number
+  count?: number
+  requiresTechId?: string
+  rollTable?: ShopPackRoll[]
+}
+
+export interface CrateKindData {
+  id: string
+  name: string
+  hp: number
+  radius: number
+  color: string
+  spawnWeight: number
+  requiresTechId?: string
+  rewardTable: { rewardId: string, weight: number }[]
+}
+
+export interface CrateDropData {
+  baseDropChance: number
+  maxActive: number
+  crates: CrateKindData[]
+  rewards: CrateRewardData[]
+}
+
 export type UnitSynergyEffect =
   | { type: 'cooldown_mult', value: number }
   | { type: 'attack_damage_bonus', value: number }
@@ -114,6 +155,7 @@ export interface BalanceData {
 export interface TechEffect {
   type: 'cursor_knockback' | 'cursor_knockback_chance' | 'cursor_cooldown' | 'cursor_damage' | 'tower_hp_bonus' | 'dc_budget_bonus'
        | 'pack_bonus_tier1_chance' | 'pack_bonus_tier2_chance'
+       | 'crate_drop_chance_bonus'
        | 'unit_atk_bonus' | 'unit_hp_bonus' | 'unit_range_bonus'
        | 'unit_cooldown_mult' | 'unit_param_bonus'
   value: number

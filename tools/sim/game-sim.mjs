@@ -15,14 +15,20 @@ export function runGameSimulation(data, options, rng) {
   const tech = buildTechRuntime(data.techNodes, options.techLevels)
   const cursor = {
     ...applyCursorMods(data.balance.cursor, tech),
+    baseDamage: 0,
+    baseCooldown: 0,
     cooldownTimer: 0,
+    buffs: [],
   }
+  cursor.baseDamage = cursor.damage
+  cursor.baseCooldown = cursor.cooldown
   const tower = {
     x: CX,
     y: CY,
     radius: TOWER_RADIUS,
     hp: applyTowerMods(data.balance.towerHp, tech),
     maxHp: applyTowerMods(data.balance.towerHp, tech),
+    shield: 0,
     alive: true,
   }
 
@@ -35,6 +41,11 @@ export function runGameSimulation(data, options, rng) {
     summoned: countBy(rawLoadout),
   }
   const enemies = []
+  const crates = []
+  const crateStats = {
+    opened: 0,
+    rewards: {},
+  }
   const schedule = [...chapter.spawnSchedule].sort((a, b) => a.time - b.time)
   let nextEvent = 0
   let elapsed = 0
@@ -58,7 +69,8 @@ export function runGameSimulation(data, options, rng) {
       waveFired = nextEvent
     }
 
-    if (cursor.cooldownTimer <= 0) fireBotCursor(cursor, enemies, rng)
+    tickCursorBuffs(cursor, options.dt)
+    if (cursor.cooldownTimer <= 0) fireBotCursor(cursor, enemies, crates, rng)
 
     for (const enemy of enemies) updateEnemy(enemy, options.dt, tower, units, enemies)
     applySynergies(units, data.unitSynergies)
@@ -69,6 +81,7 @@ export function runGameSimulation(data, options, rng) {
       if (enemy.alive) continue
       pc += Math.round(enemy.reward * data.balance.pcMultiplier)
       if (enemy.isBoss) bossAlive = false
+      maybeSpawnCrate(crates, data.crates, tech, enemy, rng)
       enemies.splice(i, 1)
     }
     for (let i = units.length - 1; i >= 0; i--) {
@@ -76,6 +89,15 @@ export function runGameSimulation(data, options, rng) {
         collectUnitStats(units[i], unitStats)
         units.splice(i, 1)
       }
+    }
+    for (let i = crates.length - 1; i >= 0; i--) {
+      const crate = crates[i]
+      if (crate.alive) continue
+      if (!crate.opened) {
+        applyCrateReward(crate.reward, cursor, tower, units, data.units, tech, unitStats, crateStats, rng, crate)
+        crate.opened = true
+      }
+      crates.splice(i, 1)
     }
 
     if (bossSpawned && !bossAlive) {
@@ -90,6 +112,8 @@ export function runGameSimulation(data, options, rng) {
         towerHp: tower.hp,
         loadout: rawLoadout,
         packsBought: countBy(options.packIds),
+        cratesOpened: crateStats.opened,
+        crateRewards: { ...crateStats.rewards },
         stats: unitStats,
       }
     }
@@ -112,6 +136,8 @@ export function runGameSimulation(data, options, rng) {
     towerHp: Math.max(0, tower.hp),
     loadout: rawLoadout,
     packsBought: countBy(options.packIds),
+    cratesOpened: crateStats.opened,
+    crateRewards: { ...crateStats.rewards },
     stats: unitStats,
   }
 }
@@ -193,6 +219,16 @@ function applyPackBonusMods(tech) {
   }
 }
 
+function applyCrateMods(crateData, tech) {
+  let dropChance = crateData.baseDropChance
+  for (const effect of purchasedEffects(tech)) {
+    if (effect.type === 'crate_drop_chance_bonus') dropChance += effect.value
+  }
+  return {
+    dropChance: clamp(dropChance, 0, 1),
+  }
+}
+
 function applyUnitMods(data, tech) {
   let attackDamage = data.attackDamage
   let hp = data.hp
@@ -247,6 +283,140 @@ function weightedUnitRoll(pack, rng) {
   return pack.rollTable.at(-1)?.unitId ?? null
 }
 
+function maybeSpawnCrate(crates, crateData, tech, enemy, rng) {
+  if (!crateData || crates.length >= crateData.maxActive) return
+  const { dropChance } = applyCrateMods(crateData, tech)
+  const chance = enemy.isBoss ? Math.min(1, dropChance * 2.5) : dropChance
+  if (rng() >= chance) return
+
+  const crateKind = rollCrateKind(crateData, tech, rng)
+  if (!crateKind) return
+  const reward = rollCrateReward(crateData, crateKind, tech, rng)
+  if (!reward) return
+
+  const pos = clampCratePosition(enemy.x, enemy.y, crateKind.radius)
+  crates.push({
+    kind: 'crate',
+    id: crateKind.id,
+    x: pos.x,
+    y: pos.y,
+    hp: crateKind.hp,
+    maxHp: crateKind.hp,
+    radius: crateKind.radius,
+    data: crateKind,
+    reward,
+    alive: true,
+    opened: false,
+  })
+}
+
+function rollCrateKind(crateData, tech, rng) {
+  const available = crateData.crates.filter(crate => !crate.requiresTechId || tech.level(crate.requiresTechId) > 0)
+  return weightedPick(available, crate => crate.spawnWeight, rng)
+}
+
+function rollCrateReward(crateData, crateKind, tech, rng) {
+  const rewards = new Map(crateData.rewards.map(reward => [reward.id, reward]))
+  const available = crateKind.rewardTable
+    .map(entry => ({ entry, reward: rewards.get(entry.rewardId) }))
+    .filter(item => item.reward && (!item.reward.requiresTechId || tech.level(item.reward.requiresTechId) > 0))
+  const picked = weightedPick(available, item => item.entry.weight * item.reward.weight, rng)
+  return picked?.reward ?? null
+}
+
+function applyCrateReward(reward, cursor, tower, units, unitData, tech, unitStats, crateStats, rng, crate) {
+  crateStats.opened += 1
+  crateStats.rewards[reward.id] = (crateStats.rewards[reward.id] ?? 0) + 1
+
+  if (reward.type === 'tower_heal') heal(tower, reward.value)
+  if (reward.type === 'heal_all_units') {
+    for (const unit of units) heal(unit, reward.value)
+  }
+  if (reward.type === 'random_unit') {
+    spawnRewardUnits(reward, crate, units, unitData, tech, unitStats, rng)
+  }
+  if (reward.type === 'cursor_damage_buff') {
+    cursor.buffs.push({ type: 'damage', value: reward.value, remaining: reward.duration ?? 8 })
+    refreshCursor(cursor)
+  }
+  if (reward.type === 'cursor_cooldown_buff') {
+    cursor.buffs.push({ type: 'cooldown', value: reward.value, remaining: reward.duration ?? 8 })
+    refreshCursor(cursor)
+  }
+  if (reward.type === 'shield_all_units') {
+    for (const unit of units) applyShield(unit, reward.value)
+  }
+  if (reward.type === 'shield_tower') applyShield(tower, reward.value)
+}
+
+function spawnRewardUnits(reward, crate, units, unitData, tech, unitStats, rng) {
+  if (!reward.rollTable?.length) return
+  const count = reward.count ?? Math.max(1, reward.value)
+  for (let i = 0; i < count; i++) {
+    const unitId = weightedPick(reward.rollTable, roll => roll.weight, rng)?.unitId
+    if (!unitId) continue
+    const raw = unitData[unitId]
+    if (!raw) continue
+    const data = applyUnitMods(raw, tech)
+    const angle = rng() * Math.PI * 2
+    const radius = 24 + i * 10
+    units.push({
+      kind: 'unit',
+      id: data.id,
+      x: crate.x + Math.cos(angle) * radius,
+      y: crate.y + Math.sin(angle) * radius,
+      hp: data.hp,
+      maxHp: data.hp,
+      shield: 0,
+      data,
+      radius: data.radius,
+      attackTimer: 0,
+      buffs: [],
+      synergyEffects: [],
+      kills: 0,
+      healed: 0,
+      statsCollected: false,
+      alive: true,
+    })
+    unitStats.summoned[unitId] = (unitStats.summoned[unitId] ?? 0) + 1
+  }
+}
+
+function tickCursorBuffs(cursor, dt) {
+  let changed = false
+  for (let i = cursor.buffs.length - 1; i >= 0; i--) {
+    cursor.buffs[i].remaining -= dt
+    if (cursor.buffs[i].remaining <= 0) {
+      cursor.buffs.splice(i, 1)
+      changed = true
+    }
+  }
+  if (changed) refreshCursor(cursor)
+}
+
+function refreshCursor(cursor) {
+  const damageBonus = cursor.buffs
+    .filter(buff => buff.type === 'damage')
+    .reduce((sum, buff) => sum + buff.value, 0)
+  const cooldownMult = cursor.buffs
+    .filter(buff => buff.type === 'cooldown')
+    .reduce((mult, buff) => mult * buff.value, 1)
+  cursor.damage = cursor.baseDamage + damageBonus
+  cursor.cooldown = cursor.baseCooldown * cooldownMult
+}
+
+function clampCratePosition(x, y, radius) {
+  const maxDist = ARENA_RADIUS - radius - 8
+  const dx = x - CX
+  const dy = y - CY
+  const dist = Math.sqrt(dx * dx + dy * dy)
+  if (dist <= maxDist) return { x, y }
+  return {
+    x: CX + (dx / Math.max(1, dist)) * maxDist,
+    y: CY + (dy / Math.max(1, dist)) * maxDist,
+  }
+}
+
 function spawnUnits(loadout, unitData, tech, rng) {
   const radius = 80
   const angleOffset = rng() * Math.PI * 2
@@ -262,6 +432,7 @@ function spawnUnits(loadout, unitData, tech, rng) {
       y: CY + Math.sin(angle) * radius,
       hp: data.hp,
       maxHp: data.hp,
+      shield: 0,
       data,
       radius: data.radius,
       attackTimer: 0,
@@ -329,8 +500,8 @@ function spawnPositions(event, rng) {
   return out
 }
 
-function fireBotCursor(cursor, enemies, rng) {
-  const target = chooseCursorTarget(cursor, enemies)
+function fireBotCursor(cursor, enemies, crates, rng) {
+  const target = chooseCursorTarget(cursor, enemies, crates)
   if (!target) return false
 
   cursor.cooldownTimer = cursor.cooldown
@@ -341,12 +512,26 @@ function fireBotCursor(cursor, enemies, rng) {
     damage(enemy, cursor.damage)
     if (knockbackTriggered) applyKnockback(enemy, target.x, target.y, cursor.knockback)
   }
+  for (const crate of crates) {
+    if (!crate.alive) continue
+    if (distanceSq(crate.x, crate.y, target.x, target.y) > cursor.radius * cursor.radius) continue
+    damage(crate, cursor.damage)
+  }
   return true
 }
 
-function chooseCursorTarget(cursor, enemies) {
+function chooseCursorTarget(cursor, enemies, crates) {
   const live = enemies.filter(enemy => enemy.alive)
-  if (live.length === 0) return null
+  const liveCrates = crates.filter(crate => crate.alive)
+  if (live.length === 0) return liveCrates.sort((a, b) => a.hp - b.hp)[0] ?? null
+
+  const hasHealerTarget = live.some(enemy => isSupportEnemy(enemy))
+  if (!hasHealerTarget && liveCrates.length > 0) {
+    return liveCrates.sort((a, b) => {
+      const hpDelta = a.hp / a.maxHp - b.hp / b.maxHp
+      return hpDelta || distance(a.x, a.y, CX, CY) - distance(b.x, b.y, CX, CY)
+    })[0]
+  }
 
   let best = null
   let bestScore = -Infinity
@@ -360,7 +545,7 @@ function chooseCursorTarget(cursor, enemies) {
       }
     }
 
-    const supportBonus = enemy.data.behaviour === 'healer_support' || enemy.data.tags.includes('support') ? 320 : 0
+    const supportBonus = isSupportEnemy(enemy) ? 320 : 0
     const bossBonus = enemy.isBoss ? 80 : 0
     const towerPressure = Math.max(0, 380 - distance(enemy.x, enemy.y, CX, CY)) * 0.35
     const killableBonus = enemy.hp <= cursor.damage ? 60 : 0
@@ -372,6 +557,10 @@ function chooseCursorTarget(cursor, enemies) {
     }
   }
   return best
+}
+
+function isSupportEnemy(enemy) {
+  return enemy.data.behaviour === 'healer_support' || enemy.data.tags.includes('support')
 }
 
 function updateEnemy(enemy, dt, tower, units, allies) {
@@ -952,7 +1141,9 @@ function applyKnockbackMotion(enemy, dt) {
 
 function damage(target, amount) {
   if (!target.alive) return false
-  target.hp = Math.max(0, target.hp - amount)
+  const absorbed = Math.min(target.shield ?? 0, amount)
+  target.shield = Math.max(0, (target.shield ?? 0) - absorbed)
+  target.hp = Math.max(0, target.hp - (amount - absorbed))
   if (target.hp <= 0) {
     target.alive = false
     return true
@@ -964,6 +1155,11 @@ function heal(target, amount) {
   const before = target.hp
   target.hp = Math.min(target.maxHp, target.hp + amount)
   return target.hp - before
+}
+
+function applyShield(target, amount) {
+  if (!target.alive) return
+  target.shield = (target.shield ?? 0) + amount
 }
 
 function moveToward(entity, x, y, amount) {
@@ -979,6 +1175,17 @@ export function countBy(items) {
     acc[item] = (acc[item] ?? 0) + 1
     return acc
   }, {})
+}
+
+function weightedPick(items, weightFor, rng) {
+  const total = items.reduce((sum, item) => sum + weightFor(item), 0)
+  if (total <= 0) return null
+  let pick = rng() * total
+  for (const item of items) {
+    pick -= weightFor(item)
+    if (pick <= 0) return item
+  }
+  return items.at(-1) ?? null
 }
 
 function clamp(value, min, max) {

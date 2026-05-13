@@ -10,6 +10,7 @@ export class Unit implements Targetable {
   y: number
   hp: number
   maxHp: number
+  shield: number = 0
   data: UnitData
   alive: boolean = true
 
@@ -560,13 +561,23 @@ export class Unit implements Targetable {
   heal(amount: number) {
     const actualHeal = Math.min(this.maxHp - this.hp, amount)
     this.hp = Math.min(this.maxHp, this.hp + amount)
-    floatHealNumber(this.scene, this.x, this.y, actualHeal)
+    if (actualHeal > 0) floatHealNumber(this.scene, this.x, this.y, actualHeal)
+    this.draw()
+  }
+
+  applyShield(amount: number) {
+    if (!this.alive) return
+    this.shield += amount
+    floatHealNumber(this.scene, this.x, this.y - 12, amount)
+    this.draw()
   }
 
   takeDamage(amount: number) {
     if (!this.alive) return
+    const absorbed = Math.min(this.shield, amount)
+    this.shield -= absorbed
+    this.hp -= amount - absorbed
     floatDamageNumber(this.scene, this.x, this.y, amount)
-    this.hp -= amount
     if (this.hp <= 0) {
       this.die()
     } else {
@@ -624,6 +635,11 @@ export class Unit implements Targetable {
       this.graphics.strokeCircle(this.x, this.y, this.data.radius + 5)
     }
 
+    if (this.shield > 0) {
+      this.graphics.lineStyle(2, 0x66ddff, 0.7)
+      this.graphics.strokeCircle(this.x, this.y, this.data.radius + 7)
+    }
+
     this.graphics.fillStyle(this.color, 1)
     this.graphics.fillCircle(this.x, this.y, this.data.radius)
     this.graphics.lineStyle(1, 0xffffff, 0.4)
@@ -638,6 +654,10 @@ export class Unit implements Targetable {
     this.hpBar.fillRect(bx, by, bw, bh)
     this.hpBar.fillStyle(0x44ff88, 1)
     this.hpBar.fillRect(bx, by, bw * (this.hp / this.maxHp), bh)
+    if (this.shield > 0) {
+      this.hpBar.fillStyle(0x66ddff, 0.9)
+      this.hpBar.fillRect(bx, by - 3, Math.min(bw, this.shield / this.maxHp * bw), 2)
+    }
   }
 
   destroy() {
