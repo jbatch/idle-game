@@ -58,6 +58,8 @@ const KNOWN_VISIBILITY = new Set(['always', 'available', 'purchased'])
 const KNOWN_FORMATIONS = new Set(['ring', 'cluster', 'line'])
 const KNOWN_RARITIES = new Set(['common', 'rare', 'specialist'])
 const KNOWN_EVENT_QUESTS = new Set(['boss_chapter1_killed', 'boss_chapter2_killed', 'boss_chapter3_killed'])
+const KNOWN_UNIT_BEHAVIOURS = new Set(['melee_basic', 'melee_taunt', 'ranged_kite', 'heal_support', 'aoe_slow', 'stationary_guard', 'aura_haste'])
+const KNOWN_UNIT_ATTACK_EFFECTS = new Set(['melee_slash', 'quick_projectile'])
 
 const errors = []
 const warnings = []
@@ -67,6 +69,8 @@ main()
 function main() {
   const data = loadAllData()
   validateUniqueIds(data)
+  validateUnitManifest(data)
+  validateUnits(data)
   validateTechTree(data)
   validateTechLayout(data)
   validateShopPacks(data)
@@ -83,6 +87,7 @@ function loadAllData() {
   const chapters = loadJsonDir('chapters')
   const techTree = loadJson('tech_tree.json')
   const techLayout = loadJson('tech_tree_layout.json')
+  const unitManifest = loadJson('unit_manifest.json')
   const shopPacks = loadJson('shop_packs.json')
   const crates = loadJson('crates.json')
   const synergies = loadJson('unit_synergies.json')
@@ -93,6 +98,7 @@ function loadAllData() {
     chapters,
     techTree,
     techLayout,
+    unitManifest,
     shopPacks,
     crates,
     synergies,
@@ -116,6 +122,65 @@ function validateUniqueIds(data) {
   expectUnique('crate id', data.crates.crates?.map(crate => crate.id) ?? [])
   expectUnique('crate reward id', data.crates.rewards?.map(reward => reward.id) ?? [])
   expectUnique('synergy id', data.synergies.synergies?.map(synergy => synergy.id) ?? [])
+}
+
+function validateUnitManifest(data) {
+  const unitIds = data.unitManifest.units ?? []
+  expectArray(data.unitManifest.units, 'unit_manifest.units')
+  expectUnique('unit manifest id', unitIds)
+
+  for (const unitId of unitIds) {
+    expectString(unitId, 'unit_manifest.units[]')
+    if (!data.unitIds.has(unitId)) error(`unit_manifest.units references missing unit "${unitId}"`)
+  }
+
+  for (const unitId of data.unitIds) {
+    if (!unitIds.includes(unitId)) error(`unit_manifest.units is missing unit "${unitId}"`)
+  }
+}
+
+function validateUnits(data) {
+  for (const unit of data.units) {
+    const at = `units/${unit.id ?? '(missing id)'}.json`
+    expectString(unit.id, `${at}.id`)
+    if (unit.__file && unit.id && unit.__file !== `${unit.id}.json`) error(`${at} filename should be "${unit.id}.json"`)
+    if (typeof unit.id === 'string' && !/^[a-z][a-z0-9_]*$/.test(unit.id)) error(`${at}.id must use lowercase snake_case`)
+    expectString(unit.name, `${at}.name`)
+    expectString(unit.description, `${at}.description`)
+    expectNumber(unit.cost, `${at}.cost`, { min: 0, integer: true })
+    expectNumber(unit.tier, `${at}.tier`, { min: 1, integer: true })
+    expectNumber(unit.hp, `${at}.hp`, { min: 1 })
+    expectNumber(unit.speed, `${at}.speed`, { min: 0 })
+    expectNumber(unit.attackDamage, `${at}.attackDamage`, { min: 0 })
+    expectNumber(unit.attackRange, `${at}.attackRange`, { min: 0 })
+    expectNumber(unit.attackCooldown, `${at}.attackCooldown`, { min: 0 })
+    expectNumber(unit.radius, `${at}.radius`, { min: 1 })
+    expectArray(unit.tags, `${at}.tags`)
+    for (const [index, tag] of (unit.tags ?? []).entries()) expectString(tag, `${at}.tags[${index}]`)
+
+    if (!KNOWN_UNIT_BEHAVIOURS.has(unit.behaviour)) error(`${at}.behaviour has unknown value "${unit.behaviour}"`)
+    if (!isDataColor(unit.color)) error(`${at}.color must be a 0xRRGGBB string`)
+
+    if (unit.effects !== undefined) {
+      if (!isRecord(unit.effects)) {
+        error(`${at}.effects must be an object`)
+      } else if (unit.effects.attack !== undefined && !KNOWN_UNIT_ATTACK_EFFECTS.has(unit.effects.attack)) {
+        error(`${at}.effects.attack has unknown value "${unit.effects.attack}"`)
+      }
+    }
+
+    if (unit.params !== undefined) {
+      if (!isRecord(unit.params)) {
+        error(`${at}.params must be an object`)
+      } else {
+        for (const [key, value] of Object.entries(unit.params)) {
+          const paramAt = `${at}.params.${key}`
+          if (typeof value === 'number') expectNumber(value, paramAt)
+          else if (typeof value !== 'boolean') error(`${paramAt} must be a number or boolean`)
+        }
+      }
+    }
+  }
 }
 
 function validateTechTree(data) {
@@ -376,12 +441,23 @@ function expectNumber(value, label, options = {}) {
   if (options.min !== undefined && value < options.min) error(`${label} must be >= ${options.min}`)
 }
 
+function isRecord(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function isDataColor(value) {
+  return typeof value === 'string' && /^0x[0-9a-fA-F]{6}$/.test(value)
+}
+
 function loadJsonDir(relativeDir) {
   const dir = path.join(DATA_DIR, relativeDir)
   return fs.readdirSync(dir)
     .filter(file => file.endsWith('.json'))
     .sort()
-    .map(file => loadJson(path.join(relativeDir, file)))
+    .map(file => {
+      const data = loadJson(path.join(relativeDir, file))
+      return isRecord(data) ? { ...data, __file: file } : data
+    })
 }
 
 function loadJson(relativePath) {

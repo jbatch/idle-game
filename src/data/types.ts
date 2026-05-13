@@ -30,9 +30,21 @@ export type CrateRewardType =
   | 'shield_tower'
 
 export type UnitAttackEffect = 'melee_slash' | 'quick_projectile'
+export type UnitBehaviour =
+  | 'melee_basic'
+  | 'melee_taunt'
+  | 'ranged_kite'
+  | 'heal_support'
+  | 'aoe_slow'
+  | 'stationary_guard'
+  | 'aura_haste'
 
 export interface UnitEffects {
   attack?: UnitAttackEffect
+}
+
+export interface UnitManifestData {
+  units: string[]
 }
 
 export interface EnemyData {
@@ -63,7 +75,7 @@ export interface UnitData {
   attackDamage: number
   attackRange: number
   attackCooldown: number
-  behaviour: string
+  behaviour: UnitBehaviour
   effects?: UnitEffects
   params?: Record<string, number | boolean>
   tags: string[]

@@ -1,0 +1,11 @@
+{
+  "units": [
+    "footsoldier",
+    "archer",
+    "shieldbearer",
+    "healer",
+    "frost_mage",
+    "sentinel",
+    "bard"
+  ]
+}

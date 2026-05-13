@@ -3,6 +3,7 @@ import type { TechNode } from '../data/types'
 import { techState, checkStatQuests } from '../systems/TechState'
 import { campaignLog, type CampaignRunRecord } from '../systems/CampaignLog'
 import { GAME_W, GAME_H } from '../constants'
+import { unitIdsFromCache } from '../game/loadGameData'
 
 const PX = 50
 const PY = 60
@@ -277,7 +278,7 @@ export class CheatPanel {
       ['─────────────', ''],
     ]
 
-    const unitIds = ['footsoldier', 'archer', 'shieldbearer', 'healer', 'frost_mage', 'sentinel', 'bard']
+    const unitIds = unitIdsFromCache(this.scene)
     for (const id of unitIds) {
       const name = id.replace('_', ' ')
       const kills    = techState.getStat(`${id}_kills`)

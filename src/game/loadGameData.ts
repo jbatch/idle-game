@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import type { UnitManifestData } from '../data/types'
 
 type DataAsset = {
   key: string
@@ -15,13 +16,7 @@ export const gameDataAssets: DataAsset[] = [
   { key: 'boss_chapter1', path: '/data/enemies/boss_chapter1.json' },
   { key: 'boss_chapter2', path: '/data/enemies/boss_chapter2.json' },
   { key: 'boss_chapter3', path: '/data/enemies/boss_chapter3.json' },
-  { key: 'footsoldier', path: '/data/units/footsoldier.json' },
-  { key: 'archer', path: '/data/units/archer.json' },
-  { key: 'shieldbearer', path: '/data/units/shieldbearer.json' },
-  { key: 'healer', path: '/data/units/healer.json' },
-  { key: 'frost_mage', path: '/data/units/frost_mage.json' },
-  { key: 'sentinel', path: '/data/units/sentinel.json' },
-  { key: 'bard', path: '/data/units/bard.json' },
+  { key: 'unit_manifest', path: '/data/unit_manifest.json' },
   { key: 'balance', path: '/data/balance.json' },
   { key: 'shop_packs', path: '/data/shop_packs.json' },
   { key: 'crates', path: '/data/crates.json' },
@@ -37,4 +32,23 @@ export function loadGameData(scene: Phaser.Scene): void {
   for (const asset of gameDataAssets) {
     scene.load.json(asset.key, asset.path)
   }
+}
+
+export function unitIdsFromCache(scene: Phaser.Scene): string[] {
+  const manifest = scene.cache.json.get('unit_manifest') as UnitManifestData | undefined
+  return manifest?.units ?? []
+}
+
+export function loadUnitDataFromManifest(scene: Phaser.Scene, onComplete: () => void): void {
+  const unitIds = unitIdsFromCache(scene).filter(id => !scene.cache.json.exists(id))
+  if (unitIds.length === 0) {
+    onComplete()
+    return
+  }
+
+  scene.load.once('complete', onComplete)
+  for (const id of unitIds) {
+    scene.load.json(id, `/data/units/${id}.json`)
+  }
+  scene.load.start()
 }

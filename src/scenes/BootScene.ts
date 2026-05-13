@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { loadGameData } from '../game/loadGameData'
+import { loadGameData, loadUnitDataFromManifest } from '../game/loadGameData'
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -11,6 +11,6 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
-    this.scene.start('ShopScene')
+    loadUnitDataFromManifest(this, () => this.scene.start('ShopScene'))
   }
 }

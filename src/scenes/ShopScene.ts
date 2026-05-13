@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import type { UnitData, BalanceData, TechNode, ShopPackData, ShopPackRoll } from '../data/types'
 import { GAME_W, GAME_H } from '../constants'
 import { debugState } from '../debug/DebugState'
+import { unitIdsFromCache } from '../game/loadGameData'
 import { techState, applyDeploymentBudgetMods } from '../systems/TechState'
 import { campaignLog } from '../systems/CampaignLog'
 import { CheatPanel } from '../ui/CheatPanel'
@@ -24,9 +25,6 @@ const PANEL_W = 314
 const PANEL_Y = 100
 const PANEL_H = GAME_H - PANEL_Y - 20
 
-// IDs of units available in the shop (ordered)
-const AVAILABLE_UNITS = ['footsoldier', 'archer', 'shieldbearer', 'healer', 'frost_mage', 'sentinel', 'bard']
-
 export class ShopScene extends Phaser.Scene {
   private balance!: BalanceData
   private unitMap!: Record<string, UnitData>
@@ -46,7 +44,7 @@ export class ShopScene extends Phaser.Scene {
   create() {
     this.balance  = this.cache.json.get('balance')  as BalanceData
     this.unitMap  = {}
-    for (const id of AVAILABLE_UNITS) {
+    for (const id of unitIdsFromCache(this)) {
       this.unitMap[id] = this.cache.json.get(id) as UnitData
     }
     this.packs = (this.cache.json.get('shop_packs') as { packs: ShopPackData[] }).packs
