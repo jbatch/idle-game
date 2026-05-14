@@ -123,7 +123,7 @@
       "description": "Starting DC +2",
       "cost": 120,
       "requires": ["deployment_reserves"],
-      "questRequirement": "pack_tier2_specialist:bought:8",
+      "questRequirement": "pack_tier2_specialist:bought:4",
       "effect": { "type": "dc_budget_bonus", "value": 2 },
       "branch": "deployment"
     },
@@ -133,7 +133,7 @@
       "description": "Starting DC +2",
       "cost": 170,
       "requires": ["deployment_specialist_muster"],
-      "questRequirement": "pack_tier2_specialist:bought:14",
+      "questRequirement": "pack_tier2_specialist:bought:12",
       "effect": { "type": "dc_budget_bonus", "value": 2 },
       "branch": "deployment"
     },

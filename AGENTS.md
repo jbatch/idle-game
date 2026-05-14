@@ -217,7 +217,7 @@ Current packs:
 - **Tier 1 Recruit Pack** — 1 DC, 1 roll: Footsoldier 45%, Archer 45%, Shieldbearer 10%.
 - **Tier 1 Squad Pack** — 3 DC, 4 rolls, requires `pack_tier1_recruit:bought:15`: same T1 roll table.
 - **Tier 2 Specialist Pack** — 2 DC, 1 roll, requires `boss_chapter1_killed`: Healer, Frost Mage, Sentinel, Bard at equal weights.
-- **Tier 2 Squad Pack** — 6 DC, 4 rolls, requires `boss_chapter1_killed` and `pack_tier2_specialist:bought:15`: same T2 roll table.
+- **Tier 2 Squad Pack** — 6 DC, 4 rolls, requires `boss_chapter1_killed` and `pack_tier2_specialist:bought:12`: same T2 roll table.
 
 Pack purchase stats are recorded when the player starts a run with unopened packs selected, using keys like `pack_tier1_recruit_bought`. Supply tech can add bonus rolls at battle start; bonus units are highlighted in the pack reveal before combat begins.
 

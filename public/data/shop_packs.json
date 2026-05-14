@@ -49,7 +49,7 @@
       "cost": 6,
       "rolls": 4,
       "maxPurchases": 2,
-      "questRequirements": ["boss_chapter1_killed", "pack_tier2_specialist:bought:15"],
+      "questRequirements": ["boss_chapter1_killed", "pack_tier2_specialist:bought:12"],
       "rollTable": [
         { "unitId": "healer", "weight": 25, "rarity": "specialist" },
         { "unitId": "frost_mage", "weight": 25, "rarity": "specialist" },

@@ -221,6 +221,8 @@ export class CheatPanel {
       'boss_chapter2_killed',
       'boss_chapter3_killed',
       'pack_tier1_recruit:bought:15',
+      'pack_tier2_specialist:bought:4',
+      'pack_tier2_specialist:bought:12',
       'pack_tier2_specialist:bought:15',
     ]) {
       ids.add(req)
