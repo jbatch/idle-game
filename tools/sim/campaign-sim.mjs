@@ -95,20 +95,7 @@ function chooseCampaignChapter(data, state) {
     const chapter = data.chapters[id]
     return chapter && requirementsMet(chapter, state)
   })
-  const target = unlocked.find(id => !state.clearRuns[id])
-  if (!target) return null
-
-  const targetIndex = CHAPTER_IDS.indexOf(target)
-  const previous = CHAPTER_IDS[targetIndex - 1]
-  if (
-    previous &&
-    state.clearRuns[previous] &&
-    (state.failedStreak[target] ?? 0) >= 3
-  ) {
-    state.failedStreak[target] = 0
-    return previous
-  }
-  return target
+  return unlocked.find(id => !state.clearRuns[id]) ?? null
 }
 
 function campaignDcBudget(data, state) {
@@ -134,13 +121,18 @@ function buyCampaignPacks(data, state, chapterId, budget) {
 
   while (remaining > 0) {
     const pack = available
-      .filter(item => item.cost <= remaining)
+      .filter(item => item.cost <= remaining && !packLimitReached(item, chosen))
       .sort((a, b) => campaignPackScore(b, chapterId) - campaignPackScore(a, chapterId))[0]
     if (!pack) break
     chosen.push(pack.id)
     remaining -= pack.cost
   }
   return chosen
+}
+
+function packLimitReached(pack, chosen) {
+  if (!pack.maxPurchases) return false
+  return chosen.filter(id => id === pack.id).length >= pack.maxPurchases
 }
 
 function campaignPackScore(pack, chapterId) {

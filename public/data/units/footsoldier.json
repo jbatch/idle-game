@@ -7,7 +7,7 @@
   "speed": 85,
   "attackDamage": 10,
   "attackRange": 32,
-  "attackCooldown": 1.0,
+  "attackCooldown": 1,
   "behaviour": "melee_basic",
   "effects": { "attack": "melee_slash" },
   "params": { "separationRadius": 28 },

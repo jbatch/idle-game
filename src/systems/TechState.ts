@@ -6,6 +6,7 @@ const TECH_KEY   = 'siegeloop_tech'
 const TECH_LEVELS_KEY = 'siegeloop_tech_levels'
 const QUESTS_KEY = 'siegeloop_quests'
 const STATS_KEY  = 'siegeloop_stats'
+const SHOP_BRIEFING_DISMISSED_KEY = 'siegeloop_shop_briefing_dismissed'
 
 function loadSet(key: string): Set<string> {
   try { return new Set(JSON.parse(localStorage.getItem(key) ?? '[]')) }
@@ -132,6 +133,14 @@ export const techState = {
   getStat(key: string): number {
     return loadStats()[key] ?? 0
   },
+  hasProgress(): boolean {
+    if (this.pc > 0) return true
+    if (this.purchased.size > 0) return true
+    if (Object.values(this.levels).some(level => level > 0)) return true
+    if (this.completedQuests.size > 0) return true
+    if (campaignLog.records.length > 0 || campaignLog.pending) return true
+    return Object.values(loadStats()).some(value => value > 0)
+  },
 
   // ─── Node availability ─────────────────────────────────────────
   isAvailable(node: TechNode): boolean {
@@ -148,6 +157,7 @@ export const techState = {
     localStorage.removeItem(TECH_LEVELS_KEY)
     localStorage.removeItem(QUESTS_KEY)
     localStorage.removeItem(STATS_KEY)
+    localStorage.removeItem(SHOP_BRIEFING_DISMISSED_KEY)
     campaignLog.clear()
   },
 }

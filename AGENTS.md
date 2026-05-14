@@ -28,7 +28,7 @@ The `.claude/` directory is local-only and ignored by git.
 
 ## Current Status
 
-Layers 1–8 (recovery + progression pass) plus the first editor-tooling pass are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, first-pass unopened shop packs, same-unit synergy payoffs, cursor proc tuning, supply pack-bonus tech, breakable battlefield crates, a first-pass cursor/tower progression expansion, and local GUI editors for tech tree and unit data. This is the **v0.1.7 checkpoint**.
+Layers 1–8 (recovery + progression pass) plus the first editor-tooling and v0.2.0 progression-polish pass are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, capped unopened shop packs, same-unit synergy payoffs, cursor proc tuning, supply pack-bonus tech, breakable battlefield crates, cursor/tower/DC progression expansion, and local GUI editors for tech tree and unit data. This is the **v0.2.0 checkpoint**.
 
 ### v0.1.2 Additions
 - Multi-entry Vite app structure: main game plus local-only side apps.
@@ -77,6 +77,17 @@ Layers 1–8 (recovery + progression pass) plus the first editor-tooling pass ar
 - Data validation now covers unit files, unit manifest consistency, filename/id matching, stat ranges, behaviours, attack effects, params, tags, and colors.
 - Tech tree editor/config refactor exists at `/tools/tech-editor.html`, saving `public/data/tech_tree.json` and `public/data/tech_tree_layout.json`.
 - Runtime TechTreeScene now reads explicit layout/edge metadata from `tech_tree_layout.json` while preserving the branch-row fallback.
+
+### v0.2.0 Additions
+- Start menu now distinguishes fresh saves from existing progress with Start Run / Continue Run behavior.
+- First-shop briefing dismissal persists across refreshes and debug reset clears it with other progress.
+- Shop cheat inspector opens with backtick in debug mode; achievement gates can be individually or bulk unlocked for testing.
+- Shop pack cards now hide exact roll percentages, use rarity labels, and cap purchases at 4 singles or 2 squad packs per type.
+- Shop draft pack selections persist when visiting the tech tree and returning.
+- Cleared chapters are marked and skipped automatically; wins advance the active chapter to the next uncleared chapter to avoid old-level farming.
+- Ending a run from pause now banks earned PC and shows a Run Abandoned result instead of silently returning to shop.
+- Tier 2 first upgrades unlock after summoning each specialist once; two extra +2 DC specialist deployment nodes support the Chapter 2/3 power ramp.
+- Game over crate rewards summarize counts by reward type, and the campaign simulator mirrors pack caps and no-farming progression.
 
 ### Development Workflow Notes
 - When adding or changing combat mechanics, enemy behavior, unit behavior, targeting, movement, effects, or balance-sensitive tuning, add or update at least one focused scenario fixture in `src/tools/scenario/scenarios.ts`.

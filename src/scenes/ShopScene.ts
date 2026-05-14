@@ -12,9 +12,9 @@ import { playRingPulse, playSparkBurst, playTextToast } from '../effects/CombatE
 import { fadeInScene, fadeToScene } from '../ui/sceneTransitions'
 
 const CHAPTER_DEFS = [
-  { id: 'chapter1', questReq: null },
-  { id: 'chapter2', questReq: 'boss_chapter1_killed' },
-  { id: 'chapter3', questReq: 'boss_chapter2_killed' },
+  { id: 'chapter1', questReq: null, clearQuest: 'boss_chapter1_killed' },
+  { id: 'chapter2', questReq: 'boss_chapter1_killed', clearQuest: 'boss_chapter2_killed' },
+  { id: 'chapter3', questReq: 'boss_chapter2_killed', clearQuest: 'boss_chapter3_killed' },
 ]
 
 const CARD_X = 20
@@ -27,7 +27,20 @@ const PANEL_X = 568
 const PANEL_W = 314
 const PANEL_Y = 100
 const PANEL_H = GAME_H - PANEL_Y - 20
-let firstShopBriefingShown = false
+const SHOP_BRIEFING_DISMISSED_KEY = 'siegeloop_shop_briefing_dismissed'
+let draftPackPurchases: string[] = []
+
+export function clearDraftShopPacks() {
+  draftPackPurchases = []
+}
+
+function hasDismissedShopBriefing(): boolean {
+  return localStorage.getItem(SHOP_BRIEFING_DISMISSED_KEY) === 'true'
+}
+
+function dismissShopBriefing() {
+  localStorage.setItem(SHOP_BRIEFING_DISMISSED_KEY, 'true')
+}
 
 export class ShopScene extends Phaser.Scene {
   private balance!: BalanceData
@@ -55,20 +68,24 @@ export class ShopScene extends Phaser.Scene {
     }
     this.packs = (this.cache.json.get('shop_packs') as { packs: ShopPackData[] }).packs
 
-    this.packPurchases = []
-    this.dcSpent  = 0
+    this.packPurchases = draftPackPurchases.filter(id => this.packs.some(pack => pack.id === id))
+    this.dcSpent = this.packPurchases.reduce((sum, id) => sum + (this.packs.find(pack => pack.id === id)?.cost ?? 0), 0)
 
     const nodes = (this.cache.json.get('tech_tree') as { nodes: TechNode[] }).nodes
     techState.normalizeLevels(nodes)
     this.dcBudget = applyDeploymentBudgetMods(this.balance.dcBudget, nodes)
+    this.pruneInvalidDraftPacks()
+    this.ensureCurrentChapter()
 
     this.add.rectangle(0, 0, GAME_W, GAME_H, 0x080810).setOrigin(0, 0)
     this.buildHeader()
     this.buildCards()
     this.buildLoadoutPanel()
-    if (this.debugToolsEnabled()) this.cheatPanel = new CheatPanel(this, nodes)
-    if (!firstShopBriefingShown) {
-      firstShopBriefingShown = true
+    if (this.debugToolsEnabled()) {
+      this.cheatPanel = new CheatPanel(this, nodes)
+      this.bindDebugCheatHotkey()
+    }
+    if (!hasDismissedShopBriefing()) {
       this.time.delayedCall(180, () => this.showBriefing())
     }
   }
@@ -110,15 +127,6 @@ export class ShopScene extends Phaser.Scene {
     techBtn.on('pointerdown', () => fadeToScene(this, 'TechTreeScene', undefined, { sfx: 'ui_click' }))
 
     if (this.debugToolsEnabled()) {
-      const cheatsBtn = this.add.text(GAME_W - 20, 52, '[ CHEATS ]', {
-        fontSize: '11px', color: '#334433', fontFamily: 'monospace',
-      }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true })
-      cheatsBtn.on('pointerover', () => cheatsBtn.setColor('#557755'))
-      cheatsBtn.on('pointerout',  () => cheatsBtn.setColor('#334433'))
-      cheatsBtn.on('pointerdown', () => this.cheatPanel?.open())
-    }
-
-    if (this.debugToolsEnabled()) {
       const runsBtn = this.add.text(GAME_W - 20, 74, '[ RUN LOG ]', {
         fontSize: '11px', color: '#334455', fontFamily: 'monospace',
       }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true })
@@ -135,16 +143,17 @@ export class ShopScene extends Phaser.Scene {
     CHAPTER_DEFS.forEach((def, i) => {
       const chData = this.cache.json.get(def.id) as { name: string }
       const isUnlocked = !def.questReq || techState.questDone(def.questReq)
+      const isCleared = techState.questDone(def.clearQuest)
       const isActive   = debugState.chapter === def.id
       const x = startX + i * slotW
 
-      const label = isUnlocked ? chData.name : '???'
-      const color = isActive ? '#8899cc' : isUnlocked ? '#445577' : '#2a3344'
+      const label = isUnlocked ? `${chData.name}${isCleared ? ' ✓' : ''}` : '???'
+      const color = isActive ? '#8899cc' : isUnlocked && !isCleared ? '#445577' : '#2a3344'
       const btn = this.add.text(x, chapterY, label, {
         fontSize: '12px', color, fontFamily: 'monospace',
       }).setOrigin(0.5)
 
-      if (isUnlocked) {
+      if (isUnlocked && !isCleared) {
         btn.setInteractive({ useHandCursor: true })
         btn.on('pointerover', () => btn.setColor(isActive ? '#aabbdd' : '#667799'))
         btn.on('pointerout',  () => btn.setColor(color))
@@ -223,8 +232,8 @@ export class ShopScene extends Phaser.Scene {
       fontSize: '14px', color: '#ddaa22', fontFamily: 'monospace',
     }).setOrigin(1, 0)
 
-    // Roll count + pool summary
-    const rollText = `${pack.rolls} unopened roll${pack.rolls === 1 ? '' : 's'}`
+    // Hidden unit count + pool summary
+    const rollText = `${pack.rolls} hidden unit${pack.rolls === 1 ? '' : 's'}`
     this.add.text(textX, y + 38, rollText, {
       fontSize: '11px', color: '#667799', fontFamily: 'monospace',
     })
@@ -265,6 +274,7 @@ export class ShopScene extends Phaser.Scene {
         ease: 'Quad.easeOut',
       })
       this.packPurchases.push(pack.id)
+      this.saveDraftPackPurchases()
       this.dcSpent += pack.cost
       this.refreshDCText()
       this.refreshLoadout()
@@ -289,7 +299,7 @@ export class ShopScene extends Phaser.Scene {
           return
         }
         const canBuy = this.canBuyPack(pack)
-        addText.setText(canBuy ? 'BUY' : 'FULL')
+        addText.setText(canBuy ? 'BUY' : this.isPackAtLimit(pack) ? 'MAX' : 'FULL')
         addText.setColor(canBuy ? '#6688cc' : '#334455')
       },
     })
@@ -301,7 +311,12 @@ export class ShopScene extends Phaser.Scene {
   }
 
   private canBuyPack(pack: ShopPackData): boolean {
-    return this.isPackUnlocked(pack) && this.dcSpent + pack.cost <= this.dcBudget
+    return this.isPackUnlocked(pack) && !this.isPackAtLimit(pack) && this.dcSpent + pack.cost <= this.dcBudget
+  }
+
+  private isPackAtLimit(pack: ShopPackData): boolean {
+    if (!pack.maxPurchases) return false
+    return (this.packPurchaseCounts()[pack.id] ?? 0) >= pack.maxPurchases
   }
 
   private packLockText(pack: ShopPackData): string {
@@ -333,16 +348,16 @@ export class ShopScene extends Phaser.Scene {
       const label = this.rarityLabel(roll.rarity)
       const unit = this.unitMap[roll.unitId]
       const name = unit?.name ?? roll.unitId
-      const entry = roll.rarity === 'specialist' ? name : `${name} ${roll.weight}%`
-      groups.set(label, [...(groups.get(label) ?? []), entry])
+      const names = groups.get(label) ?? []
+      if (!names.includes(name)) names.push(name)
+      groups.set(label, names)
     }
     return [...groups.entries()].map(([label, names]) => `${label}: ${names.join(', ')}`).join('   ')
   }
 
   private rarityLabel(rarity: ShopPackRoll['rarity']): string {
     if (rarity === 'common') return 'Common'
-    if (rarity === 'rare') return 'Rare'
-    return 'Specialist'
+    return 'Rare'
   }
 
   // ─── Loadout panel ───────────────────────────────────────────────
@@ -425,6 +440,7 @@ export class ShopScene extends Phaser.Scene {
           const purchaseIndex = this.packPurchases.lastIndexOf(id)
           if (purchaseIndex < 0) return
           this.packPurchases.splice(purchaseIndex, 1)
+          this.saveDraftPackPurchases()
           this.dcSpent -= pack.cost
           this.refreshDCText()
           this.refreshLoadout()
@@ -484,12 +500,57 @@ export class ShopScene extends Phaser.Scene {
       completedQuests: [...techState.completedQuests],
     })
     for (const packId of this.packPurchases) techState.incrementStat(`pack_${packId}_bought`)
+    draftPackPurchases = []
     playRingPulse(this, PANEL_X + PANEL_W / 2, PANEL_Y + PANEL_H - 34, 44, 0xddaa22)
     fadeToScene(this, 'GameScene', { packs: [...this.packPurchases], campaignRunId: run.id }, { duration: 420, sfx: 'run_start' })
   }
 
   private debugToolsEnabled(): boolean {
     return new URLSearchParams(window.location.search).has('debug')
+  }
+
+  private bindDebugCheatHotkey() {
+    this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
+      if (e.key !== '`') return
+      this.cheatPanel?.toggle()
+    })
+  }
+
+  private ensureCurrentChapter() {
+    const current = CHAPTER_DEFS.find(def => def.id === debugState.chapter)
+    const currentUnlocked = current && (!current.questReq || techState.questDone(current.questReq))
+    if (current && currentUnlocked && !techState.questDone(current.clearQuest)) return
+    debugState.chapter = this.nextPlayableChapterId()
+  }
+
+  private nextPlayableChapterId(): string {
+    const next = CHAPTER_DEFS.find(def => {
+      const unlocked = !def.questReq || techState.questDone(def.questReq)
+      return unlocked && !techState.questDone(def.clearQuest)
+    })
+    return next?.id ?? CHAPTER_DEFS[CHAPTER_DEFS.length - 1].id
+  }
+
+  private pruneInvalidDraftPacks() {
+    const kept: string[] = []
+    let spent = 0
+    for (const packId of this.packPurchases) {
+      const pack = this.packs.find(item => item.id === packId)
+      if (!pack) continue
+      if (!this.isPackUnlocked(pack)) continue
+      const count = kept.filter(id => id === packId).length
+      if (pack.maxPurchases && count >= pack.maxPurchases) continue
+      if (spent + pack.cost > this.dcBudget) continue
+      kept.push(packId)
+      spent += pack.cost
+    }
+    this.packPurchases = kept
+    this.dcSpent = spent
+    this.saveDraftPackPurchases()
+  }
+
+  private saveDraftPackPurchases() {
+    draftPackPurchases = [...this.packPurchases]
   }
 
   private showBriefing() {
@@ -531,6 +592,7 @@ export class ShopScene extends Phaser.Scene {
     close.on('pointerout', () => close.setColor('#ddaa22'))
     close.on('pointerdown', () => {
       audioManager.playSfx(this, 'ui_click')
+      dismissShopBriefing()
       items.forEach(item => item.destroy())
     })
   }

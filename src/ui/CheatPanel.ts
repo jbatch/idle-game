@@ -151,25 +151,31 @@ export class CheatPanel {
     const out: Phaser.GameObjects.GameObject[] = []
     let y = 8
 
-    const nodeQuests = this.nodes.flatMap(n => this.nodeQuestRequirements(n))
-    // Also show chapter boss quests not in node list
-    const extraQuests = [
-      'boss_chapter2_killed',
-      'boss_chapter3_killed',
-      'pack_tier1_recruit:bought:15',
-      'pack_tier2_specialist:bought:15',
-    ].filter(
-      q => !nodeQuests.includes(q)
-    )
+    const allQuests = this.allQuestRows()
 
-    const allQuests: { id: string; label: string }[] = [
-      ...nodeQuests.map(q => ({ id: q, label: this.formatQuestLabel(q) })),
-      ...extraQuests.map(q => ({ id: q, label: q })),
-    ]
+    const unlockAll = this.scene.add.text(16, y, '[ UNLOCK ALL ACHIEVEMENTS ]', {
+      fontSize: '12px', color: '#7755aa', fontFamily: 'monospace', fontStyle: 'bold',
+    }).setInteractive({ useHandCursor: true })
+    unlockAll.on('pointerover', () => unlockAll.setColor('#aa88ff'))
+    unlockAll.on('pointerout',  () => unlockAll.setColor('#7755aa'))
+    unlockAll.on('pointerdown', () => {
+      for (const { id } of allQuests) techState.completeQuest(id)
+      this.rebuildContent()
+    })
+    out.push(unlockAll)
+    y += 28
+
+    const hint = this.scene.add.text(16, y, 'Click any row to unlock it for testing.', {
+      fontSize: '10px', color: '#3c4f75', fontFamily: 'monospace',
+    })
+    out.push(hint)
+    y += 24
 
     for (const { id, label } of allQuests) {
       const done = techState.questDone(id)
       const progress = this.questProgress(id)
+      const rowBg = this.scene.add.rectangle(12, y - 2, PW - 38, 19, 0x0a1020, 0.001)
+        .setOrigin(0, 0).setInteractive({ useHandCursor: !done })
 
       const tick = this.scene.add.text(16, y, done ? '✓' : '○', {
         fontSize: '13px', color: done ? '#44cc88' : '#334455', fontFamily: 'monospace',
@@ -177,7 +183,18 @@ export class CheatPanel {
       const labelText = this.scene.add.text(38, y, label, {
         fontSize: '12px', color: done ? '#44cc88' : '#667799', fontFamily: 'monospace',
       })
-      out.push(tick, labelText)
+      rowBg.on('pointerover', () => {
+        if (!done) labelText.setColor('#aabbdd')
+      })
+      rowBg.on('pointerout', () => {
+        if (!done) labelText.setColor('#667799')
+      })
+      rowBg.on('pointerdown', () => {
+        if (done) return
+        techState.completeQuest(id)
+        this.rebuildContent()
+      })
+      out.push(rowBg, tick, labelText)
 
       if (progress) {
         const prog = this.scene.add.text(PW - 130, y, progress, {
@@ -191,6 +208,25 @@ export class CheatPanel {
 
     this.contentHeight = y + 8
     return out
+  }
+
+  private allQuestRows(): { id: string; label: string }[] {
+    const ids = new Set<string>()
+    for (const node of this.nodes) {
+      for (const req of this.nodeQuestRequirements(node)) ids.add(req)
+    }
+    // Also show chapter boss quests and pack gates not always present in node requirements.
+    for (const req of [
+      'boss_chapter1_killed',
+      'boss_chapter2_killed',
+      'boss_chapter3_killed',
+      'pack_tier1_recruit:bought:15',
+      'pack_tier2_specialist:bought:15',
+    ]) {
+      ids.add(req)
+    }
+
+    return [...ids].map(id => ({ id, label: this.formatQuestLabel(id) }))
   }
 
   private questProgress(id: string): string | null {
@@ -363,7 +399,7 @@ export class CheatPanel {
     }
 
     for (const record of recent) {
-      const result = record.won === undefined ? 'incomplete' : record.won ? 'win' : 'loss'
+      const result = record.won === undefined ? 'incomplete' : record.won ? 'win' : record.abandoned ? 'abandoned' : 'loss'
       const title = this.scene.add.text(16, y, `Run ${record.runNumber}  ${record.chapter}  ${result}`, {
         fontSize: '12px', color: record.won ? '#44cc88' : '#aabbcc', fontFamily: 'monospace', fontStyle: 'bold',
       })
@@ -447,6 +483,14 @@ export class CheatPanel {
     this.isOpen = false
     this.overlay.setVisible(false)
     this.panel.setVisible(false)
+  }
+
+  toggle(tab?: Tab) {
+    if (this.isOpen) {
+      this.close()
+      return
+    }
+    this.open(tab)
   }
 
   // Call after completing quests externally so progress refreshes on next open

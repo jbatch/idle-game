@@ -40,7 +40,7 @@ Boot → Shop ⇄ Tech Tree
 Shop → Combat → Game Over → Shop
 ```
 
-- **Shop:** Spend Deployment Currency (DC, budget: 2 by default) on unopened unit packs for this run. Switch chapters from the chapter selector. Open [TECH TREE] or [CHEATS].
+- **Shop:** Spend Deployment Currency (DC, budget: 2 by default) on capped unopened unit packs for this run. Switch among unlocked, uncleared chapters from the chapter selector. Open [TECH TREE].
 - **Combat:** Defend the Tower through timed waves; cursor AOE attack + deployed units fight autonomously.
 - **Win (boss kill):** Chapter Complete — earn PC, unlock next chapter.
 - **Lose:** Tower HP reaches 0 — return to shop.
@@ -52,12 +52,12 @@ The shop sells unopened packs. Rolled units are hidden in the shop and revealed 
 
 | Pack | Cost | Rolls | Unlock | Pool |
 |---|---:|---:|---|---|
-| Tier 1 Recruit Pack | 1 DC | 1 | Always | Footsoldier 45%, Archer 45%, Shieldbearer 10% |
-| Tier 1 Squad Pack | 3 DC | 4 | Buy 15 Tier 1 Recruit Packs | Footsoldier 45%, Archer 45%, Shieldbearer 10% |
-| Tier 2 Specialist Pack | 2 DC | 1 | Chapter 2 | Healer, Frost Mage, Sentinel, Bard |
-| Tier 2 Squad Pack | 6 DC | 4 | Chapter 2 + buy 15 Tier 2 Specialist Packs | Healer, Frost Mage, Sentinel, Bard |
+| Tier 1 Recruit Pack | 1 DC | 1 | Always | Common: Footsoldier, Archer; Rare: Shieldbearer |
+| Tier 1 Squad Pack | 3 DC | 4 | Buy 15 Tier 1 Recruit Packs | Common: Footsoldier, Archer; Rare: Shieldbearer |
+| Tier 2 Specialist Pack | 2 DC | 1 | Chapter 2 | Rare: Healer, Frost Mage, Sentinel, Bard |
+| Tier 2 Squad Pack | 6 DC | 4 | Chapter 2 + buy 15 Tier 2 Specialist Packs | Rare: Healer, Frost Mage, Sentinel, Bard |
 
-Squad packs give four rolls for the price of three singles. Pack purchases are tracked when a run starts, so buying singles is also how later discounted squad packs unlock. Supply tech can add bonus battle-start rolls, and those bonus units are highlighted in the pack reveal.
+Single packs are capped at 4 purchases per run and squad packs are capped at 2 purchases per run. Squad packs give four rolls for the price of three singles. Pack purchases are tracked when a run starts, so buying singles is also how later discounted squad packs unlock. Supply tech can add bonus battle-start rolls, and those bonus units are highlighted in the pack reveal.
 
 ## Chapters
 
@@ -109,13 +109,13 @@ Synergy effects can alter stats, runtime behaviour parameters, or movement patte
 
 ## Tech Tree
 
-12 branches, 38 nodes. Spend PC to unlock permanent upgrades that persist across runs.
+12 branches, 40 nodes. Spend PC to unlock permanent upgrades that persist across runs.
 Some low-power upgrades are repeatable and increase in price each time.
 
 | Branch | Upgrades |
 |---|---|
 | Cursor | Cursor Focus ×4 → Knockback ×4 → Rapid Strike → Heavy Strike → Siegebreaker, plus Cursor Reach → Wide Arc → Battlefield Sweep |
-| Deployment | Deployment Drills → Field Reserves → War Chest |
+| Deployment | Deployment Drills → Field Reserves → War Chest, plus Specialist Muster → Specialist Contracts |
 | Supply | Field Scavenging ×3 → Specialist Salvage ×3 |
 | Crates | Cache Scavenging → Cache Prospecting → Shielded Caches |
 | Tower | Fortify → Reinforce → Bastion, plus Retaliating Stone → Sharpened Battlements and Guard Pulse |

@@ -363,13 +363,14 @@ export class GameScene extends Phaser.Scene {
     })
   }
 
-  private endRun(won: boolean) {
+  private endRun(won: boolean, abandoned = false) {
     if (this.gameOver) return
     this.gameOver = true
-    this.time.delayedCall(won ? 600 : 800, () => {
-      audioManager.playSfx(this, won ? 'victory' : 'defeat')
+    this.time.delayedCall(abandoned ? 120 : won ? 600 : 800, () => {
+      audioManager.playSfx(this, won ? 'victory' : abandoned ? 'ui_click' : 'defeat')
       fadeToScene(this, 'GameOverScene', {
         won,
+        abandoned,
         pc: this.runPc,
         elapsed: Math.floor(this.elapsed),
         wavesCleared: this.waves.waveFired,
@@ -553,7 +554,7 @@ export class GameScene extends Phaser.Scene {
       return
     }
 
-    this.pauseOverlay = createPauseOverlay(this)
+    this.pauseOverlay = createPauseOverlay(this, () => this.endRun(false, true))
   }
 
   private weightedPick<T>(items: T[], weightFor: (item: T) => number): T | null {

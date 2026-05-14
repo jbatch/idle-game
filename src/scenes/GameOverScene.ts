@@ -2,12 +2,14 @@ import Phaser from 'phaser'
 import { techState } from '../systems/TechState'
 import { campaignLog, type CampaignPackRollLog } from '../systems/CampaignLog'
 import { GAME_W, GAME_H } from '../constants'
+import { debugState } from '../debug/DebugState'
 import { audioManager } from '../systems/AudioManager'
 import { playRingPulse, playSparkBurst } from '../effects/CombatEffects'
 import { fadeInScene, fadeToScene } from '../ui/sceneTransitions'
 
 interface RunResult {
   won: boolean
+  abandoned?: boolean
   pc: number
   elapsed: number
   wavesCleared: number
@@ -33,9 +35,11 @@ export class GameOverScene extends Phaser.Scene {
     techState.addPc(data.pc)
     if (data.won) {
       techState.completeQuest(`boss_${data.chapter}_killed`)
+      debugState.chapter = this.nextChapterId(data.chapter)
     }
     campaignLog.completeRun(data.campaignRunId, {
       won: data.won,
+      abandoned: Boolean(data.abandoned),
       pcEarned: data.pc,
       pcAfter: techState.pc,
       elapsed: data.elapsed,
@@ -48,13 +52,13 @@ export class GameOverScene extends Phaser.Scene {
 
     this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 0x000000, 0.75)
 
-    const titleText = data.won ? 'CHAPTER COMPLETE' : 'TOWER DESTROYED'
-    const titleColor = data.won ? '#44cc88' : '#cc3333'
+    const titleText = data.won ? 'CHAPTER COMPLETE' : data.abandoned ? 'RUN ABANDONED' : 'TOWER DESTROYED'
+    const titleColor = data.won ? '#44cc88' : data.abandoned ? '#ddaa22' : '#cc3333'
 
     this.add.text(GAME_W / 2, GAME_H / 2 - 110, titleText, {
       fontSize: '38px', color: titleColor, fontFamily: 'monospace', fontStyle: 'bold',
     }).setOrigin(0.5)
-    playRingPulse(this, GAME_W / 2, GAME_H / 2 - 108, data.won ? 86 : 70, data.won ? 0x44cc88 : 0xcc3333, 10)
+    playRingPulse(this, GAME_W / 2, GAME_H / 2 - 108, data.won ? 86 : 70, data.won ? 0x44cc88 : data.abandoned ? 0xddaa22 : 0xcc3333, 10)
     if (data.won) playSparkBurst(this, GAME_W / 2, GAME_H / 2 - 108, 0x44cc88, { count: 20, radius: 90 })
 
     const mins = Math.floor(data.elapsed / 60)
@@ -84,7 +88,7 @@ export class GameOverScene extends Phaser.Scene {
 
     const rewards = this.rewardSummary(data.crateRewards ?? [])
     const next = this.nextStep(data)
-    this.add.text(GAME_W / 2, GAME_H / 2 + 122, rewards ? `Rewards: ${rewards}` : next, {
+    this.add.text(GAME_W / 2, GAME_H / 2 + 122, rewards ? `Crate rewards: ${rewards}` : next, {
       fontSize: '12px', color: rewards ? '#ffe1a3' : '#667799', fontFamily: 'monospace',
       align: 'center',
     }).setOrigin(0.5)
@@ -112,6 +116,12 @@ export class GameOverScene extends Phaser.Scene {
     return ''
   }
 
+  private nextChapterId(chapter: string): string {
+    if (chapter === 'chapter1') return 'chapter2'
+    if (chapter === 'chapter2') return 'chapter3'
+    return chapter
+  }
+
   private rewardSummary(rewards: string[]): string {
     if (rewards.length === 0) return ''
     const counts = rewards.reduce<Record<string, number>>((acc, reward) => {
@@ -119,11 +129,12 @@ export class GameOverScene extends Phaser.Scene {
       return acc
     }, {})
     return Object.entries(counts)
-      .map(([reward, count]) => count > 1 ? `${reward} x${count}` : reward)
+      .map(([reward, count]) => `${reward} x${count}`)
       .join(', ')
   }
 
   private nextStep(data: RunResult): string {
+    if (data.abandoned) return data.pc > 0 ? 'Run ended early. Bank the PC, then regroup in the shop.' : 'Run ended early. Adjust packs and try again.'
     if (data.pc > 0) return 'Next: spend PC, buy packs, try a stronger run.'
     return data.won ? 'Next: try the newly unlocked chapter.' : 'Next: adjust packs and hold a little longer.'
   }

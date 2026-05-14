@@ -96,6 +96,7 @@ export interface ShopPackData {
   description: string
   cost: number
   rolls: number
+  maxPurchases?: number
   unlockTechId?: string
   questRequirements?: string[]
   rollTable: ShopPackRoll[]

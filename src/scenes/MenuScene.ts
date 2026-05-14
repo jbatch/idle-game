@@ -2,10 +2,12 @@ import Phaser from 'phaser'
 import { GAME_H, GAME_W, CX, CY, ARENA_RADIUS } from '../constants'
 import { audioManager } from '../systems/AudioManager'
 import { techState } from '../systems/TechState'
+import { debugState } from '../debug/DebugState'
+import { clearDraftShopPacks } from './ShopScene'
 import { playRingPulse, playSparkBurst } from '../effects/CombatEffects'
 import { fadeInScene, fadeToScene } from '../ui/sceneTransitions'
 
-const VERSION_LABEL = 'v0.1.8 demo polish'
+const VERSION_LABEL = 'v0.2.0 progression checkpoint'
 
 export class MenuScene extends Phaser.Scene {
   private orbiters: Phaser.GameObjects.Arc[] = []
@@ -76,16 +78,35 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private buildButtons() {
-    const y = 310
-    this.addButton(GAME_W / 2, y, 'ENTER SHOP', () => {
-      playSparkBurst(this, GAME_W / 2, y, 0xddaa22, { count: 14, radius: 46 })
-      fadeToScene(this, 'ShopScene', undefined, { sfx: 'ui_click' })
-    }, true)
+    const hasSave = techState.hasProgress()
+    const y = hasSave ? 292 : 310
 
-    this.addButton(GAME_W / 2, y + 58, 'HOW TO PLAY', () => {
+    if (hasSave) {
+      this.addButton(GAME_W / 2, y, 'CONTINUE RUN', () => {
+        this.enterShop(y)
+      }, true)
+
+      this.addButton(GAME_W / 2, y + 58, 'START RUN', () => {
+        techState.reset()
+        clearDraftShopPacks()
+        debugState.chapter = 'chapter1'
+        this.enterShop(y + 58)
+      })
+    } else {
+      this.addButton(GAME_W / 2, y, 'START RUN', () => {
+        this.enterShop(y)
+      }, true)
+    }
+
+    this.addButton(GAME_W / 2, y + (hasSave ? 116 : 58), 'HOW TO PLAY', () => {
       audioManager.playSfx(this, 'ui_click')
       this.showHowToPlay()
     })
+  }
+
+  private enterShop(y: number) {
+    playSparkBurst(this, GAME_W / 2, y, 0xddaa22, { count: 14, radius: 46 })
+    fadeToScene(this, 'ShopScene', undefined, { sfx: 'ui_click' })
   }
 
   private addButton(x: number, y: number, label: string, onClick: () => void, primary = false) {

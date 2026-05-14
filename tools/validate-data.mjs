@@ -264,6 +264,7 @@ function validateShopPacks(data) {
     const at = `shop_packs:${pack.id ?? '(missing id)'}`
     expectNumber(pack.cost, `${at}.cost`, { min: 0 })
     expectNumber(pack.rolls, `${at}.rolls`, { min: 1, integer: true })
+    if (pack.maxPurchases !== undefined) expectNumber(pack.maxPurchases, `${at}.maxPurchases`, { min: 1, integer: true })
     if (pack.unlockTechId && !data.techIds.has(pack.unlockTechId)) error(`${at}.unlockTechId references missing tech "${pack.unlockTechId}"`)
     for (const quest of questRequirementsFor(pack)) validateQuestRequirement(quest, `${at}.questRequirement`, data)
     validateRollTable(pack.rollTable, `${at}.rollTable`, data)

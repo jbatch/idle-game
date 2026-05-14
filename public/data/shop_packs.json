@@ -3,9 +3,10 @@
     {
       "id": "tier1_recruit",
       "name": "Tier 1 Recruit Pack",
-      "description": "One unopened low-tier unit roll.",
+      "description": "Low-tier starter pool. Revealed at battle start.",
       "cost": 1,
       "rolls": 1,
+      "maxPurchases": 4,
       "rollTable": [
         { "unitId": "footsoldier", "weight": 45, "rarity": "common" },
         { "unitId": "archer", "weight": 45, "rarity": "common" },
@@ -15,9 +16,10 @@
     {
       "id": "tier1_squad",
       "name": "Tier 1 Squad Pack",
-      "description": "Four unopened low-tier unit rolls for the price of three.",
+      "description": "Low-tier bundle discount. Four units for 3 DC.",
       "cost": 3,
       "rolls": 4,
+      "maxPurchases": 2,
       "questRequirements": ["pack_tier1_recruit:bought:15"],
       "rollTable": [
         { "unitId": "footsoldier", "weight": 45, "rarity": "common" },
@@ -28,9 +30,10 @@
     {
       "id": "tier2_specialist",
       "name": "Tier 2 Specialist Pack",
-      "description": "One unopened higher-tier specialist roll.",
+      "description": "Higher-tier support and control pool.",
       "cost": 2,
       "rolls": 1,
+      "maxPurchases": 4,
       "questRequirements": ["boss_chapter1_killed"],
       "rollTable": [
         { "unitId": "healer", "weight": 25, "rarity": "specialist" },
@@ -42,9 +45,10 @@
     {
       "id": "tier2_squad",
       "name": "Tier 2 Squad Pack",
-      "description": "Four unopened specialist rolls for the price of three.",
+      "description": "Specialist bundle discount. Four units for 6 DC.",
       "cost": 6,
       "rolls": 4,
+      "maxPurchases": 2,
       "questRequirements": ["boss_chapter1_killed", "pack_tier2_specialist:bought:15"],
       "rollTable": [
         { "unitId": "healer", "weight": 25, "rarity": "specialist" },

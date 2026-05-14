@@ -35,8 +35,8 @@ Priority key:
 
 | Item | Impact | Complexity | Priority | Notes |
 |---|---:|---:|---:|---|
-| Pack balance and unlock thresholds | Very High | High | P1 | First pass exists: unopened packs replace direct buys. Continue balancing unlocks and quest thresholds. |
-| Multipack/mega-pack expansion | Very High | High | P1 | Singles unlock squad packs via purchase-count quests; T2 singles unlock with Chapter 2. Mega packs later. |
+| Pack balance and unlock thresholds | Very High | High | P1 | v0.2.0 pass feels good through a first Chapter 3 clear around run 15. Continue watching Chapter 3 specialist variance and late support-unit upgrade pacing. |
+| Multipack/mega-pack expansion | Very High | High | P1 | Singles unlock squad packs via purchase-count quests; T2 singles unlock with Chapter 2. Per-run pack caps now prevent all-in spam; mega packs later. |
 | More cursor upgrades by chapter | High | Medium | P1 | Cursor Reach/Wide Arc/Battlefield Sweep expand radius by chapter and Siegebreaker boosts boss/crate damage. Continue with stun/control or support modes later. |
 | Cursor power modes | High | High | P2 | Weak knockback AOE, stun/control, heal/support pulse, strong single-target. Decide pre-run vs hot-swap vs tech branches. |
 | Tower self-defense expansion | Medium/High | Medium | P2 | Retaliating Stone/Sharpened Battlements add thorns and Guard Pulse adds a battle-start shield. Later: splash, shield pulses, low-HP panic blast. |
@@ -88,3 +88,6 @@ Priority key:
 
 8. [DONE] **Demo Polish Foundation**
    First pass complete: main menu, first-shop onboarding, scene fades, gated visible debug affordances, pack-buy and pack-opening flourishes, pause overlay, clearer combat HUD, crate/boss/run-end effects, richer run summary, and a no-op audio manager ready for future SFX/music assets. Continue with hand balance, real audio assets, and any graphics pass needed for a public demo.
+
+9. [DONE] **v0.2.0 Progression Checkpoint**
+   First pass complete: no old-chapter farming, shop draft persistence, pack caps, backtick shop cheats, first-play dialog persistence, abandon-run cashout, faster first specialist upgrade gates, and two specialist-focused +2 DC nodes. Playtest clear landed Chapter 3 around run 15, which is the current target feel.

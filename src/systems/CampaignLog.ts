@@ -29,6 +29,7 @@ export interface CampaignRunRecord extends CampaignRunSnapshot {
   completedAt?: string
   openedUnits: CampaignPackRollLog[]
   won?: boolean
+  abandoned?: boolean
   pcEarned?: number
   pcAfter?: number
   elapsed?: number
@@ -40,6 +41,7 @@ export interface CampaignRunRecord extends CampaignRunSnapshot {
 
 export interface CampaignRunResult {
   won: boolean
+  abandoned?: boolean
   pcEarned: number
   pcAfter: number
   elapsed: number
@@ -79,6 +81,7 @@ export const campaignLog = {
       completedAt: new Date().toISOString(),
       openedUnits: [...result.openedUnits],
       won: result.won,
+      abandoned: result.abandoned,
       pcEarned: result.pcEarned,
       pcAfter: result.pcAfter,
       elapsed: result.elapsed,
@@ -157,7 +160,7 @@ function fallbackRecord(runId: string | undefined): CampaignRunRecord {
 }
 
 function formatRecord(record: CampaignRunRecord): string {
-  const result = record.won === undefined ? 'incomplete' : record.won ? 'win' : 'loss'
+  const result = record.won === undefined ? 'incomplete' : record.won ? 'win' : record.abandoned ? 'abandoned' : 'loss'
   const opened = formatCounts(record.openedUnits.map(unit => unit.unitId))
   const bonus = formatCounts(record.openedUnits.filter(unit => unit.source === 'bonus').map(unit => unit.unitId))
   const packs = formatCounts(record.selectedPacks)
