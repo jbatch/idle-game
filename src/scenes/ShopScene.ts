@@ -7,6 +7,9 @@ import { techState, applyDeploymentBudgetMods } from '../systems/TechState'
 import { campaignLog } from '../systems/CampaignLog'
 import { CheatPanel } from '../ui/CheatPanel'
 import { addFittedText } from '../ui/fittedText'
+import { audioManager } from '../systems/AudioManager'
+import { playRingPulse, playSparkBurst, playTextToast } from '../effects/CombatEffects'
+import { fadeInScene, fadeToScene } from '../ui/sceneTransitions'
 
 const CHAPTER_DEFS = [
   { id: 'chapter1', questReq: null },
@@ -24,6 +27,7 @@ const PANEL_X = 568
 const PANEL_W = 314
 const PANEL_Y = 100
 const PANEL_H = GAME_H - PANEL_Y - 20
+let firstShopBriefingShown = false
 
 export class ShopScene extends Phaser.Scene {
   private balance!: BalanceData
@@ -35,13 +39,15 @@ export class ShopScene extends Phaser.Scene {
 
   private dcText!: Phaser.GameObjects.Text
   private loadoutGroup: Phaser.GameObjects.GameObject[] = []
-  private cheatPanel!: CheatPanel
+  private cheatPanel: CheatPanel | null = null
 
   constructor() {
     super({ key: 'ShopScene' })
   }
 
   create() {
+    fadeInScene(this)
+    audioManager.playMusic(this, 'shop_theme')
     this.balance  = this.cache.json.get('balance')  as BalanceData
     this.unitMap  = {}
     for (const id of unitIdsFromCache(this)) {
@@ -60,7 +66,11 @@ export class ShopScene extends Phaser.Scene {
     this.buildHeader()
     this.buildCards()
     this.buildLoadoutPanel()
-    this.cheatPanel = new CheatPanel(this, nodes)
+    if (this.debugToolsEnabled()) this.cheatPanel = new CheatPanel(this, nodes)
+    if (!firstShopBriefingShown) {
+      firstShopBriefingShown = true
+      this.time.delayedCall(180, () => this.showBriefing())
+    }
   }
 
   // ─── Header ──────────────────────────────────────────────────────
@@ -75,26 +85,47 @@ export class ShopScene extends Phaser.Scene {
       fontSize: '14px', color: '#ddaa22', fontFamily: 'monospace',
     }).setOrigin(0, 0.5)
 
+    const menuBtn = this.add.text(20, 52, '[ MENU ]', {
+      fontSize: '11px', color: '#334455', fontFamily: 'monospace',
+    }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true })
+    menuBtn.on('pointerover', () => menuBtn.setColor('#6688aa'))
+    menuBtn.on('pointerout',  () => menuBtn.setColor('#334455'))
+    menuBtn.on('pointerdown', () => fadeToScene(this, 'MenuScene', undefined, { sfx: 'ui_click' }))
+
+    const helpBtn = this.add.text(20, 74, '[ HOW TO PLAY ]', {
+      fontSize: '11px', color: '#334455', fontFamily: 'monospace',
+    }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true })
+    helpBtn.on('pointerover', () => helpBtn.setColor('#6688aa'))
+    helpBtn.on('pointerout',  () => helpBtn.setColor('#334455'))
+    helpBtn.on('pointerdown', () => {
+      audioManager.playSfx(this, 'ui_click')
+      this.showBriefing()
+    })
+
     const techBtn = this.add.text(GAME_W - 20, 28, '[ TECH TREE ]', {
       fontSize: '13px', color: '#4455aa', fontFamily: 'monospace',
     }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true })
     techBtn.on('pointerover', () => techBtn.setColor('#7788cc'))
     techBtn.on('pointerout',  () => techBtn.setColor('#4455aa'))
-    techBtn.on('pointerdown', () => this.scene.start('TechTreeScene'))
+    techBtn.on('pointerdown', () => fadeToScene(this, 'TechTreeScene', undefined, { sfx: 'ui_click' }))
 
-    const cheatsBtn = this.add.text(GAME_W - 20, 52, '[ CHEATS ]', {
-      fontSize: '11px', color: '#334433', fontFamily: 'monospace',
-    }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true })
-    cheatsBtn.on('pointerover', () => cheatsBtn.setColor('#557755'))
-    cheatsBtn.on('pointerout',  () => cheatsBtn.setColor('#334433'))
-    cheatsBtn.on('pointerdown', () => this.cheatPanel.open())
+    if (this.debugToolsEnabled()) {
+      const cheatsBtn = this.add.text(GAME_W - 20, 52, '[ CHEATS ]', {
+        fontSize: '11px', color: '#334433', fontFamily: 'monospace',
+      }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true })
+      cheatsBtn.on('pointerover', () => cheatsBtn.setColor('#557755'))
+      cheatsBtn.on('pointerout',  () => cheatsBtn.setColor('#334433'))
+      cheatsBtn.on('pointerdown', () => this.cheatPanel?.open())
+    }
 
-    const runsBtn = this.add.text(GAME_W - 20, 74, '[ RUN LOG ]', {
-      fontSize: '11px', color: '#334455', fontFamily: 'monospace',
-    }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true })
-    runsBtn.on('pointerover', () => runsBtn.setColor('#6688aa'))
-    runsBtn.on('pointerout',  () => runsBtn.setColor('#334455'))
-    runsBtn.on('pointerdown', () => this.cheatPanel.open('RUNS'))
+    if (this.debugToolsEnabled()) {
+      const runsBtn = this.add.text(GAME_W - 20, 74, '[ RUN LOG ]', {
+        fontSize: '11px', color: '#334455', fontFamily: 'monospace',
+      }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true })
+      runsBtn.on('pointerover', () => runsBtn.setColor('#6688aa'))
+      runsBtn.on('pointerout',  () => runsBtn.setColor('#334455'))
+      runsBtn.on('pointerdown', () => this.cheatPanel?.open('RUNS'))
+    }
 
     // Chapter selector — one button per chapter
     const chapterY = 60
@@ -120,7 +151,7 @@ export class ShopScene extends Phaser.Scene {
         btn.on('pointerdown', () => {
           if (isActive) return
           debugState.chapter = def.id
-          this.scene.restart()
+          fadeToScene(this, 'ShopScene', undefined, { sfx: 'ui_click', duration: 180 })
         })
       }
     })
@@ -223,6 +254,16 @@ export class ShopScene extends Phaser.Scene {
     addBtn.on('pointerout', () => addBtn.setFillStyle(0x112244))
     addBtn.on('pointerdown', () => {
       if (!this.canBuyPack(pack)) return
+      audioManager.playSfx(this, 'pack_buy')
+      playSparkBurst(this, btnX + btnW / 2, btnY + btnH / 2, 0xddaa22, { count: 9, radius: 26 })
+      this.tweens.add({
+        targets: bg,
+        scaleX: 1.012,
+        scaleY: 1.035,
+        duration: 90,
+        yoyo: true,
+        ease: 'Quad.easeOut',
+      })
       this.packPurchases.push(pack.id)
       this.dcSpent += pack.cost
       this.refreshDCText()
@@ -341,8 +382,8 @@ export class ShopScene extends Phaser.Scene {
     const packEntries = Object.entries(packCounts).filter(([, count]) => count > 0)
 
     if (packEntries.length === 0) {
-      const t = this.add.text(PANEL_X + PANEL_W / 2, startY + 30, 'No packs selected', {
-        fontSize: '12px', color: '#334455', fontFamily: 'monospace',
+      const t = this.add.text(PANEL_X + PANEL_W / 2, startY + 30, 'Choose at least one pack', {
+        fontSize: '12px', color: '#556688', fontFamily: 'monospace',
       }).setOrigin(0.5)
       this.loadoutGroup.push(t)
     } else {
@@ -398,9 +439,13 @@ export class ShopScene extends Phaser.Scene {
     this.loadoutGroup.push(sep)
 
     // Total cost
+    const hiddenRolls = this.packPurchases.reduce((sum, id) => {
+      const pack = this.packs.find(p => p.id === id)
+      return sum + (pack?.rolls ?? 0)
+    }, 0)
     const totalLabel = this.add.text(
       PANEL_X + 16, PANEL_Y + PANEL_H - 80,
-      `Total: ${this.dcSpent} / ${this.dcBudget} DC`,
+      `Total: ${this.dcSpent} / ${this.dcBudget} DC    Hidden rolls: ${hiddenRolls}`,
       { fontSize: '12px', color: '#667799', fontFamily: 'monospace' }
     )
     this.loadoutGroup.push(totalLabel)
@@ -413,6 +458,12 @@ export class ShopScene extends Phaser.Scene {
   }
 
   private startRun() {
+    if (this.packPurchases.length === 0) {
+      audioManager.playSfx(this, 'ui_hover')
+      playTextToast(this, 'Buy a pack before starting the run', PANEL_X + PANEL_W / 2, PANEL_Y + PANEL_H - 72, '#ddaa22')
+      return
+    }
+
     const techNodes = (this.cache.json.get('tech_tree') as { nodes: TechNode[] }).nodes
     const run = campaignLog.beginRun({
       chapter: debugState.chapter,
@@ -433,6 +484,54 @@ export class ShopScene extends Phaser.Scene {
       completedQuests: [...techState.completedQuests],
     })
     for (const packId of this.packPurchases) techState.incrementStat(`pack_${packId}_bought`)
-    this.scene.start('GameScene', { packs: [...this.packPurchases], campaignRunId: run.id })
+    playRingPulse(this, PANEL_X + PANEL_W / 2, PANEL_Y + PANEL_H - 34, 44, 0xddaa22)
+    fadeToScene(this, 'GameScene', { packs: [...this.packPurchases], campaignRunId: run.id }, { duration: 420, sfx: 'run_start' })
+  }
+
+  private debugToolsEnabled(): boolean {
+    return new URLSearchParams(window.location.search).has('debug')
+  }
+
+  private showBriefing() {
+    const shade = this.add.rectangle(0, 0, GAME_W, GAME_H, 0x03050b, 0.76).setOrigin(0, 0).setDepth(60)
+    const panel = this.add.rectangle(GAME_W / 2, GAME_H / 2, 610, 344, 0x0b1224, 0.98).setDepth(61)
+    panel.setStrokeStyle(1, 0x334d88)
+
+    const title = this.add.text(GAME_W / 2, GAME_H / 2 - 134, 'BEFORE THE SIEGE', {
+      fontSize: '22px',
+      color: '#dbe4ff',
+      fontFamily: 'monospace',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(62)
+
+    const body = this.add.text(GAME_W / 2, GAME_H / 2 - 82, [
+      'Spend DC on unopened packs. You will not know the exact squad until battle starts.',
+      '',
+      'In combat, click enemies and crates while your units defend the tower.',
+      '',
+      'After each run, spend earned PC in the tech tree to unlock stronger options.',
+    ].join('\n'), {
+      fontSize: '14px',
+      color: '#aebce8',
+      fontFamily: 'monospace',
+      align: 'center',
+      lineSpacing: 5,
+      wordWrap: { width: 520 },
+    }).setOrigin(0.5, 0).setDepth(62)
+
+    const close = this.add.text(GAME_W / 2, GAME_H / 2 + 126, '[ START SHOPPING ]', {
+      fontSize: '16px',
+      color: '#ddaa22',
+      fontFamily: 'monospace',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(62).setInteractive({ useHandCursor: true })
+
+    const items = [shade, panel, title, body, close]
+    close.on('pointerover', () => close.setColor('#ffe1a3'))
+    close.on('pointerout', () => close.setColor('#ddaa22'))
+    close.on('pointerdown', () => {
+      audioManager.playSfx(this, 'ui_click')
+      items.forEach(item => item.destroy())
+    })
   }
 }

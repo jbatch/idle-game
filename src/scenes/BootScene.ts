@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { loadGameData, loadUnitDataFromManifest } from '../game/loadGameData'
+import { audioManager } from '../systems/AudioManager'
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -8,9 +9,10 @@ export class BootScene extends Phaser.Scene {
 
   preload() {
     loadGameData(this)
+    audioManager.preload(this)
   }
 
   create() {
-    loadUnitDataFromManifest(this, () => this.scene.start('ShopScene'))
+    loadUnitDataFromManifest(this, () => this.scene.start('MenuScene'))
   }
 }

@@ -3,6 +3,9 @@ import type { TechEdgeLayout, TechEffect, TechNode, TechNodeAnchor, TechNodeLayo
 import { techState } from '../systems/TechState'
 import { GAME_W, GAME_H } from '../constants'
 import { addFittedText } from '../ui/fittedText'
+import { audioManager } from '../systems/AudioManager'
+import { playRingPulse, playSparkBurst } from '../effects/CombatEffects'
+import { fadeInScene, fadeToScene } from '../ui/sceneTransitions'
 
 const HEADER_H  = 90   // title + PC bar + separator
 const FOOTER_H  = 54   // back button area
@@ -53,6 +56,8 @@ export class TechTreeScene extends Phaser.Scene {
   }
 
   create() {
+    fadeInScene(this)
+    audioManager.playMusic(this, 'shop_theme')
     const data = this.cache.json.get('tech_tree') as { nodes: TechNode[] }
     const layoutData = this.cache.json.get('tech_tree_layout') as TechTreeLayoutData | undefined
     this.nodes = data.nodes
@@ -94,7 +99,7 @@ export class TechTreeScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(11).setInteractive({ useHandCursor: true })
     backBtn.on('pointerover', () => backBtn.setColor('#88aaff'))
     backBtn.on('pointerout',  () => backBtn.setColor('#4466ff'))
-    backBtn.on('pointerdown', () => this.scene.start('ShopScene'))
+    backBtn.on('pointerdown', () => fadeToScene(this, 'ShopScene', undefined, { sfx: 'ui_click' }))
 
     // ── Scrollable content container ──
     this.content = this.add.container(0, HEADER_H)
@@ -353,9 +358,14 @@ export class TechTreeScene extends Phaser.Scene {
       bg.on('pointerout',  () => bg.setFillStyle(bgColor))
       bg.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
         if (!pointer.leftButtonDown()) return
+        audioManager.playSfx(this, 'tech_purchase')
+        const burstX = nx + NODE_W / 2 - this.scrollX
+        const burstY = HEADER_H + ny + NODE_H / 2 - this.scrollY
+        playSparkBurst(this, burstX, burstY, 0xddaa22, { count: 12, radius: 36 })
+        playRingPulse(this, burstX, burstY, 34, 0x44cc88)
         techState.purchase(node)
         this.refreshPcText()
-        this.buildContent()
+        this.time.delayedCall(90, () => this.buildContent())
       })
     }
   }

@@ -133,6 +133,89 @@ export function playCursorImpactEffect(
   })
 }
 
+export function playRingPulse(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  radius: number,
+  color: number,
+  depth = 25,
+): void {
+  const gfx = scene.add.graphics().setPosition(x, y).setDepth(depth)
+  gfx.lineStyle(2, color, 0.72)
+  gfx.strokeCircle(0, 0, radius)
+  gfx.lineStyle(1, 0xffffff, 0.28)
+  gfx.strokeCircle(0, 0, radius * 0.58)
+
+  scene.tweens.add({
+    targets: gfx,
+    alpha: 0,
+    scale: 1.9,
+    duration: 420,
+    ease: 'Cubic.easeOut',
+    onComplete: () => gfx.destroy(),
+  })
+}
+
+export function playSparkBurst(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  color: number,
+  options: { count?: number, radius?: number, depth?: number, duration?: number } = {},
+): void {
+  const count = options.count ?? 10
+  const radius = options.radius ?? 34
+  const depth = options.depth ?? 35
+  const duration = options.duration ?? 520
+
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2 + Math.random() * 0.28
+    const distance = radius * (0.55 + Math.random() * 0.45)
+    const spark = scene.add.circle(x, y, 2 + Math.random() * 1.5, color, 0.92).setDepth(depth)
+    spark.setStrokeStyle(1, 0xffffff, 0.32)
+    scene.tweens.add({
+      targets: spark,
+      x: x + Math.cos(angle) * distance,
+      y: y + Math.sin(angle) * distance,
+      alpha: 0,
+      scale: 0.35,
+      duration: duration * (0.75 + Math.random() * 0.35),
+      ease: 'Cubic.easeOut',
+      onComplete: () => spark.destroy(),
+    })
+  }
+}
+
+export function playTextToast(
+  scene: Phaser.Scene,
+  text: string,
+  x: number,
+  y: number,
+  color = '#ffe1a3',
+  depth = 45,
+): void {
+  const label = scene.add.text(x, y, text, {
+    fontSize: '13px',
+    color,
+    fontFamily: 'monospace',
+    fontStyle: 'bold',
+    stroke: '#08080f',
+    strokeThickness: 4,
+    align: 'center',
+  }).setOrigin(0.5).setDepth(depth)
+
+  scene.tweens.add({
+    targets: label,
+    y: y - 28,
+    alpha: 0,
+    scale: 1.08,
+    duration: 1150,
+    ease: 'Cubic.easeOut',
+    onComplete: () => label.destroy(),
+  })
+}
+
 function floatNumber(scene: Phaser.Scene, x: number, y: number, text: string, color: string) {
   const label = scene.add.text(x, y - 18, text, {
     fontSize: '14px',

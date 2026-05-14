@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import type { Targetable } from '../data/types'
-import { floatDamageNumber, floatHealNumber } from '../effects/CombatEffects'
+import { floatDamageNumber, floatHealNumber, playRingPulse } from '../effects/CombatEffects'
 
 const RADIUS = 28
 
@@ -45,6 +45,7 @@ export class Tower {
     const remaining = amount - absorbed
     if (remaining > 0) this.hp = Math.max(0, this.hp - remaining)
     floatDamageNumber(this.graphics.scene, this.x, this.y, amount)
+    playRingPulse(this.graphics.scene, this.x, this.y, RADIUS + 10, remaining > 0 ? 0xcc3333 : 0x66ddff, 12)
     if (this.thornsDamage > 0 && attacker?.alive) {
       attacker.takeDamage(this.thornsDamage)
       this.playThornsEffect(attacker.x, attacker.y)

@@ -2,6 +2,9 @@ import Phaser from 'phaser'
 import { techState } from '../systems/TechState'
 import { campaignLog, type CampaignPackRollLog } from '../systems/CampaignLog'
 import { GAME_W, GAME_H } from '../constants'
+import { audioManager } from '../systems/AudioManager'
+import { playRingPulse, playSparkBurst } from '../effects/CombatEffects'
+import { fadeInScene, fadeToScene } from '../ui/sceneTransitions'
 
 interface RunResult {
   won: boolean
@@ -14,6 +17,8 @@ interface RunResult {
   unitsAlive: number
   campaignRunId?: string
   openedUnits: CampaignPackRollLog[]
+  cratesOpened?: number
+  crateRewards?: string[]
 }
 
 export class GameOverScene extends Phaser.Scene {
@@ -22,6 +27,8 @@ export class GameOverScene extends Phaser.Scene {
   }
 
   create(data: RunResult) {
+    fadeInScene(this)
+    audioManager.playMusic(this, 'shop_theme')
     // Persist PC and quests
     techState.addPc(data.pc)
     if (data.won) {
@@ -47,6 +54,8 @@ export class GameOverScene extends Phaser.Scene {
     this.add.text(GAME_W / 2, GAME_H / 2 - 110, titleText, {
       fontSize: '38px', color: titleColor, fontFamily: 'monospace', fontStyle: 'bold',
     }).setOrigin(0.5)
+    playRingPulse(this, GAME_W / 2, GAME_H / 2 - 108, data.won ? 86 : 70, data.won ? 0x44cc88 : 0xcc3333, 10)
+    if (data.won) playSparkBurst(this, GAME_W / 2, GAME_H / 2 - 108, 0x44cc88, { count: 20, radius: 90 })
 
     const mins = Math.floor(data.elapsed / 60)
     const secs = data.elapsed % 60
@@ -56,28 +65,44 @@ export class GameOverScene extends Phaser.Scene {
       `PC earned:    ${data.pc}  (total: ${techState.pc})`,
       `Survived:     ${timeStr}`,
       `Waves:        ${data.wavesCleared} / ${data.totalWaves}`,
+      `Units alive:  ${data.unitsAlive}`,
+      `Crates:       ${data.cratesOpened ?? 0}`,
     ]
 
     stats.forEach((line, i) => {
-      this.add.text(GAME_W / 2, GAME_H / 2 - 30 + i * 28, line, {
+      this.add.text(GAME_W / 2, GAME_H / 2 - 42 + i * 24, line, {
         fontSize: '16px', color: '#aaaacc', fontFamily: 'monospace',
       }).setOrigin(0.5)
     })
 
     const unlockMessage = this.unlockMessage(data.chapter)
     if (data.won && unlockMessage) {
-      this.add.text(GAME_W / 2, GAME_H / 2 + 60, unlockMessage, {
+      this.add.text(GAME_W / 2, GAME_H / 2 + 92, unlockMessage, {
         fontSize: '14px', color: '#ddaa22', fontFamily: 'monospace',
       }).setOrigin(0.5)
     }
 
-    const btn = this.add.text(GAME_W / 2, GAME_H / 2 + 110, '[ RETURN TO SHOP ]', {
+    const rewards = this.rewardSummary(data.crateRewards ?? [])
+    const next = this.nextStep(data)
+    this.add.text(GAME_W / 2, GAME_H / 2 + 122, rewards ? `Rewards: ${rewards}` : next, {
+      fontSize: '12px', color: rewards ? '#ffe1a3' : '#667799', fontFamily: 'monospace',
+      align: 'center',
+    }).setOrigin(0.5)
+
+    const btn = this.add.text(GAME_W / 2, GAME_H / 2 + 168, '[ RETURN TO SHOP ]', {
       fontSize: '22px', color: '#4466ff', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true })
 
     btn.on('pointerover', () => btn.setColor('#88aaff'))
     btn.on('pointerout',  () => btn.setColor('#4466ff'))
-    btn.on('pointerdown', () => this.scene.start('ShopScene'))
+    btn.on('pointerdown', () => fadeToScene(this, 'ShopScene', undefined, { sfx: 'ui_click' }))
+
+    const techBtn = this.add.text(GAME_W / 2, GAME_H / 2 + 204, '[ SPEND PC IN TECH TREE ]', {
+      fontSize: '14px', color: '#ddaa22', fontFamily: 'monospace',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true })
+    techBtn.on('pointerover', () => techBtn.setColor('#ffe1a3'))
+    techBtn.on('pointerout',  () => techBtn.setColor('#ddaa22'))
+    techBtn.on('pointerdown', () => fadeToScene(this, 'TechTreeScene', undefined, { sfx: 'ui_click' }))
   }
 
   private unlockMessage(chapter: string): string {
@@ -85,5 +110,21 @@ export class GameOverScene extends Phaser.Scene {
     if (chapter === 'chapter2') return '★  Chapter 3 unlocked  ★'
     if (chapter === 'chapter3') return '★  All chapters complete  ★'
     return ''
+  }
+
+  private rewardSummary(rewards: string[]): string {
+    if (rewards.length === 0) return ''
+    const counts = rewards.reduce<Record<string, number>>((acc, reward) => {
+      acc[reward] = (acc[reward] ?? 0) + 1
+      return acc
+    }, {})
+    return Object.entries(counts)
+      .map(([reward, count]) => count > 1 ? `${reward} x${count}` : reward)
+      .join(', ')
+  }
+
+  private nextStep(data: RunResult): string {
+    if (data.pc > 0) return 'Next: spend PC, buy packs, try a stronger run.'
+    return data.won ? 'Next: try the newly unlocked chapter.' : 'Next: adjust packs and hold a little longer.'
   }
 }

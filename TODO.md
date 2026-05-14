@@ -85,3 +85,6 @@ Priority key:
 
 7. [DONE] **Editor Tooling**
    First pass complete: tech tree editor with explicit layout config, plus unit editor with create/edit/delete/reorder flows and a live dummy preview. Continue adding editor affordances as more data files become awkward to hand-edit.
+
+8. [DONE] **Demo Polish Foundation**
+   First pass complete: main menu, first-shop onboarding, scene fades, gated visible debug affordances, pack-buy and pack-opening flourishes, pause overlay, clearer combat HUD, crate/boss/run-end effects, richer run summary, and a no-op audio manager ready for future SFX/music assets. Continue with hand balance, real audio assets, and any graphics pass needed for a public demo.

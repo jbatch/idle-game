@@ -12,14 +12,14 @@ import { techState, applyCursorMods, applyTowerBattleMods, applyUnitMods, applyP
 import { applyUnitSynergies } from '../systems/UnitSynergies'
 import type { CampaignPackRollLog } from '../systems/CampaignLog'
 import { GAME_W, GAME_H, CX, CY, ARENA_RADIUS } from '../constants'
+import { audioManager } from '../systems/AudioManager'
+import { playRingPulse, playSparkBurst } from '../effects/CombatEffects'
+import { fadeInScene, fadeToScene } from '../ui/sceneTransitions'
+import { showPackRevealOverlay, type PackRollResult } from '../ui/PackRevealOverlay'
+import { CombatHud } from '../ui/CombatHud'
+import { createPauseOverlay } from '../ui/PauseOverlay'
 
 const DEBUG_COOLDOWN = 0.05
-
-type PackRollResult = {
-  unitId: string
-  source: 'pack' | 'bonus'
-  tier: 1 | 2
-}
 
 type CursorTimedBuff = {
   type: 'damage' | 'cooldown'
@@ -36,9 +36,8 @@ export class GameScene extends Phaser.Scene {
   private cursor!: CursorAttack
   private waves!: WaveManager
   private arenaGfx!: Phaser.GameObjects.Graphics
-  private bossBarGfx!: Phaser.GameObjects.Graphics
-  private hudText!: Phaser.GameObjects.Text
-  private bossLabel!: Phaser.GameObjects.Text
+  private hud!: CombatHud
+  private pauseOverlay: Phaser.GameObjects.Container | null = null
 
   private techNodes: TechNode[] = []
   private unitSynergies: UnitSynergyData[] = []
@@ -53,12 +52,19 @@ export class GameScene extends Phaser.Scene {
   private skippedWaveThisFrame: boolean = false
   private campaignRunId?: string
   private openedUnits: CampaignPackRollLog[] = []
+  private chapterName = ''
+  private packRevealBlocking = false
+  private paused = false
+  private cratesOpened = 0
+  private crateRewards: string[] = []
 
   constructor() {
     super({ key: 'GameScene' })
   }
 
   create(data: { loadout?: string[], packs?: string[], campaignRunId?: string }) {
+    fadeInScene(this)
+    audioManager.playMusic(this, 'battle_theme')
     this.gameOver = false
     this.enemies = []
     this.units = []
@@ -71,10 +77,17 @@ export class GameScene extends Phaser.Scene {
     this.skippedWaveThisFrame = false
     this.campaignRunId = data.campaignRunId
     this.openedUnits = []
+    this.packRevealBlocking = false
+    this.paused = false
+    this.cratesOpened = 0
+    this.crateRewards = []
+    this.pauseOverlay?.destroy()
+    this.pauseOverlay = null
 
     const balance = this.cache.json.get('balance')  as BalanceData
     this.pcMultiplier = balance.pcMultiplier
     const chapter = this.cache.json.get(debugState.chapter) as ChapterData
+    this.chapterName = chapter.name
     this.techNodes = (this.cache.json.get('tech_tree') as { nodes: TechNode[] }).nodes
     this.unitSynergies = (this.cache.json.get('unit_synergies') as { synergies: UnitSynergyData[] }).synergies
     this.crateData = this.cache.json.get('crates') as CrateDropData
@@ -103,8 +116,16 @@ export class GameScene extends Phaser.Scene {
       ? data.loadout.map(unitId => ({ unitId, source: 'pack' as const, tier: 1 as const }))
       : this.rollPacks(data.packs ?? [])
     this.openedUnits = packResults.map(result => ({ ...result }))
-    this.spawnUnits(packResults.map(result => result.unitId))
-    if (!data.loadout && data.packs?.length) this.showPackReveal(packResults)
+    const shouldRevealPacks = !data.loadout && Boolean(data.packs?.length) && packResults.length > 0
+    if (shouldRevealPacks) {
+      this.packRevealBlocking = true
+      showPackRevealOverlay(this, packResults, this.unitSynergies, () => {
+        this.spawnUnits(packResults.map(result => result.unitId))
+        this.packRevealBlocking = false
+      })
+    } else {
+      this.spawnUnits(packResults.map(result => result.unitId))
+    }
 
     // Cursor
     this.cursor = new CursorAttack(this, this.baseCursorStats)
@@ -120,21 +141,18 @@ export class GameScene extends Phaser.Scene {
       this.showBossWarning(e.name)
     }
 
-    // HUD
-    this.hudText = this.add.text(10, 10, '', {
-      fontSize: '13px', color: '#aaaacc', fontFamily: 'monospace',
-    }).setDepth(20)
-
-    this.bossBarGfx = this.add.graphics().setDepth(20)
-    this.bossLabel  = this.add.text(GAME_W / 2, 28, '', {
-      fontSize: '12px', color: '#ddaa22', fontFamily: 'monospace',
-    }).setOrigin(0.5).setDepth(21)
+    this.hud = new CombatHud(this)
 
     // Apply tech + debug state to cursor
     this.cursor.configure({
       ...this.baseCursorStats,
     })
     this.tower.godMode       = debugState.godMode
+
+    this.input.keyboard?.on('keydown-P', () => this.togglePause())
+    this.input.keyboard?.on('keydown-ESC', () => {
+      if (this.paused) this.togglePause()
+    })
 
     new DebugMenu(this, [
       {
@@ -240,38 +258,6 @@ export class GameScene extends Phaser.Scene {
     return pack.rollTable.some(roll => roll.rarity === 'specialist') ? 2 : 1
   }
 
-  private showPackReveal(results: PackRollResult[]) {
-    if (results.length === 0) return
-
-    const title = this.add.text(GAME_W / 2, GAME_H / 2 - 168, 'PACKS OPENED', {
-      fontSize: '15px', color: '#ddaa22', fontFamily: 'monospace', fontStyle: 'bold',
-      align: 'center',
-    }).setOrigin(0.5).setDepth(30)
-
-    const rows = results.map((result, index) => {
-      const data = this.cache.json.get(result.unitId) as UnitData | undefined
-      const name = data?.name ?? result.unitId
-      const isBonus = result.source === 'bonus'
-      return this.add.text(GAME_W / 2, GAME_H / 2 - 144 + index * 18, isBonus ? `BONUS T${result.tier}: ${name}` : name, {
-        fontSize: isBonus ? '14px' : '13px',
-        color: isBonus ? '#7cff9f' : '#ccd4ff',
-        fontFamily: 'monospace',
-        fontStyle: isBonus ? 'bold' : '',
-        align: 'center',
-      }).setOrigin(0.5).setDepth(30)
-    })
-
-    const revealObjects = [title, ...rows]
-
-    this.tweens.add({
-      targets: revealObjects,
-      alpha: 0,
-      duration: 2600,
-      ease: 'Power2',
-      onComplete: () => revealObjects.forEach(obj => obj.destroy()),
-    })
-  }
-
   private drawArena() {
     this.arenaGfx.clear()
     this.arenaGfx.fillStyle(0x0d0d1a, 1)
@@ -285,6 +271,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private showBossWarning(bossName: string) {
+    audioManager.playMusic(this, 'boss_theme')
+    audioManager.playSfx(this, 'boss_warning')
+    playRingPulse(this, CX, CY, ARENA_RADIUS * 0.72, 0xddaa22, 28)
     const warn = this.add.text(GAME_W / 2, GAME_H / 2 - 120, `⚠ ${bossName.toUpperCase()} APPROACHES ⚠`, {
       fontSize: '20px', color: '#ddaa22', fontFamily: 'monospace', fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(30)
@@ -299,6 +288,13 @@ export class GameScene extends Phaser.Scene {
 
   update(_time: number, delta: number) {
     if (this.gameOver) return
+    if (this.paused) return
+
+    if (this.packRevealBlocking) {
+      this.cursor?.update(delta, this.input.activePointer.x, this.input.activePointer.y, [])
+      this.updateHUD()
+      return
+    }
 
     this.elapsed += delta / 1000
     this.waves.update(delta)
@@ -311,6 +307,10 @@ export class GameScene extends Phaser.Scene {
       e.update(delta, this.tower, this.units, this.enemies)
       if (!e.alive) {
         this.runPc += Math.round(e.reward * this.pcMultiplier)
+        if (e.isBoss) {
+          playSparkBurst(this, e.x, e.y, 0xddaa22, { count: 22, radius: 70, duration: 740 })
+          audioManager.playMusic(this, 'battle_theme')
+        }
         this.maybeSpawnCrate(e.x, e.y, e.isBoss)
         this.enemies.splice(i, 1)
         if (e === this.boss) this.boss = null
@@ -350,45 +350,25 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateHUD() {
-    const timeToNext = this.waves.timeToNext
-    const waveStr = this.waves.eventsComplete
-      ? 'All waves cleared'
-      : this.waves.nextIsBoss
-        ? `BOSS IN ${timeToNext !== null ? timeToNext.toFixed(1) : '?'}s`
-        : `Wave ${this.waves.waveFired + 1}/${this.waves.waveTotal}  next: ${timeToNext !== null ? timeToNext.toFixed(1) : '?'}s`
-
-    this.hudText.setText([
-      `PC: ${this.runPc}`,
-      this.skippedWaveThisFrame ? `${waveStr}  (advanced)` : waveStr,
-      this.units.length > 0 ? `Units: ${this.units.length}` : '',
-      this.crates.length > 0 ? `Crates: ${this.crates.length}` : '',
-      this.cursorBuffLabel(),
-    ])
-
-    this.bossBarGfx.clear()
-    if (this.boss) {
-      const barW = 180
-      const barH = 10
-      const bx = GAME_W / 2 - barW / 2
-      const by = 38
-      const frac = this.boss.hp / this.boss.maxHp
-      this.bossBarGfx.fillStyle(0x221100, 1)
-      this.bossBarGfx.fillRect(bx, by, barW, barH)
-      this.bossBarGfx.fillStyle(0xddaa22, 1)
-      this.bossBarGfx.fillRect(bx + 1, by + 1, (barW - 2) * frac, barH - 2)
-      this.bossBarGfx.lineStyle(1, 0x886600, 1)
-      this.bossBarGfx.strokeRect(bx, by, barW, barH)
-      this.bossLabel.setText(`${this.boss.name}  ${this.boss.hp} / ${this.boss.maxHp}`)
-    } else {
-      this.bossLabel.setText('')
-    }
+    this.hud.update({
+      chapterName: this.chapterName,
+      runPc: this.runPc,
+      tower: this.tower,
+      waves: this.waves,
+      skippedWaveThisFrame: this.skippedWaveThisFrame,
+      unitCount: this.units.length,
+      crateCount: this.crates.length,
+      cursorBuffLabel: this.cursorBuffLabel(),
+      boss: this.boss,
+    })
   }
 
   private endRun(won: boolean) {
     if (this.gameOver) return
     this.gameOver = true
     this.time.delayedCall(won ? 600 : 800, () => {
-      this.scene.start('GameOverScene', {
+      audioManager.playSfx(this, won ? 'victory' : 'defeat')
+      fadeToScene(this, 'GameOverScene', {
         won,
         pc: this.runPc,
         elapsed: Math.floor(this.elapsed),
@@ -399,7 +379,9 @@ export class GameScene extends Phaser.Scene {
         unitsAlive: this.units.length,
         campaignRunId: this.campaignRunId,
         openedUnits: this.openedUnits,
-      })
+        cratesOpened: this.cratesOpened,
+        crateRewards: this.crateRewards,
+      }, { duration: 360 })
     })
   }
 
@@ -426,6 +408,7 @@ export class GameScene extends Phaser.Scene {
 
     const pos = this.clampCratePosition(x, y, crateKind.radius)
     this.crates.push(new Crate(this, pos.x, pos.y, crateKind, reward, crate => this.openCrate(crate)))
+    playRingPulse(this, pos.x, pos.y, crateKind.radius + 8, 0xffdd77, 13)
   }
 
   private rollCrateKind(): CrateKindData | null {
@@ -446,6 +429,9 @@ export class GameScene extends Phaser.Scene {
 
   private openCrate(crate: Crate) {
     const reward = crate.reward
+    this.cratesOpened += 1
+    this.crateRewards.push(reward.name)
+    audioManager.playSfx(this, 'crate_open')
     switch (reward.type) {
       case 'tower_heal':
         this.tower.heal(reward.value)
@@ -472,6 +458,7 @@ export class GameScene extends Phaser.Scene {
         break
     }
     this.showCrateReward(reward, crate.x, crate.y)
+    playSparkBurst(this, crate.x, crate.y, 0xffdd77, { count: 14, radius: 42, duration: 580 })
   }
 
   private openRandomUnitReward(reward: CrateRewardData, x: number, y: number) {
@@ -553,6 +540,20 @@ export class GameScene extends Phaser.Scene {
       ease: 'Quad.easeOut',
       onComplete: () => text.destroy(),
     })
+  }
+
+  private togglePause() {
+    if (this.gameOver || this.packRevealBlocking) return
+    this.paused = !this.paused
+    audioManager.playSfx(this, 'ui_click')
+
+    if (!this.paused) {
+      this.pauseOverlay?.destroy()
+      this.pauseOverlay = null
+      return
+    }
+
+    this.pauseOverlay = createPauseOverlay(this)
   }
 
   private weightedPick<T>(items: T[], weightFor: (item: T) => number): T | null {
