@@ -28,7 +28,7 @@ The `.claude/` directory is local-only and ignored by git.
 
 ## Current Status
 
-Layers 1–8 (recovery + progression pass) plus the first editor-tooling and v0.2.0 progression-polish pass are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, capped unopened shop packs, same-unit synergy payoffs, cursor proc tuning, supply pack-bonus tech, breakable battlefield crates, cursor/tower/DC progression expansion, and local GUI editors for tech tree and unit data. This is the **v0.2.0 checkpoint**.
+Layers 1–8 (recovery + progression pass) plus the first editor-tooling, v0.2.0 progression-polish pass, and v0.2.1 tech-tree layout pass are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, capped unopened shop packs, same-unit synergy payoffs, cursor proc tuning, supply pack-bonus tech, breakable battlefield crates, cursor/tower/DC progression expansion, and local GUI editors for tech tree and unit data. This is the **v0.2.1 checkpoint**.
 
 ### v0.1.2 Additions
 - Multi-entry Vite app structure: main game plus local-only side apps.
@@ -88,6 +88,10 @@ Layers 1–8 (recovery + progression pass) plus the first editor-tooling and v0.
 - Ending a run from pause now banks earned PC and shows a Run Abandoned result instead of silently returning to shop.
 - Tier 2 first upgrades unlock after summoning each specialist once; two extra +2 DC specialist deployment nodes support the Chapter 2/3 power ramp.
 - Game over crate rewards summarize counts by reward type, and the campaign simulator mirrors pack caps and no-farming progression.
+
+### v0.2.1 Additions
+- Tech tree layout has been reorganized for clearer branch readability.
+- Opening the tech tree now starts centered within the scrollable graph bounds instead of at the top-left.
 
 ### Development Workflow Notes
 - When adding or changing combat mechanics, enemy behavior, unit behavior, targeting, movement, effects, or balance-sensitive tuning, add or update at least one focused scenario fixture in `src/tools/scenario/scenarios.ts`.

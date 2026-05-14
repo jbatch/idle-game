@@ -7,7 +7,7 @@ import { clearDraftShopPacks } from './ShopScene'
 import { playRingPulse, playSparkBurst } from '../effects/CombatEffects'
 import { fadeInScene, fadeToScene } from '../ui/sceneTransitions'
 
-const VERSION_LABEL = 'v0.2.0 progression checkpoint'
+const VERSION_LABEL = 'v0.2.1 tech tree layout'
 
 export class MenuScene extends Phaser.Scene {
   private orbiters: Phaser.GameObjects.Arc[] = []

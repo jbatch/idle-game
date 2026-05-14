@@ -104,6 +104,7 @@ export class TechTreeScene extends Phaser.Scene {
     // ── Scrollable content container ──
     this.content = this.add.container(0, HEADER_H)
     this.buildContent()
+    this.centerScrollInBounds()
 
     // ── Pan / scroll input ──
     this.input.on('wheel', (_p: unknown, _go: unknown, deltaX: number, deltaY: number) => {
@@ -445,6 +446,14 @@ export class TechTreeScene extends Phaser.Scene {
     const maxY = Math.max(0, this.totalContentH - viewportH)
     this.scrollX = Phaser.Math.Clamp(this.scrollX, 0, maxX)
     this.scrollY = Phaser.Math.Clamp(this.scrollY, 0, maxY)
+  }
+
+  private centerScrollInBounds() {
+    const viewportH = GAME_H - HEADER_H - FOOTER_H
+    this.scrollX = Math.max(0, (this.totalContentW - GAME_W) / 2)
+    this.scrollY = Math.max(0, (this.totalContentH - viewportH) / 2)
+    this.clampScroll()
+    this.updateContentPosition()
   }
 
   private updateContentPosition() {
