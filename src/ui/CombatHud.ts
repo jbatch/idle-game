@@ -3,6 +3,7 @@ import { GAME_W } from '../constants'
 import type { Enemy } from '../entities/Enemy'
 import type { Tower } from '../entities/Tower'
 import type { WaveManager } from '../systems/WaveManager'
+import { cssColor, uiPalette } from './palette'
 
 export type CombatHudState = {
   chapterName: string
@@ -23,12 +24,12 @@ export class CombatHud {
 
   constructor(scene: Phaser.Scene) {
     this.hudText = scene.add.text(10, 10, '', {
-      fontSize: '13px', color: '#aaaacc', fontFamily: 'monospace',
+      fontSize: '13px', color: cssColor(uiPalette.text.secondary), fontFamily: 'monospace',
     }).setDepth(20)
 
     this.bossBarGfx = scene.add.graphics().setDepth(20)
     this.bossLabel = scene.add.text(GAME_W / 2, 28, '', {
-      fontSize: '12px', color: '#ddaa22', fontFamily: 'monospace',
+      fontSize: '12px', color: cssColor(uiPalette.state.reward), fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(21)
   }
 
@@ -64,7 +65,7 @@ export class CombatHud {
     const frac = state.boss.hp / state.boss.maxHp
     this.bossBarGfx.fillStyle(0x221100, 1)
     this.bossBarGfx.fillRect(bx, by, barW, barH)
-    this.bossBarGfx.fillStyle(0xddaa22, 1)
+    this.bossBarGfx.fillStyle(uiPalette.state.reward, 1)
     this.bossBarGfx.fillRect(bx + 1, by + 1, (barW - 2) * frac, barH - 2)
     this.bossBarGfx.lineStyle(1, 0x886600, 1)
     this.bossBarGfx.strokeRect(bx, by, barW, barH)

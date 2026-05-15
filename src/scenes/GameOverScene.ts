@@ -6,6 +6,7 @@ import { debugState } from '../debug/DebugState'
 import { audioManager } from '../systems/AudioManager'
 import { playRingPulse, playSparkBurst } from '../effects/CombatEffects'
 import { fadeInScene, fadeToScene } from '../ui/sceneTransitions'
+import { cssColor, uiPalette } from '../ui/palette'
 
 interface RunResult {
   won: boolean
@@ -50,16 +51,16 @@ export class GameOverScene extends Phaser.Scene {
       openedUnits: data.openedUnits ?? [],
     })
 
-    this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 0x000000, 0.75)
+    this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, uiPalette.surface.shade, 0.75)
 
     const titleText = data.won ? 'CHAPTER COMPLETE' : data.abandoned ? 'RUN ABANDONED' : 'TOWER DESTROYED'
-    const titleColor = data.won ? '#44cc88' : data.abandoned ? '#ddaa22' : '#cc3333'
+    const titleColor = cssColor(data.won ? uiPalette.state.success : data.abandoned ? uiPalette.state.warning : uiPalette.state.danger)
 
     this.add.text(GAME_W / 2, GAME_H / 2 - 110, titleText, {
       fontSize: '38px', color: titleColor, fontFamily: 'monospace', fontStyle: 'bold',
     }).setOrigin(0.5)
-    playRingPulse(this, GAME_W / 2, GAME_H / 2 - 108, data.won ? 86 : 70, data.won ? 0x44cc88 : data.abandoned ? 0xddaa22 : 0xcc3333, 10)
-    if (data.won) playSparkBurst(this, GAME_W / 2, GAME_H / 2 - 108, 0x44cc88, { count: 20, radius: 90 })
+    playRingPulse(this, GAME_W / 2, GAME_H / 2 - 108, data.won ? 86 : 70, data.won ? uiPalette.state.success : data.abandoned ? uiPalette.state.warning : uiPalette.state.danger, 10)
+    if (data.won) playSparkBurst(this, GAME_W / 2, GAME_H / 2 - 108, uiPalette.state.success, { count: 20, radius: 90 })
 
     const mins = Math.floor(data.elapsed / 60)
     const secs = data.elapsed % 60
@@ -75,37 +76,37 @@ export class GameOverScene extends Phaser.Scene {
 
     stats.forEach((line, i) => {
       this.add.text(GAME_W / 2, GAME_H / 2 - 42 + i * 24, line, {
-        fontSize: '16px', color: '#aaaacc', fontFamily: 'monospace',
+        fontSize: '16px', color: cssColor(uiPalette.text.secondary), fontFamily: 'monospace',
       }).setOrigin(0.5)
     })
 
     const unlockMessage = this.unlockMessage(data.chapter)
     if (data.won && unlockMessage) {
       this.add.text(GAME_W / 2, GAME_H / 2 + 92, unlockMessage, {
-        fontSize: '14px', color: '#ddaa22', fontFamily: 'monospace',
+        fontSize: '14px', color: cssColor(uiPalette.state.reward), fontFamily: 'monospace',
       }).setOrigin(0.5)
     }
 
     const rewards = this.rewardSummary(data.crateRewards ?? [])
     const next = this.nextStep(data)
     this.add.text(GAME_W / 2, GAME_H / 2 + 122, rewards ? `Crate rewards: ${rewards}` : next, {
-      fontSize: '12px', color: rewards ? '#ffe1a3' : '#667799', fontFamily: 'monospace',
+      fontSize: '12px', color: cssColor(rewards ? uiPalette.state.rewardHover : uiPalette.text.muted), fontFamily: 'monospace',
       align: 'center',
     }).setOrigin(0.5)
 
     const techBtn = this.add.text(GAME_W / 2, GAME_H / 2 + 168, '[ SPEND PC IN TECH TREE ]', {
-      fontSize: '22px', color: '#ddaa22', fontFamily: 'monospace',
+      fontSize: '22px', color: cssColor(uiPalette.state.reward), fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true })
-    techBtn.on('pointerover', () => techBtn.setColor('#ffe1a3'))
-    techBtn.on('pointerout',  () => techBtn.setColor('#ddaa22'))
+    techBtn.on('pointerover', () => techBtn.setColor(cssColor(uiPalette.state.rewardHover)))
+    techBtn.on('pointerout',  () => techBtn.setColor(cssColor(uiPalette.state.reward)))
     techBtn.on('pointerdown', () => fadeToScene(this, 'TechTreeScene', undefined, { sfx: 'ui_click' }))
 
     const btn = this.add.text(GAME_W / 2, GAME_H / 2 + 204, '[ RETURN TO SHOP ]', {
-      fontSize: '14px', color: '#4466ff', fontFamily: 'monospace',
+      fontSize: '14px', color: cssColor(uiPalette.action.link), fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true })
 
-    btn.on('pointerover', () => btn.setColor('#88aaff'))
-    btn.on('pointerout',  () => btn.setColor('#4466ff'))
+    btn.on('pointerover', () => btn.setColor(cssColor(uiPalette.action.linkHover)))
+    btn.on('pointerout',  () => btn.setColor(cssColor(uiPalette.action.link)))
     btn.on('pointerdown', () => fadeToScene(this, 'ShopScene', undefined, { sfx: 'ui_click' }))
   }
 
