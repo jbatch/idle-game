@@ -35,6 +35,8 @@ export class Enemy implements Targetable {
   private graphics: Phaser.GameObjects.Graphics
   private hpBar: Phaser.GameObjects.Graphics
   private destroyed: boolean = false
+  private lockedUnitTarget: Unit | null = null
+  private retargetTimer: number = 0
 
   alive: boolean = true
   targetType: 'enemy' = 'enemy'
@@ -65,6 +67,7 @@ export class Enemy implements Targetable {
     const dt = delta / 1000
 
     this.tickEffects(dt)
+    this.retargetTimer = Math.max(0, this.retargetTimer - dt)
 
     // Knockback
     if (this.kbVx !== 0 || this.kbVy !== 0) {
@@ -139,7 +142,18 @@ export class Enemy implements Targetable {
   }
 
   private runRangedUnitTargeter(dt: number, tower: Tower, units: Unit[], speed: number) {
-    const target = this.nearestUnit(units)
+    const taunt = this.isBoss ? this.nearestTaunt(units) : null
+    if (taunt) {
+      this.moveAndAttack(dt, taunt, speed)
+      return
+    }
+
+    const target = this.lockedNearestUnit(units)
+    if (target && this.shouldBossIgnoreUnit(target)) {
+      this.runTowerOnly(dt, tower, speed)
+      return
+    }
+
     if (target) {
       this.moveAndAttack(dt, target, speed)
     } else {
@@ -194,6 +208,26 @@ export class Enemy implements Targetable {
     }
   }
 
+  private runTowerOnly(dt: number, tower: Tower, speed: number) {
+    const dx = tower.x - this.x
+    const dy = tower.y - this.y
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    const stop = tower.radius + this.attackRange
+
+    if (dist > stop) {
+      this.x += (dx / dist) * speed * dt
+      this.y += (dy / dist) * speed * dt
+      return
+    }
+
+    this.attackTimer -= dt
+    if (this.attackTimer <= 0) {
+      this.playAttackEffect(tower)
+      tower.takeDamage(this.damage, this)
+      this.attackTimer = this.attackCooldown
+    }
+  }
+
   // ─── Helpers ─────────────────────────────────────────────────────
 
   private nearestTaunt(units: Unit[]): Unit | null {
@@ -219,6 +253,23 @@ export class Enemy implements Targetable {
       if (d < bestDist) { bestDist = d; best = u }
     }
     return best
+  }
+
+  private lockedNearestUnit(units: Unit[]): Unit | null {
+    if (this.lockedUnitTarget?.alive && this.retargetTimer > 0) return this.lockedUnitTarget
+    const next = this.nearestUnit(units)
+    if (next !== this.lockedUnitTarget) {
+      this.lockedUnitTarget = next
+      this.retargetTimer = this.data.params?.retargetDebounce ?? 0.45
+    }
+    return this.lockedUnitTarget
+  }
+
+  private shouldBossIgnoreUnit(unit: Unit): boolean {
+    if (!this.isBoss) return false
+    if (unit.data.params?.tauntRadius) return false
+    const margin = this.data.params?.ignoreFasterUnitSpeedMargin ?? 0
+    return unit.data.speed > this.speed + margin
   }
 
   private speedMultiplier(): number {

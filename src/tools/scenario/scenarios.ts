@@ -157,6 +157,18 @@ export const combatScenarios: CombatScenario[] = [
     crates: [{ id: 'field_cache', rewardId: 'tower_patch', count: 1, radius: 205, angle: -58 }],
   },
   {
+    id: 'boss_anti_kite',
+    name: 'Boss: Anti-Kite',
+    description: 'Void Sovereign should ignore faster non-taunt units and return to tower pressure instead of chasing forever.',
+    cursor: { damage: 9, radius: 40, cooldown: 0.25, knockback: 0, knockbackChance: 0 },
+    tower: { hp: 520, godMode: false },
+    units: [
+      { id: 'archer', count: 1, radius: 135, angle: -90 },
+      { id: 'healer', count: 1, radius: 115, angle: 40 },
+    ],
+    enemies: [{ id: 'boss_chapter3', count: 1, radius: 235, angle: -90 }],
+  },
+  {
     id: 'tower_thorns',
     name: 'Tower: Retaliating Stone',
     description: 'Small rush enemies should take return damage each time they hit the tower.',

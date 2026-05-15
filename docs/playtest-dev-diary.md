@@ -21,3 +21,5 @@ Branch: `codex/playtest-triage-pass`
 - Swapped Game Over CTAs so spending PC in the tech tree is the primary action and returning to shop is secondary.
 - Added a reusable persisted onboarding-tip system with spotlight focus, darkened background, modal copy, and a global "skip tips" opt-out. Debug reset clears onboarding state.
 - Wired first-time tips into the tech tree, combat start/HUD, enemy introductions, crate introductions, and first synergy activation. Crate reward labels now linger longer for readability.
+- Investigated "shield breaker" targeting jitter: no enemy by that name exists in data; the likely source was `ranged_unit_targeter` choosing nearest unit every frame. Added a short target-lock debounce for ranged targeters.
+- Added boss-only anti-kite behavior: bosses with ranged-unit targeting ignore faster non-taunt units and return to tower pressure. Added a focused scenario fixture.
