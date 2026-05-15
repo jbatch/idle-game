@@ -93,20 +93,20 @@ export class GameOverScene extends Phaser.Scene {
       align: 'center',
     }).setOrigin(0.5)
 
-    const btn = this.add.text(GAME_W / 2, GAME_H / 2 + 168, '[ RETURN TO SHOP ]', {
-      fontSize: '22px', color: '#4466ff', fontFamily: 'monospace',
+    const techBtn = this.add.text(GAME_W / 2, GAME_H / 2 + 168, '[ SPEND PC IN TECH TREE ]', {
+      fontSize: '22px', color: '#ddaa22', fontFamily: 'monospace',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true })
+    techBtn.on('pointerover', () => techBtn.setColor('#ffe1a3'))
+    techBtn.on('pointerout',  () => techBtn.setColor('#ddaa22'))
+    techBtn.on('pointerdown', () => fadeToScene(this, 'TechTreeScene', undefined, { sfx: 'ui_click' }))
+
+    const btn = this.add.text(GAME_W / 2, GAME_H / 2 + 204, '[ RETURN TO SHOP ]', {
+      fontSize: '14px', color: '#4466ff', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true })
 
     btn.on('pointerover', () => btn.setColor('#88aaff'))
     btn.on('pointerout',  () => btn.setColor('#4466ff'))
     btn.on('pointerdown', () => fadeToScene(this, 'ShopScene', undefined, { sfx: 'ui_click' }))
-
-    const techBtn = this.add.text(GAME_W / 2, GAME_H / 2 + 204, '[ SPEND PC IN TECH TREE ]', {
-      fontSize: '14px', color: '#ddaa22', fontFamily: 'monospace',
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true })
-    techBtn.on('pointerover', () => techBtn.setColor('#ffe1a3'))
-    techBtn.on('pointerout',  () => techBtn.setColor('#ddaa22'))
-    techBtn.on('pointerdown', () => fadeToScene(this, 'TechTreeScene', undefined, { sfx: 'ui_click' }))
   }
 
   private unlockMessage(chapter: string): string {

@@ -8,6 +8,56 @@ Priority key:
 
 ## Backlog
 
+### First External Playtest Triage
+
+Captured from the first real-player playtest. Keep these as the current qualitative backlog until each item is investigated, implemented, or deliberately cut.
+
+#### Onboarding / Teaching
+
+| Item | Impact | Complexity | Priority | Notes |
+|---|---:|---:|---:|---|
+| First-run tutorial battle | Very High | High | P0 | First run should teach cursor attacks, click targeting, cooldown-circle meaning, and where to read key UI information. It can end in a scripted death to the first boss. |
+| First tech-tree onboarding | High | Medium | P0 | The first time the tech tree is shown, explain what the player is looking at, how unlocks work, and what they should do next. |
+| First enemy-introduction pause | High | Medium/High | P1 | When a new enemy appears for the first time, pause, highlight it, and explain its role. Design this so future enemy types can also be introduced from pre-combat or combat. |
+| First synergy discovery callout | Medium/High | Medium | P1 | The first time rolled units activate a synergy, pause/highlight the synergy description area so players learn where to look. |
+| Tutorial crate introduction | High | Medium | P1 | Tutorial should introduce field crates, explain reward types, and point players to where active effects appear. Check short-lived rewards like Field Mending so they remain readable. |
+
+#### Tech Tree UX
+
+| Item | Impact | Complexity | Priority | Notes |
+|---|---:|---:|---:|---|
+| Tech tree color grouping | High | Medium | P1 | Add a visual grouping/color system for related branches such as cursor, tower, deployment, supply, crates, and units. |
+| Manual tech-tree relayout pass | High | Medium | P1 | Layout is still messy and does not guide the player to look around. Do a deliberate hand layout pass after deciding color/group language. |
+| Locked tech presentation | High | Medium | P1 | Locked tech should be greyed out while still showing name and effect. Move requirements into a lock hover/focus overlay instead of tiny squeezed text. |
+| Tech description truncation | Medium | Low/Medium | P1 | Several descriptions, e.g. Cache Prospecting, truncate with ellipses. Make full text visible or show truncated text on hover/focus. |
+
+#### Combat / Balance Investigations
+
+| Item | Impact | Complexity | Priority | Notes |
+|---|---:|---:|---:|---|
+| Chapter 3 wave 15 difficulty wall | Very High | High | P0 | Validate with simulations before tuning. Goal: introduce a smaller wall earlier in Chapter 3, then keep wave 15 hard but reduce how long players are stuck there. Needs a planned balance pass, not random number churn. |
+| Final boss kiting cheese | Very High | High | P0 | A single archer/healer can grab aggro and outrun the boss while cursor damage finishes it. Explore boss secondary attacks, longer-cooldown ranged attacks, phase behavior, or logic that retargets tower when remaining units are faster unless taunt is active. |
+| T2 specialist pack buy tracking bug | High | Medium | P0 | Player bought multiple T2 squad packs across rounds but stats appeared stuck at 12. Check for hardcoded tracking caps or quest/stat update logic that stops incrementing. |
+| Same-unit synergy dropoff check | High | Low/Medium | P0 | Verify whether synergies are removed once living unit counts fall below the threshold. If 3 archers become 2, the buff should drop unless intentionally sticky. |
+| Shield breaker targeting jitter | Medium/High | Medium | P1 | Investigate funny behavior where shield breaker jiggled in place while swapping targets. Likely needs target debounce/stickiness. |
+| T1 squad unlock threshold | Medium | Low | P1 | Drop T1 Squad unlock from 15 to 14 T1 Recruit purchases so players land on the unlock more naturally instead of often being one short. |
+| Cursor knockback direction | Medium/High | Medium | P2 | Reconsider knockback because it can get in the way. Compare stun, weapon modes, drag-line attacks, projectile balls, and high-damage single-target options. Longer-term inspiration: Hades-style alternate weapons. |
+
+#### Readability / Visual Identity
+
+| Item | Impact | Complexity | Priority | Notes |
+|---|---:|---:|---:|---|
+| Purposeful color palette pass | High | Medium/High | P1 | Menus and text feel bland in places. Create a real palette with clear semantic roles for backgrounds, actions, warnings, rewards, locks, branches, and combat states. |
+| Friendly/enemy distinction | High | Medium | P1 | Units and enemies need stronger visual separation. Consider shape language, silhouettes, outlines, or team-specific rendering conventions. |
+| Future enemy identity system | High | High | P2 | Brainstorm more enemy types and design them around identifiable silhouettes, colors, motion, and tutorial hooks. Current chapters reuse too many of the same enemies. |
+| Custom pointer cursor | Medium | Low/Medium | P2 | Replace the default pointer with nicer menu and combat cursors. Combat cursor should reinforce click/cooldown feel without harming precision. |
+
+#### Flow / Menu Polish
+
+| Item | Impact | Complexity | Priority | Notes |
+|---|---:|---:|---:|---|
+| Game-over CTA order | Medium | Low | P1 | Swap Back to Shop and Back to Tech Tree. Tech Tree should be the primary CTA because players usually need to spend PC after a run. |
+
 ### Core Combat Feel
 
 | Item | Impact | Complexity | Priority | Notes |

@@ -20,7 +20,7 @@
       "cost": 3,
       "rolls": 4,
       "maxPurchases": 2,
-      "questRequirements": ["pack_tier1_recruit:bought:15"],
+      "questRequirements": ["pack_tier1_recruit:bought:14"],
       "rollTable": [
         { "unitId": "footsoldier", "weight": 45, "rarity": "common" },
         { "unitId": "archer", "weight": 45, "rarity": "common" },

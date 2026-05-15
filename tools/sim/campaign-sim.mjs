@@ -146,6 +146,7 @@ function campaignPackScore(pack, chapterId) {
 function applyRunStats(state, result) {
   for (const [packId, count] of Object.entries(result.packsBought)) {
     addStat(state, `pack_${packId}`, 'bought', count)
+    if (packId === 'tier2_squad') addStat(state, 'pack_tier2_specialist', 'bought', count)
   }
   for (const [unitId, count] of Object.entries(result.stats.summoned)) {
     addStat(state, unitId, 'summoned', count)

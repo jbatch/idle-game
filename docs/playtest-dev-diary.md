@@ -1,0 +1,21 @@
+# Playtest Triage Dev Diary
+
+Branch: `codex/playtest-triage-pass`
+
+## Notes
+
+- Started from the first external playtest TODO triage.
+- User direction:
+  - Leave manual tech-tree relayout on TODO for human-guided work.
+  - Onboarding tips should darken the whole screen, highlight the focused area, show a modal tip, and allow players to opt out.
+  - Investigation tasks should be checked in code and reported here/end-of-run; fix only obvious bugs.
+  - Boss anti-kite should use boss-only ignore/retarget behavior rather than a ranged attack.
+  - Palette abstraction is riskier and should be isolated as much as possible.
+
+## Log
+
+- Created feature branch.
+- Verified same-unit synergy dropoff in code: `applyUnitSynergies()` clears effects each tick before re-applying currently qualified effects, so synergies should drop when living counts fall below threshold.
+- Found T2 pack progress mismatch: buying `tier2_squad` increments `pack_tier2_squad_bought`, while several progression gates watch `pack_tier2_specialist:bought`. Fixed by also incrementing shared specialist-pack progress for T2 Squad purchases in runtime and simulator.
+- Dropped T1 Squad Pack unlock requirement from 15 to 14 Tier 1 Recruit purchases.
+- Swapped Game Over CTAs so spending PC in the tech tree is the primary action and returning to shop is secondary.

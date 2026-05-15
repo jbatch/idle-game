@@ -499,7 +499,10 @@ export class ShopScene extends Phaser.Scene {
       ),
       completedQuests: [...techState.completedQuests],
     })
-    for (const packId of this.packPurchases) techState.incrementStat(`pack_${packId}_bought`)
+    for (const packId of this.packPurchases) {
+      techState.incrementStat(`pack_${packId}_bought`)
+      if (packId === 'tier2_squad') techState.incrementStat('pack_tier2_specialist_bought')
+    }
     draftPackPurchases = []
     playRingPulse(this, PANEL_X + PANEL_W / 2, PANEL_Y + PANEL_H - 34, 44, 0xddaa22)
     fadeToScene(this, 'GameScene', { packs: [...this.packPurchases], campaignRunId: run.id }, { duration: 420, sfx: 'run_start' })
