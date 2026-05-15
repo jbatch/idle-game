@@ -3,6 +3,7 @@ import type { UnitData, UnitSynergyData } from '../data/types'
 import { GAME_H, GAME_W } from '../constants'
 import { playRingPulse, playSparkBurst } from '../effects/CombatEffects'
 import { audioManager } from '../systems/AudioManager'
+import { showOnboardingTip } from './OnboardingOverlay'
 
 export type PackRollResult = {
   unitId: string
@@ -249,6 +250,12 @@ export function showPackRevealOverlay(
       title.setText(`${synergy.name.toUpperCase()}!`)
       playSparkBurst(scene, synergyPanel.x, synergyPanel.y, 0x7cff9f, { count: 18, radius: 52, depth: 72 })
       playRingPulse(scene, synergyPanel.x, synergyPanel.y, 46, 0x7cff9f, 72)
+      showOnboardingTip(scene, {
+        id: 'first_synergy',
+        title: 'Synergy active',
+        body: 'Matching units can unlock squad bonuses. This panel shows which synergies are active before the fight starts.',
+        focus: new Phaser.Geom.Rectangle(infoX, synergyY, infoW, synergyH),
+      })
       scene.time.delayedCall(900, () => {
         if (openedCount >= tiles.length) title.setText('SQUAD READY')
         else title.setText('OPEN YOUR PACKS')

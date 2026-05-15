@@ -6,6 +6,7 @@ import { addFittedText } from '../ui/fittedText'
 import { audioManager } from '../systems/AudioManager'
 import { playRingPulse, playSparkBurst } from '../effects/CombatEffects'
 import { fadeInScene, fadeToScene } from '../ui/sceneTransitions'
+import { showOnboardingTip } from '../ui/OnboardingOverlay'
 
 const HEADER_H  = 90   // title + PC bar + separator
 const FOOTER_H  = 54   // back button area
@@ -142,6 +143,15 @@ export class TechTreeScene extends Phaser.Scene {
 
     if (this.totalContentW <= GAME_W && this.totalContentH <= GAME_H - HEADER_H - FOOTER_H) scrollHint.setVisible(false)
     void footerBg  // referenced to avoid lint warning
+
+    this.time.delayedCall(260, () => {
+      showOnboardingTip(this, {
+        id: 'tech_tree_first_visit',
+        title: 'Spend PC here',
+        body: 'Each node is a permanent upgrade. Drag empty space to explore branches, then buy available nodes with PC earned from runs.',
+        focus: new Phaser.Geom.Rectangle(122, HEADER_H + 34, 650, 360),
+      })
+    })
   }
 
   private refreshPcText() {

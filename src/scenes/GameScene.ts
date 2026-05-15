@@ -18,6 +18,7 @@ import { fadeInScene, fadeToScene } from '../ui/sceneTransitions'
 import { showPackRevealOverlay, type PackRollResult } from '../ui/PackRevealOverlay'
 import { CombatHud } from '../ui/CombatHud'
 import { createPauseOverlay } from '../ui/PauseOverlay'
+import { showOnboardingTip } from '../ui/OnboardingOverlay'
 
 const DEBUG_COOLDOWN = 0.05
 
@@ -55,6 +56,7 @@ export class GameScene extends Phaser.Scene {
   private chapterName = ''
   private packRevealBlocking = false
   private paused = false
+  private onboardingPaused = false
   private cratesOpened = 0
   private crateRewards: string[] = []
 
@@ -79,6 +81,7 @@ export class GameScene extends Phaser.Scene {
     this.openedUnits = []
     this.packRevealBlocking = false
     this.paused = false
+    this.onboardingPaused = false
     this.cratesOpened = 0
     this.crateRewards = []
     this.pauseOverlay?.destroy()
@@ -122,9 +125,11 @@ export class GameScene extends Phaser.Scene {
       showPackRevealOverlay(this, packResults, this.unitSynergies, () => {
         this.spawnUnits(packResults.map(result => result.unitId))
         this.packRevealBlocking = false
+        this.showCombatBasicsTip()
       })
     } else {
       this.spawnUnits(packResults.map(result => result.unitId))
+      this.time.delayedCall(220, () => this.showCombatBasicsTip())
     }
 
     // Cursor
@@ -133,12 +138,16 @@ export class GameScene extends Phaser.Scene {
 
     // Wave manager
     this.waves = new WaveManager(this, chapter, enemyMap)
-    this.waves.onSpawn = e => this.enemies.push(e)
+    this.waves.onSpawn = e => {
+      this.enemies.push(e)
+      this.showEnemyTip(e)
+    }
     this.waves.onBossSpawn = e => {
       this.boss = e
       this.bossSpawned = true
       this.enemies.push(e)
       this.showBossWarning(e.name)
+      this.showEnemyTip(e)
     }
 
     this.hud = new CombatHud(this)
@@ -410,6 +419,7 @@ export class GameScene extends Phaser.Scene {
     const pos = this.clampCratePosition(x, y, crateKind.radius)
     this.crates.push(new Crate(this, pos.x, pos.y, crateKind, reward, crate => this.openCrate(crate)))
     playRingPulse(this, pos.x, pos.y, crateKind.radius + 8, 0xffdd77, 13)
+    this.showCrateTip(pos.x, pos.y, crateKind.radius)
   }
 
   private rollCrateKind(): CrateKindData | null {
@@ -537,13 +547,83 @@ export class GameScene extends Phaser.Scene {
       targets: text,
       y: y - 58,
       alpha: 0,
-      duration: 1200,
+      duration: 1800,
       ease: 'Quad.easeOut',
       onComplete: () => text.destroy(),
     })
   }
 
+  private showCombatBasicsTip() {
+    this.showPausedTip({
+      id: 'combat_basics',
+      title: 'Hold the tower',
+      body: 'Click enemies to strike them with the cursor. The circle around the pointer is your cooldown. Watch the left HUD for PC, tower health, waves, units, crates, and temporary cursor buffs.',
+      focus: new Phaser.Geom.Rectangle(92, 104, 716, 676),
+      onClose: () => this.showHudTip(),
+    })
+  }
+
+  private showHudTip() {
+    this.showPausedTip({
+      id: 'combat_hud',
+      title: 'Read the run',
+      body: 'This status strip shows PC earned this run, tower health, wave timing, living units, active crates, and timed cursor effects.',
+      focus: new Phaser.Geom.Rectangle(8, 8, 250, 152),
+    })
+  }
+
+  private showEnemyTip(enemy: Enemy) {
+    if (this.onboardingPaused) return
+    this.showPausedTip({
+      id: `enemy_${enemy.data.id}`,
+      title: enemy.name,
+      body: this.enemyTipText(enemy),
+      focus: new Phaser.Geom.Rectangle(enemy.x - enemy.radius - 14, enemy.y - enemy.radius - 14, enemy.radius * 2 + 28, enemy.radius * 2 + 28),
+    })
+  }
+
+  private showCrateTip(x: number, y: number, radius: number) {
+    if (this.onboardingPaused) return
+    this.showPausedTip({
+      id: 'first_crate',
+      title: 'Field crate',
+      body: 'Click crates to break them open. Rewards can heal, shield, add units, or give timed cursor buffs. Buff timers appear in the left HUD.',
+      focus: new Phaser.Geom.Rectangle(x - radius - 16, y - radius - 16, radius * 2 + 32, radius * 2 + 32),
+    })
+  }
+
+  private showPausedTip(config: Parameters<typeof showOnboardingTip>[1]) {
+    if (this.gameOver || this.packRevealBlocking || this.pauseOverlay) return
+    const wasPaused = this.paused
+    this.paused = true
+    this.onboardingPaused = true
+    const shown = showOnboardingTip(this, {
+      ...config,
+      onClose: () => {
+        this.onboardingPaused = false
+        this.paused = wasPaused
+        config.onClose?.()
+      },
+    })
+    if (!shown) {
+      this.onboardingPaused = false
+      this.paused = wasPaused
+    }
+  }
+
+  private enemyTipText(enemy: Enemy): string {
+    if (enemy.isBoss) return 'Bosses are major chapter threats. Keep clicking them, but protect the tower and use any units or crates you have left.'
+    const tags = new Set(enemy.data.tags)
+    if (enemy.data.behaviour === 'healer_support') return 'Support enemies heal their allies. They are high-value cursor targets when they appear.'
+    if (enemy.data.behaviour === 'ranged_unit_targeter') return 'Ranged enemies pressure your squad from a distance. Click them down before they pick off key units.'
+    if (enemy.data.behaviour === 'rush_tower_aoe') return 'Siege enemies splash damage around the tower. Stop them before they reach the center.'
+    if (tags.has('fast')) return 'Fast enemies race toward the tower. Use cursor hits to thin them out before they slip through.'
+    if (tags.has('tank')) return 'Tank enemies soak damage and slow your cleanup. Focus them before they pin your units.'
+    return 'Basic melee enemies walk toward the tower. Click them while your squad holds the line.'
+  }
+
   private togglePause() {
+    if (this.onboardingPaused) return
     if (this.gameOver || this.packRevealBlocking) return
     this.paused = !this.paused
     audioManager.playSfx(this, 'ui_click')

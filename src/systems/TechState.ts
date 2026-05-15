@@ -1,5 +1,6 @@
 import type { BalanceData, TechEffect, TechNode, UnitData } from '../data/types'
 import { campaignLog } from './CampaignLog'
+import { onboardingState } from './OnboardingState'
 
 const PC_KEY     = 'siegeloop_pc'
 const TECH_KEY   = 'siegeloop_tech'
@@ -158,6 +159,7 @@ export const techState = {
     localStorage.removeItem(QUESTS_KEY)
     localStorage.removeItem(STATS_KEY)
     localStorage.removeItem(SHOP_BRIEFING_DISMISSED_KEY)
+    onboardingState.reset()
     campaignLog.clear()
   },
 }
