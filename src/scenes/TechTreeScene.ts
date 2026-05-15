@@ -8,6 +8,7 @@ import { playRingPulse, playSparkBurst } from '../effects/CombatEffects'
 import { fadeInScene, fadeToScene } from '../ui/sceneTransitions'
 import { showOnboardingTip } from '../ui/OnboardingOverlay'
 import { cssColor, uiPalette } from '../ui/palette'
+import { cursors } from '../ui/cursors'
 
 const HEADER_H  = 90   // title + PC bar + separator
 const FOOTER_H  = 54   // back button area
@@ -76,6 +77,7 @@ export class TechTreeScene extends Phaser.Scene {
   create() {
     fadeInScene(this)
     audioManager.playMusic(this, 'shop_theme')
+    this.input.setDefaultCursor(cursors.menu)
     const data = this.cache.json.get('tech_tree') as { nodes: TechNode[] }
     const layoutData = this.cache.json.get('tech_tree_layout') as TechTreeLayoutData | undefined
     this.nodes = data.nodes
@@ -144,7 +146,7 @@ export class TechTreeScene extends Phaser.Scene {
       this.panStartPointerY = pointer.y
       this.panStartScrollX = this.scrollX
       this.panStartScrollY = this.scrollY
-      this.input.setDefaultCursor('grabbing')
+      this.input.setDefaultCursor(cursors.grabbing)
     })
 
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
@@ -519,7 +521,7 @@ export class TechTreeScene extends Phaser.Scene {
   private stopPanning() {
     if (!this.isPanning) return
     this.isPanning = false
-    this.input.setDefaultCursor('default')
+    this.input.setDefaultCursor(cursors.menu)
   }
 
   private clampScroll() {

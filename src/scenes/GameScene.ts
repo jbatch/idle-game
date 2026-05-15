@@ -19,6 +19,7 @@ import { showPackRevealOverlay, type PackRollResult } from '../ui/PackRevealOver
 import { CombatHud } from '../ui/CombatHud'
 import { createPauseOverlay } from '../ui/PauseOverlay'
 import { showOnboardingTip } from '../ui/OnboardingOverlay'
+import { cursors } from '../ui/cursors'
 
 const DEBUG_COOLDOWN = 0.05
 
@@ -67,6 +68,7 @@ export class GameScene extends Phaser.Scene {
   create(data: { loadout?: string[], packs?: string[], campaignRunId?: string }) {
     fadeInScene(this)
     audioManager.playMusic(this, 'battle_theme')
+    this.input.setDefaultCursor(cursors.combat)
     this.gameOver = false
     this.enemies = []
     this.units = []

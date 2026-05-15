@@ -364,6 +364,8 @@ export class Enemy implements Targetable {
       this.graphics.strokeCircle(this.x, this.y, this.radius + 8)
     }
 
+    this.graphics.lineStyle(this.isBoss ? 3 : 2, 0xff5533, this.isBoss ? 0.75 : 0.55)
+    this.graphics.strokeCircle(this.x, this.y, this.radius + (this.isBoss ? 5 : 3))
     this.graphics.fillStyle(this.color, 1)
     this.graphics.fillCircle(this.x, this.y, this.radius)
     this.graphics.lineStyle(this.isBoss ? 2 : 1, 0xffffff, this.isBoss ? 0.6 : 0.3)

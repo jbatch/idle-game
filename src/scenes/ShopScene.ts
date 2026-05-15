@@ -10,6 +10,7 @@ import { addFittedText } from '../ui/fittedText'
 import { audioManager } from '../systems/AudioManager'
 import { playRingPulse, playSparkBurst, playTextToast } from '../effects/CombatEffects'
 import { fadeInScene, fadeToScene } from '../ui/sceneTransitions'
+import { cursors } from '../ui/cursors'
 
 const CHAPTER_DEFS = [
   { id: 'chapter1', questReq: null, clearQuest: 'boss_chapter1_killed' },
@@ -61,6 +62,7 @@ export class ShopScene extends Phaser.Scene {
   create() {
     fadeInScene(this)
     audioManager.playMusic(this, 'shop_theme')
+    this.input.setDefaultCursor(cursors.menu)
     this.balance  = this.cache.json.get('balance')  as BalanceData
     this.unitMap  = {}
     for (const id of unitIdsFromCache(this)) {

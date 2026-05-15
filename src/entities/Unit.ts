@@ -640,6 +640,8 @@ export class Unit implements Targetable {
       this.graphics.strokeCircle(this.x, this.y, this.data.radius + 7)
     }
 
+    this.graphics.lineStyle(2, 0x88ccff, 0.65)
+    this.graphics.strokeCircle(this.x, this.y, this.data.radius + 3)
     this.graphics.fillStyle(this.color, 1)
     this.graphics.fillCircle(this.x, this.y, this.data.radius)
     this.graphics.lineStyle(1, 0xffffff, 0.4)

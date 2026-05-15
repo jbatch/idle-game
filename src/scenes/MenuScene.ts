@@ -6,6 +6,7 @@ import { debugState } from '../debug/DebugState'
 import { clearDraftShopPacks } from './ShopScene'
 import { playRingPulse, playSparkBurst } from '../effects/CombatEffects'
 import { fadeInScene, fadeToScene } from '../ui/sceneTransitions'
+import { cursors } from '../ui/cursors'
 
 const VERSION_LABEL = 'v0.2.1 tech tree layout'
 
@@ -19,6 +20,7 @@ export class MenuScene extends Phaser.Scene {
   create() {
     fadeInScene(this, 320)
     audioManager.playMusic(this, 'menu_theme')
+    this.input.setDefaultCursor(cursors.menu)
 
     this.orbiters = []
     this.add.rectangle(0, 0, GAME_W, GAME_H, 0x070912).setOrigin(0, 0)
