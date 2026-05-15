@@ -7,6 +7,7 @@ import { audioManager } from '../systems/AudioManager'
 import { playRingPulse, playSparkBurst } from '../effects/CombatEffects'
 import { fadeInScene, fadeToScene } from '../ui/sceneTransitions'
 import { showOnboardingTip } from '../ui/OnboardingOverlay'
+import { cssColor, uiPalette } from '../ui/palette'
 
 const HEADER_H  = 90   // title + PC bar + separator
 const FOOTER_H  = 54   // back button area
@@ -36,6 +37,21 @@ const BRANCH_LABELS: Record<string, string> = {
 
 const BRANCH_ORDER = ['cursor', 'deployment', 'supply', 'crates', 'tower', 'footsoldier', 'archer', 'shieldbearer', 'healer', 'frost_mage', 'sentinel', 'bard']
 
+const BRANCH_COLORS: Record<string, number> = {
+  cursor: 0x5aa7ff,
+  deployment: 0xddaa22,
+  supply: 0x7cff9f,
+  crates: 0xffb86b,
+  tower: 0x8fa3d4,
+  footsoldier: 0xcc6b4a,
+  archer: 0x76c46b,
+  shieldbearer: 0x7f91d8,
+  healer: 0xf2d27a,
+  frost_mage: 0x74d7ff,
+  sentinel: 0xba8cff,
+  bard: 0xff83c3,
+}
+
 export class TechTreeScene extends Phaser.Scene {
   private nodes: TechNode[] = []
   private layouts = new Map<string, TechNodeLayout>()
@@ -51,6 +67,7 @@ export class TechTreeScene extends Phaser.Scene {
   private panStartPointerY = 0
   private panStartScrollX = 0
   private panStartScrollY = 0
+  private tooltip: Phaser.GameObjects.Container | null = null
 
   constructor() {
     super({ key: 'TechTreeScene' })
@@ -223,7 +240,7 @@ export class TechTreeScene extends Phaser.Scene {
 
         const line = this.add.graphics()
         const connected = techState.has(requiredNode.id) && techState.has(node.id)
-        line.lineStyle(2, connected ? 0x44cc88 : 0x1a2244, 1)
+        line.lineStyle(2, connected ? uiPalette.state.success : uiPalette.border.dim, 1)
         this.drawEdgeLine(line, requiredLayout, layout, this.edgeLayouts.get(this.edgeKey(requiredId, node.id)))
         this.content.add(line)
       }
@@ -263,7 +280,7 @@ export class TechTreeScene extends Phaser.Scene {
   private buildRow(branch: string, nodes: TechNode[], rowY: number) {
     // Branch label
     const label = this.add.text(ROW_PAD_X, rowY + NODE_H / 2, BRANCH_LABELS[branch] ?? branch, {
-      fontSize: '10px', color: '#334466', fontFamily: 'monospace', fontStyle: 'bold',
+      fontSize: '10px', color: cssColor(BRANCH_COLORS[branch] ?? uiPalette.text.muted), fontFamily: 'monospace', fontStyle: 'bold',
     }).setOrigin(0, 0.5)
     this.content.add(label)
 
@@ -279,7 +296,7 @@ export class TechTreeScene extends Phaser.Scene {
         const prevX = nodesX + (idx - 1) * (NODE_W + NODE_GAP) + NODE_W
         const line = this.add.graphics()
         const connected = techState.has(nodes[idx - 1].id) && techState.has(node.id)
-        line.lineStyle(2, connected ? 0x44cc88 : 0x1a2244, 1)
+        line.lineStyle(2, connected ? uiPalette.state.success : uiPalette.border.dim, 1)
         line.lineBetween(prevX, rowY + NODE_H / 2, nx, rowY + NODE_H / 2)
         this.content.add(line)
       }
@@ -297,14 +314,15 @@ export class TechTreeScene extends Phaser.Scene {
     const canAfford  = techState.pc >= currentCost
     const locked     = !purchased && !available
     const unmetQuest = this.unmetQuestRequirement(node)
+    const branchColor = BRANCH_COLORS[node.branch] ?? uiPalette.border.strong
 
     let borderColor: number
     let bgColor: number
-    if (maxed)           { borderColor = 0x44cc88; bgColor = 0x0e2211 }
-    else if (purchased && canAfford) { borderColor = 0x66aaee; bgColor = 0x0d1a33 }
+    if (maxed)           { borderColor = uiPalette.state.success; bgColor = 0x0e2211 }
+    else if (purchased && canAfford) { borderColor = branchColor; bgColor = 0x0d1a33 }
     else if (purchased)  { borderColor = 0x668855; bgColor = 0x10180e }
-    else if (!available) { borderColor = 0x1a2a3a; bgColor = 0x080c14 }
-    else if (canAfford)  { borderColor = 0x4466bb; bgColor = 0x0d1a33 }
+    else if (!available) { borderColor = 0x3a4350; bgColor = 0x10131a }
+    else if (canAfford)  { borderColor = branchColor; bgColor = 0x0d1a33 }
     else                 { borderColor = 0x885522; bgColor = 0x1a0e08 }
 
     const bg = this.add.rectangle(nx, ny, NODE_W, NODE_H, bgColor).setOrigin(0, 0)
@@ -314,47 +332,40 @@ export class TechTreeScene extends Phaser.Scene {
     border.strokeRect(nx, ny, NODE_W, NODE_H)
     this.content.add(bg)
     this.content.add(border)
+    const branchStrip = this.add.rectangle(nx + 4, ny + 4, 5, NODE_H - 8, branchColor, locked ? 0.35 : 0.9).setOrigin(0, 0)
+    this.content.add(branchStrip)
 
-    const textX = nx + 8
-    const textW = NODE_W - 16
-    const nameColor = purchased ? '#44cc88' : locked ? '#2a3a4a' : '#ccd4ff'
+    const textX = nx + 14
+    const textW = NODE_W - 22
+    const nameColor = purchased ? cssColor(uiPalette.state.success) : locked ? cssColor(0x8d97a6) : cssColor(uiPalette.text.primary)
     const nameText = addFittedText(this, textX, ny + 8, node.name, {
       fontSize: '13px', color: nameColor, fontFamily: 'monospace', fontStyle: 'bold',
     }, { width: textW, maxLines: 1, minFontSize: 10, align: 'center' })
     this.content.add(nameText)
 
-    const descColor = locked ? '#1e2e3e' : '#556688'
+    const descColor = locked ? cssColor(0x667080) : cssColor(0x667799)
     const descText = addFittedText(this, textX, ny + 29, node.description, {
       fontSize: '10px', color: descColor, fontFamily: 'monospace',
       lineSpacing: -2,
     }, { width: textW, maxLines: 2, minFontSize: 8, align: 'center' })
     this.content.add(descText)
 
-    // Quest requirement line
-    if (unmetQuest) {
-      const qLabel = this.formatQuestLabel(unmetQuest)
-      const qText = addFittedText(this, textX, ny + 55, qLabel, {
-        fontSize: '9px', color: '#4a3322', fontFamily: 'monospace',
-      }, { width: textW, maxLines: 1, minFontSize: 7, align: 'center' })
-      this.content.add(qText)
-    }
-
     // Cost / status line
     let statusStr: string
     let statusColor: string
     if (maxed && node.repeatable) {
-      statusStr = this.repeatableStatusLabel(node, level, 'MAX'); statusColor = '#44cc88'
+      statusStr = this.repeatableStatusLabel(node, level, 'MAX'); statusColor = cssColor(uiPalette.state.success)
     } else if (purchased && node.repeatable) {
-      statusStr = this.repeatableStatusLabel(node, level, `${currentCost} PC`); statusColor = canAfford ? '#ddaa22' : '#664422'
+      statusStr = this.repeatableStatusLabel(node, level, `${currentCost} PC`); statusColor = canAfford ? cssColor(uiPalette.state.reward) : cssColor(0x664422)
     } else if (purchased) {
-      statusStr = '✓ OWNED'; statusColor = '#44cc88'
+      statusStr = 'OWNED'; statusColor = cssColor(uiPalette.state.success)
     } else if (unmetQuest) {
-      statusStr = 'QUEST LOCKED'; statusColor = '#4a3322'
+      statusStr = 'QUEST LOCKED [?]'; statusColor = cssColor(0xb98a55)
     } else if (locked) {
-      statusStr = 'LOCKED'; statusColor = '#2a3a4a'
+      statusStr = 'LOCKED [?]'; statusColor = cssColor(0x8d97a6)
     } else {
       statusStr = `${currentCost} PC`
-      statusColor = canAfford ? '#ddaa22' : '#664422'
+      statusColor = canAfford ? cssColor(uiPalette.state.reward) : cssColor(0x664422)
     }
     const isRepeatableOwned = Boolean(node.repeatable && level > 0)
     const costText = addFittedText(this, textX, ny + NODE_H - (isRepeatableOwned ? 25 : 18), statusStr, {
@@ -363,21 +374,82 @@ export class TechTreeScene extends Phaser.Scene {
     }, { width: textW, maxLines: isRepeatableOwned ? 2 : 1, minFontSize: isRepeatableOwned ? 8 : 9, align: 'center' })
     this.content.add(costText)
 
+    bg.on('pointerover', (pointer: Phaser.Input.Pointer) => {
+      if (available && canAfford) bg.setFillStyle(bgColor + 0x0a0a0a)
+      this.showNodeTooltip(node, pointer.x, pointer.y, unmetQuest, locked)
+    })
+    bg.on('pointerout', () => {
+      if (available && canAfford) bg.setFillStyle(bgColor)
+      this.hideTooltip()
+    })
+    bg.on('pointermove', (pointer: Phaser.Input.Pointer) => this.moveTooltip(pointer.x, pointer.y))
+
     // Click to purchase
     if (available && canAfford) {
-      bg.on('pointerover', () => bg.setFillStyle(bgColor + 0x0a0a0a))
-      bg.on('pointerout',  () => bg.setFillStyle(bgColor))
       bg.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
         if (!pointer.leftButtonDown()) return
         audioManager.playSfx(this, 'tech_purchase')
         const burstX = nx + NODE_W / 2 - this.scrollX
         const burstY = HEADER_H + ny + NODE_H / 2 - this.scrollY
-        playSparkBurst(this, burstX, burstY, 0xddaa22, { count: 12, radius: 36 })
-        playRingPulse(this, burstX, burstY, 34, 0x44cc88)
+        playSparkBurst(this, burstX, burstY, uiPalette.state.reward, { count: 12, radius: 36 })
+        playRingPulse(this, burstX, burstY, 34, uiPalette.state.success)
         techState.purchase(node)
         this.refreshPcText()
+        this.hideTooltip()
         this.time.delayedCall(90, () => this.buildContent())
       })
+    }
+  }
+
+  private showNodeTooltip(node: TechNode, x: number, y: number, unmetQuest: string | null, locked: boolean) {
+    this.hideTooltip()
+    const lines = [
+      node.description,
+      locked || unmetQuest
+        ? `Unlock: ${unmetQuest ? this.formatQuestLabel(unmetQuest).replace(/^req: /, '') : 'buy prerequisite tech first'}`
+        : `Cost: ${techState.currentCost(node)} PC`,
+      node.repeatable ? `Repeatable: ${techState.effectiveLevel(node)}/${node.repeatable.maxLevel}` : '',
+    ].filter(Boolean)
+    const width = 300
+    const height = Math.max(94, 44 + lines.length * 32)
+    const pos = this.tooltipPosition(x, y, width, height)
+    const tip = this.add.container(pos.x, pos.y).setDepth(250)
+    const bg = this.add.rectangle(0, 0, width, height, uiPalette.surface.panel, 0.98).setOrigin(0, 0)
+    bg.setStrokeStyle(1, BRANCH_COLORS[node.branch] ?? uiPalette.border.strong)
+    const title = this.add.text(14, 12, node.name, {
+      fontSize: '13px',
+      color: cssColor(BRANCH_COLORS[node.branch] ?? uiPalette.text.primary),
+      fontFamily: 'monospace',
+      fontStyle: 'bold',
+      wordWrap: { width: width - 28 },
+    }).setOrigin(0, 0)
+    const body = this.add.text(14, 36, lines.join('\n'), {
+      fontSize: '11px',
+      color: cssColor(uiPalette.text.secondary),
+      fontFamily: 'monospace',
+      lineSpacing: 5,
+      wordWrap: { width: width - 28 },
+    }).setOrigin(0, 0)
+    tip.add([bg, title, body])
+    this.tooltip = tip
+  }
+
+  private moveTooltip(x: number, y: number) {
+    if (!this.tooltip) return
+    const bg = this.tooltip.list[0] as Phaser.GameObjects.Rectangle
+    const pos = this.tooltipPosition(x, y, bg.width, bg.height)
+    this.tooltip.setPosition(pos.x, pos.y)
+  }
+
+  private hideTooltip() {
+    this.tooltip?.destroy(true)
+    this.tooltip = null
+  }
+
+  private tooltipPosition(x: number, y: number, width: number, height: number): { x: number, y: number } {
+    return {
+      x: Phaser.Math.Clamp(x + 18, 12, GAME_W - width - 12),
+      y: Phaser.Math.Clamp(y + 18, 12, GAME_H - height - 12),
     }
   }
 
