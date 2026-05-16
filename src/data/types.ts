@@ -159,11 +159,20 @@ export interface BalanceData {
   dcBudget: number
   pcMultiplier: number
   towerHp: number
+  currency?: {
+    progression?: CurrencyDisplayData
+    deployment?: CurrencyDisplayData
+  }
   cursor: {
     damage: number
     radius: number
     cooldown: number
   }
+}
+
+export interface CurrencyDisplayData {
+  name: string
+  icon: string
 }
 
 export interface TechEffect {

@@ -7,6 +7,7 @@ import { audioManager } from '../systems/AudioManager'
 import { playRingPulse, playSparkBurst } from '../effects/CombatEffects'
 import { fadeInScene, fadeToScene } from '../ui/sceneTransitions'
 import { cssColor, uiPalette } from '../ui/palette'
+import { currencyLabels } from '../ui/currency'
 
 interface RunResult {
   won: boolean
@@ -31,6 +32,7 @@ export class GameOverScene extends Phaser.Scene {
 
   create(data: RunResult) {
     fadeInScene(this)
+    const currency = currencyLabels(this)
     audioManager.playMusic(this, 'shop_theme')
     // Persist PC and quests
     techState.addPc(data.pc)
@@ -67,7 +69,7 @@ export class GameOverScene extends Phaser.Scene {
     const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
 
     const stats = [
-      `PC earned:    ${data.pc}  (total: ${techState.pc})`,
+      `${currency.progression.icon} ${currency.progression.name} earned: ${data.pc}  (total: ${techState.pc})`,
       `Survived:     ${timeStr}`,
       `Waves:        ${data.wavesCleared} / ${data.totalWaves}`,
       `Units alive:  ${data.unitsAlive}`,
@@ -88,13 +90,13 @@ export class GameOverScene extends Phaser.Scene {
     }
 
     const rewards = this.rewardSummary(data.crateRewards ?? [])
-    const next = this.nextStep(data)
+    const next = this.nextStep(data, currency.progression.name)
     this.add.text(GAME_W / 2, GAME_H / 2 + 122, rewards ? `Crate rewards: ${rewards}` : next, {
       fontSize: '12px', color: cssColor(rewards ? uiPalette.state.rewardHover : uiPalette.text.muted), fontFamily: 'monospace',
       align: 'center',
     }).setOrigin(0.5)
 
-    const techBtn = this.add.text(GAME_W / 2, GAME_H / 2 + 168, '[ SPEND PC IN TECH TREE ]', {
+    const techBtn = this.add.text(GAME_W / 2, GAME_H / 2 + 168, '[ SPEND GEMS IN TECH TREE ]', {
       fontSize: '22px', color: cssColor(uiPalette.state.reward), fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true })
     techBtn.on('pointerover', () => techBtn.setColor(cssColor(uiPalette.state.rewardHover)))
@@ -134,9 +136,9 @@ export class GameOverScene extends Phaser.Scene {
       .join(', ')
   }
 
-  private nextStep(data: RunResult): string {
-    if (data.abandoned) return data.pc > 0 ? 'Run ended early. Bank the PC, then regroup in the shop.' : 'Run ended early. Adjust packs and try again.'
-    if (data.pc > 0) return 'Next: spend PC, buy packs, try a stronger run.'
+  private nextStep(data: RunResult, progressionName: string): string {
+    if (data.abandoned) return data.pc > 0 ? `Run ended early. Bank the ${progressionName}, then regroup in the shop.` : 'Run ended early. Adjust packs and try again.'
+    if (data.pc > 0) return `Next: spend ${progressionName}, buy packs, try a stronger run.`
     return data.won ? 'Next: try the newly unlocked chapter.' : 'Next: adjust packs and hold a little longer.'
   }
 }

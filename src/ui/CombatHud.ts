@@ -4,6 +4,7 @@ import type { Enemy } from '../entities/Enemy'
 import type { Tower } from '../entities/Tower'
 import type { WaveManager } from '../systems/WaveManager'
 import { cssColor, uiPalette } from './palette'
+import { currencyLabels, type CurrencyLabels } from './currency'
 
 export type CombatHudState = {
   chapterName: string
@@ -21,8 +22,10 @@ export class CombatHud {
   private hudText: Phaser.GameObjects.Text
   private bossBarGfx: Phaser.GameObjects.Graphics
   private bossLabel: Phaser.GameObjects.Text
+  private currency: CurrencyLabels
 
   constructor(scene: Phaser.Scene) {
+    this.currency = currencyLabels(scene)
     this.hudText = scene.add.text(10, 10, '', {
       fontSize: '13px', color: cssColor(uiPalette.text.secondary), fontFamily: 'monospace',
     }).setDepth(20)
@@ -43,7 +46,7 @@ export class CombatHud {
 
     this.hudText.setText([
       `${state.chapterName}`,
-      `PC: ${state.runPc}`,
+      `${this.currency.progression.icon} ${this.currency.progression.name}: ${state.runPc}`,
       `Tower: ${Math.round(state.tower.hp)} / ${state.tower.maxHp}${state.tower.shield > 0 ? `  Shield: ${Math.round(state.tower.shield)}` : ''}`,
       state.skippedWaveThisFrame ? `${waveStr}  (advanced)` : waveStr,
       state.unitCount > 0 ? `Units: ${state.unitCount}` : '',

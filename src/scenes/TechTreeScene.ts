@@ -9,8 +9,10 @@ import { fadeInScene, fadeToScene } from '../ui/sceneTransitions'
 import { showOnboardingTip } from '../ui/OnboardingOverlay'
 import { cssColor, uiPalette } from '../ui/palette'
 import { cursors } from '../ui/cursors'
+import { isCoarseInput } from '../input/InputMode'
+import { currencyLabels, type CurrencyLabels } from '../ui/currency'
 
-const HEADER_H  = 90   // title + PC bar + separator
+const HEADER_H  = 90   // title + Gems bar + separator
 const FOOTER_H  = 54   // back button area
 const LABEL_W   = 130  // branch label column
 const NODE_W    = 160
@@ -19,6 +21,19 @@ const NODE_GAP  = 28   // horizontal gap between nodes
 const ROW_H     = NODE_H + 26  // vertical space per branch row
 const ROW_PAD_X = 20   // left edge of content area
 const VIEW_PAD  = 28
+const MIN_ZOOM  = 0.62
+const MAX_ZOOM  = 1.45
+const WHEEL_ZOOM_SPEED = 0.0015
+
+type CurrencyLine = {
+  icon: Phaser.GameObjects.Text
+  label: Phaser.GameObjects.Text
+  anchorX: number
+  y: number
+  iconOffsetY: number
+  align: 'left' | 'center'
+  gap: number
+}
 
 // Branch display names
 const BRANCH_LABELS: Record<string, string> = {
@@ -58,12 +73,22 @@ export class TechTreeScene extends Phaser.Scene {
   private layouts = new Map<string, TechNodeLayout>()
   private edgeLayouts = new Map<string, TechEdgeLayout>()
   private content!: Phaser.GameObjects.Container
-  private pcText!: Phaser.GameObjects.Text
+  private pcLine!: CurrencyLine
+  private currency!: CurrencyLabels
   private scrollX: number = 0
   private scrollY: number = 0
+  private zoom: number = 1
   private totalContentW: number = 0
   private totalContentH: number = 0
   private isPanning = false
+  private isPinching = false
+  private pinchStartDistance = 0
+  private pinchStartZoom = 1
+  private pinchWorldX = 0
+  private pinchWorldY = 0
+  private pinchScreenX = 0
+  private pinchScreenY = 0
+  private touchMode = false
   private panStartPointerX = 0
   private panStartPointerY = 0
   private panStartScrollX = 0
@@ -78,6 +103,8 @@ export class TechTreeScene extends Phaser.Scene {
     fadeInScene(this)
     audioManager.playMusic(this, 'shop_theme')
     this.input.setDefaultCursor(cursors.menu)
+    this.touchMode = isCoarseInput()
+    this.currency = currencyLabels(this)
     const data = this.cache.json.get('tech_tree') as { nodes: TechNode[] }
     const layoutData = this.cache.json.get('tech_tree_layout') as TechTreeLayoutData | undefined
     this.nodes = data.nodes
@@ -85,7 +112,9 @@ export class TechTreeScene extends Phaser.Scene {
     this.edgeLayouts = new Map((layoutData?.edges ?? []).map(edge => [this.edgeKey(edge.from, edge.to), edge]))
     this.scrollX = 0
     this.scrollY = 0
+    this.zoom = 1
     this.isPanning = false
+    this.isPinching = false
 
     this.add.rectangle(0, 0, GAME_W, GAME_H, 0x080810).setOrigin(0, 0)
 
@@ -94,9 +123,15 @@ export class TechTreeScene extends Phaser.Scene {
       fontSize: '24px', color: '#8899cc', fontFamily: 'monospace', fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(10)
 
-    this.pcText = this.add.text(GAME_W / 2, 58, '', {
-      fontSize: '14px', color: '#ddaa22', fontFamily: 'monospace',
-    }).setOrigin(0.5).setDepth(10)
+    this.pcLine = this.addCurrencyLine(GAME_W / 2, 58, this.currency.progression.icon, '', {
+      align: 'center',
+      labelSize: 14,
+      iconSize: 18,
+      color: '#ddaa22',
+      gap: 7,
+      iconOffsetY: -2,
+      depth: 10,
+    })
     this.refreshPcText()
 
     const sep = this.add.graphics().setDepth(10)
@@ -125,16 +160,23 @@ export class TechTreeScene extends Phaser.Scene {
     this.content = this.add.container(0, HEADER_H)
     this.buildContent()
     this.centerScrollInBounds()
+    if (!this.input.pointer2) this.input.addPointer(1)
 
     // ── Pan / scroll input ──
-    this.input.on('wheel', (_p: unknown, _go: unknown, deltaX: number, deltaY: number) => {
-      this.scrollX += deltaX * 0.6
-      this.scrollY += deltaY * 0.6
-      this.clampScroll()
-      this.updateContentPosition()
+    this.input.on('wheel', (pointer: Phaser.Input.Pointer, _go: unknown, _deltaX: number, deltaY: number) => {
+      if (!this.isInScrollableArea(pointer)) return
+      const nextZoom = this.zoom * Math.exp(-deltaY * WHEEL_ZOOM_SPEED)
+      this.zoomAtScreenPoint(pointer.x, pointer.y, nextZoom)
     })
 
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer, gameObjects: Phaser.GameObjects.GameObject[]) => {
+      const touchPointers = this.activeTouchPointers()
+      if (this.touchMode && touchPointers.length >= 2) {
+        this.startPinch(touchPointers)
+        return
+      }
+
+      if (this.touchMode && pointer.leftButtonDown() && gameObjects.length === 0) this.hideTooltip()
       if (!this.isInScrollableArea(pointer)) return
 
       const middleDrag = pointer.middleButtonDown()
@@ -150,15 +192,22 @@ export class TechTreeScene extends Phaser.Scene {
     })
 
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      const touchPointers = this.activeTouchPointers()
+      if (this.touchMode && (this.isPinching || touchPointers.length >= 2)) {
+        if (!this.isPinching) this.startPinch(touchPointers)
+        this.updatePinch(touchPointers)
+        return
+      }
+
       if (!this.isPanning) return
-      this.scrollX = this.panStartScrollX - (pointer.x - this.panStartPointerX)
-      this.scrollY = this.panStartScrollY - (pointer.y - this.panStartPointerY)
+      this.scrollX = this.panStartScrollX - (pointer.x - this.panStartPointerX) / this.zoom
+      this.scrollY = this.panStartScrollY - (pointer.y - this.panStartPointerY) / this.zoom
       this.clampScroll()
       this.updateContentPosition()
     })
 
-    this.input.on('pointerup', () => this.stopPanning())
-    this.input.on('pointerupoutside', () => this.stopPanning())
+    this.input.on('pointerup', () => this.stopPointerGestures())
+    this.input.on('pointerupoutside', () => this.stopPointerGestures())
 
     if (this.totalContentW <= GAME_W && this.totalContentH <= GAME_H - HEADER_H - FOOTER_H) scrollHint.setVisible(false)
     void footerBg  // referenced to avoid lint warning
@@ -166,15 +215,58 @@ export class TechTreeScene extends Phaser.Scene {
     this.time.delayedCall(260, () => {
       showOnboardingTip(this, {
         id: 'tech_tree_first_visit',
-        title: 'Spend PC here',
-        body: 'Buy permanent upgrades with PC. Drag empty space to explore branches. +DC upgrades are very valuable as soon as they appear: more DC means more packs every run.',
+        title: `Spend ${this.currency.progression.name} here`,
+        body: `${this.currency.progression.icon} ${this.currency.progression.name} buy permanent upgrades. ${this.currency.deployment.icon} ${this.currency.deployment.name} upgrades are especially valuable: more ${this.currency.deployment.name} means more packs every run.`,
         focus: new Phaser.Geom.Rectangle(122, HEADER_H + 34, 650, 360),
       })
     })
   }
 
   private refreshPcText() {
-    this.pcText.setText(`PC: ${techState.pc}`)
+    this.setCurrencyLineLabel(this.pcLine, `${this.currency.progression.name}: ${techState.pc}`)
+  }
+
+  private addCurrencyLine(
+    anchorX: number,
+    y: number,
+    iconText: string,
+    labelText: string,
+    options: {
+      align: 'left' | 'center'
+      labelSize: number
+      iconSize: number
+      color: string
+      gap?: number
+      iconOffsetY?: number
+      depth?: number
+    },
+  ): CurrencyLine {
+    const icon = this.add.text(anchorX, y, iconText, {
+      fontSize: `${options.iconSize}px`,
+      color: options.color,
+      fontFamily: 'monospace',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0.5).setDepth(options.depth ?? 0)
+    const label = this.add.text(anchorX, y, labelText, {
+      fontSize: `${options.labelSize}px`,
+      color: options.color,
+      fontFamily: 'monospace',
+    }).setOrigin(0, 0.5).setDepth(options.depth ?? 0)
+    const line = { icon, label, anchorX, y, iconOffsetY: options.iconOffsetY ?? 0, align: options.align, gap: options.gap ?? 7 }
+    this.layoutCurrencyLine(line)
+    return line
+  }
+
+  private setCurrencyLineLabel(line: CurrencyLine, label: string) {
+    line.label.setText(label)
+    this.layoutCurrencyLine(line)
+  }
+
+  private layoutCurrencyLine(line: CurrencyLine) {
+    const totalW = line.icon.width + line.gap + line.label.width
+    const startX = line.align === 'center' ? line.anchorX - totalW / 2 : line.anchorX
+    line.icon.setPosition(startX, line.y + line.iconOffsetY)
+    line.label.setPosition(startX + line.icon.width + line.gap, line.y)
   }
 
   private buildContent() {
@@ -340,25 +432,25 @@ export class TechTreeScene extends Phaser.Scene {
     const textX = nx + 14
     const textW = NODE_W - 22
     const nameColor = purchased ? cssColor(uiPalette.state.success) : locked ? cssColor(0x8d97a6) : cssColor(uiPalette.text.primary)
-    const nameText = addFittedText(this, textX, ny + 8, node.name, {
-      fontSize: '13px', color: nameColor, fontFamily: 'monospace', fontStyle: 'bold',
-    }, { width: textW, maxLines: 1, minFontSize: 10, align: 'center' })
+    const nameText = addFittedText(this, textX, ny + 9, node.name, {
+      fontSize: '14px', color: nameColor, fontFamily: 'monospace', fontStyle: 'bold',
+    }, { width: textW, maxLines: 1, minFontSize: 11, align: 'center' })
     this.content.add(nameText)
 
     const descColor = locked ? cssColor(0x667080) : cssColor(0x667799)
-    const descText = addFittedText(this, textX, ny + 29, node.description, {
-      fontSize: '10px', color: descColor, fontFamily: 'monospace',
+    const descText = addFittedText(this, textX, ny + 32, this.shortEffectLabel(node), {
+      fontSize: '12px', color: descColor, fontFamily: 'monospace',
       lineSpacing: -2,
-    }, { width: textW, maxLines: 2, minFontSize: 8, align: 'center' })
+    }, { width: textW, maxLines: 2, minFontSize: 9, align: 'center' })
     this.content.add(descText)
 
     // Cost / status line
     let statusStr: string
     let statusColor: string
     if (maxed && node.repeatable) {
-      statusStr = this.repeatableStatusLabel(node, level, 'MAX'); statusColor = cssColor(uiPalette.state.success)
+      statusStr = `LV ${level}/${node.repeatable.maxLevel}  MAX`; statusColor = cssColor(uiPalette.state.success)
     } else if (purchased && node.repeatable) {
-      statusStr = this.repeatableStatusLabel(node, level, `${currentCost} PC`); statusColor = canAfford ? cssColor(uiPalette.state.reward) : cssColor(0x664422)
+      statusStr = `LV ${level}/${node.repeatable.maxLevel}  ${currentCost} ${this.currency.progression.icon}`; statusColor = canAfford ? cssColor(uiPalette.state.reward) : cssColor(0x664422)
     } else if (purchased) {
       statusStr = 'OWNED'; statusColor = cssColor(uiPalette.state.success)
     } else if (unmetQuest) {
@@ -366,51 +458,77 @@ export class TechTreeScene extends Phaser.Scene {
     } else if (locked) {
       statusStr = 'LOCKED [?]'; statusColor = cssColor(0x8d97a6)
     } else {
-      statusStr = `${currentCost} PC`
+      statusStr = `${currentCost} ${this.currency.progression.icon}`
       statusColor = canAfford ? cssColor(uiPalette.state.reward) : cssColor(0x664422)
     }
-    const isRepeatableOwned = Boolean(node.repeatable && level > 0)
-    const costText = addFittedText(this, textX, ny + NODE_H - (isRepeatableOwned ? 25 : 18), statusStr, {
-      fontSize: isRepeatableOwned ? '10px' : '11px', color: statusColor, fontFamily: 'monospace',
+    const costText = addFittedText(this, textX, ny + NODE_H - 19, statusStr, {
+      fontSize: '12px', color: statusColor, fontFamily: 'monospace', fontStyle: 'bold',
       lineSpacing: -2,
-    }, { width: textW, maxLines: isRepeatableOwned ? 2 : 1, minFontSize: isRepeatableOwned ? 8 : 9, align: 'center' })
+    }, { width: textW, maxLines: 1, minFontSize: 9, align: 'center' })
     this.content.add(costText)
 
     bg.on('pointerover', (pointer: Phaser.Input.Pointer) => {
       if (available && canAfford) bg.setFillStyle(bgColor + 0x0a0a0a)
-      this.showNodeTooltip(node, pointer.x, pointer.y, unmetQuest, locked)
+      if (!this.touchMode) this.showNodeTooltip(node, pointer.x, pointer.y, unmetQuest, locked)
     })
     bg.on('pointerout', () => {
       if (available && canAfford) bg.setFillStyle(bgColor)
-      this.hideTooltip()
+      if (!this.touchMode) this.hideTooltip()
     })
-    bg.on('pointermove', (pointer: Phaser.Input.Pointer) => this.moveTooltip(pointer.x, pointer.y))
+    bg.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      if (!this.touchMode) this.moveTooltip(pointer.x, pointer.y)
+    })
 
     // Click to purchase
-    if (available && canAfford) {
+    if (this.touchMode) {
       bg.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
         if (!pointer.leftButtonDown()) return
-        audioManager.playSfx(this, 'tech_purchase')
-        const burstX = nx + NODE_W / 2 - this.scrollX
-        const burstY = HEADER_H + ny + NODE_H / 2 - this.scrollY
-        playSparkBurst(this, burstX, burstY, uiPalette.state.reward, { count: 12, radius: 36 })
-        playRingPulse(this, burstX, burstY, 34, uiPalette.state.success)
-        techState.purchase(node)
-        this.refreshPcText()
-        this.hideTooltip()
-        this.time.delayedCall(90, () => this.buildContent())
+        const alreadyInspecting = this.tooltip?.getData('nodeId') === node.id
+        if (available && canAfford && alreadyInspecting) {
+          this.purchaseNode(node, nx, ny)
+          return
+        }
+        if (alreadyInspecting) {
+          this.hideTooltip()
+          return
+        }
+        this.showNodeTooltip(node, pointer.x, pointer.y, unmetQuest, locked)
+        this.tooltip?.setData('nodeId', node.id)
+      })
+    } else if (available && canAfford) {
+      bg.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+        if (!pointer.leftButtonDown()) return
+        this.purchaseNode(node, nx, ny)
       })
     }
   }
 
+  private purchaseNode(node: TechNode, nx: number, ny: number) {
+    audioManager.playSfx(this, 'tech_purchase')
+    const burstX = (nx + NODE_W / 2 - this.scrollX) * this.zoom
+    const burstY = HEADER_H + (ny + NODE_H / 2 - this.scrollY) * this.zoom
+    playSparkBurst(this, burstX, burstY, uiPalette.state.reward, { count: 12, radius: 36 })
+    playRingPulse(this, burstX, burstY, 34, uiPalette.state.success)
+    techState.purchase(node)
+    this.refreshPcText()
+    this.hideTooltip()
+    this.time.delayedCall(90, () => this.buildContent())
+  }
+
   private showNodeTooltip(node: TechNode, x: number, y: number, unmetQuest: string | null, locked: boolean) {
     this.hideTooltip()
+    const available = techState.isAvailable(node)
+    const canAfford = techState.pc >= techState.currentCost(node)
+    const effectLabel = this.shortEffectLabel(node)
     const lines = [
       node.description,
+      `Effect: ${effectLabel}`,
       locked || unmetQuest
         ? `Unlock: ${unmetQuest ? this.formatQuestLabel(unmetQuest).replace(/^req: /, '') : 'buy prerequisite tech first'}`
-        : `Cost: ${techState.currentCost(node)} PC`,
+        : `Cost: ${techState.currentCost(node)} ${this.currency.progression.icon} ${this.currency.progression.name}`,
       node.repeatable ? `Repeatable: ${techState.effectiveLevel(node)}/${node.repeatable.maxLevel}` : '',
+      node.repeatable && techState.effectiveLevel(node) > 0 ? `Current: ${this.repeatableCurrentLabel(node, techState.effectiveLevel(node)) ?? effectLabel}` : '',
+      this.touchMode && available && canAfford ? 'Tap again to buy.' : '',
     ].filter(Boolean)
     const width = 300
     const height = Math.max(94, 44 + lines.length * 32)
@@ -418,6 +536,18 @@ export class TechTreeScene extends Phaser.Scene {
     const tip = this.add.container(pos.x, pos.y).setDepth(250)
     const bg = this.add.rectangle(0, 0, width, height, uiPalette.surface.panel, 0.98).setOrigin(0, 0)
     bg.setStrokeStyle(1, BRANCH_COLORS[node.branch] ?? uiPalette.border.strong)
+    if (this.touchMode) {
+      bg.setInteractive({ useHandCursor: true })
+      bg.on('pointerdown', (
+        _pointer: Phaser.Input.Pointer,
+        _localX: number,
+        _localY: number,
+        event: Phaser.Types.Input.EventData,
+      ) => {
+        event.stopPropagation()
+        this.hideTooltip()
+      })
+    }
     const title = this.add.text(14, 12, node.name, {
       fontSize: '13px',
       color: cssColor(BRANCH_COLORS[node.branch] ?? uiPalette.text.primary),
@@ -470,10 +600,63 @@ export class TechTreeScene extends Phaser.Scene {
     return req
   }
 
-  private repeatableStatusLabel(node: TechNode, level: number, suffix: string): string {
-    const current = this.repeatableCurrentLabel(node, level)
-    const base = `LV ${level}/${node.repeatable?.maxLevel ?? level}  ${suffix}`
-    return current ? `${base}\n(current: ${current})` : base
+  private shortEffectLabel(node: TechNode): string {
+    const effects = Array.isArray(node.effect) ? node.effect : [node.effect]
+    if (effects.length === 0) return node.description
+
+    if (effects.some(effect => effect.type === 'cursor_boss_damage_mult') && effects.some(effect => effect.type === 'cursor_crate_damage_mult')) {
+      const boss = effects.find(effect => effect.type === 'cursor_boss_damage_mult')?.value ?? 1
+      return `+${this.formatPercent((boss - 1))} boss/crate dmg`
+    }
+
+    const labels = effects.map(effect => this.effectLabel(effect)).filter(Boolean)
+    return labels.join(', ') || node.description
+  }
+
+  private effectLabel(effect: TechEffect): string {
+    const value = effect.value
+    const unit = effect.unitId ? `${this.humanizeId(effect.unitId)} ` : ''
+
+    switch (effect.type) {
+      case 'cursor_knockback':
+        return ''
+      case 'cursor_knockback_chance':
+        return `+${this.formatPercent(value)} knockback`
+      case 'cursor_cooldown':
+        return `${value.toFixed(1)}s cursor CD`
+      case 'cursor_damage':
+        return `+${value} cursor dmg`
+      case 'cursor_radius_bonus':
+        return `+${value} cursor radius`
+      case 'cursor_boss_damage_mult':
+        return `+${this.formatPercent(value - 1)} boss dmg`
+      case 'cursor_crate_damage_mult':
+        return `+${this.formatPercent(value - 1)} crate dmg`
+      case 'tower_hp_bonus':
+        return `+${value} tower HP`
+      case 'tower_starting_shield':
+        return `+${value} tower shield`
+      case 'tower_thorns_damage':
+        return `+${value} thorns`
+      case 'dc_budget_bonus':
+        return `+${value} ${this.currency.deployment.name}`
+      case 'pack_bonus_tier1_chance':
+        return `+${this.formatPercent(value)} T1 bonus`
+      case 'pack_bonus_tier2_chance':
+        return `+${this.formatPercent(value)} T2 bonus`
+      case 'crate_drop_chance_bonus':
+        return `+${this.formatPercent(value)} crate drops`
+      case 'unit_atk_bonus':
+        return `${unit}+${value} atk`
+      case 'unit_hp_bonus':
+        return `${unit}+${value} HP`
+      case 'unit_range_bonus':
+        return `${unit}+${value} range`
+      case 'unit_cooldown_mult':
+        return `${unit}${this.formatPercent(1 - value)} faster`
+      case 'unit_param_bonus':
+        return `${unit}+${value} ${this.humanizeId(effect.param ?? 'bonus')}`
+    }
   }
 
   private repeatableCurrentLabel(node: TechNode, level: number): string | null {
@@ -489,7 +672,7 @@ export class TechTreeScene extends Phaser.Scene {
     if (totals.has('unit_atk_bonus')) return `+${totals.get('unit_atk_bonus')} attack`
     if (totals.has('unit_hp_bonus')) return `+${totals.get('unit_hp_bonus')} HP`
     if (totals.has('unit_range_bonus')) return `+${totals.get('unit_range_bonus')} range`
-    if (totals.has('dc_budget_bonus')) return `+${totals.get('dc_budget_bonus')} DC`
+    if (totals.has('dc_budget_bonus')) return `+${totals.get('dc_budget_bonus')} ${this.currency.deployment.name}`
     if (totals.has('tower_hp_bonus')) return `+${totals.get('tower_hp_bonus')} tower HP`
     if (totals.has('pack_bonus_tier1_chance')) return `${this.formatPercent(totals.get('pack_bonus_tier1_chance') ?? 0)} T1 pack bonus`
     if (totals.has('pack_bonus_tier2_chance')) return `${this.formatPercent(totals.get('pack_bonus_tier2_chance') ?? 0)} T2 pack bonus`
@@ -524,24 +707,91 @@ export class TechTreeScene extends Phaser.Scene {
     this.input.setDefaultCursor(cursors.menu)
   }
 
+  private stopPointerGestures() {
+    this.stopPanning()
+    if (this.activeTouchPointers().length < 2) this.isPinching = false
+  }
+
+  private activeTouchPointers(): Phaser.Input.Pointer[] {
+    return [this.input.pointer1, this.input.pointer2]
+      .filter((pointer): pointer is Phaser.Input.Pointer => Boolean(pointer?.isDown))
+  }
+
+  private startPinch(pointers: Phaser.Input.Pointer[]) {
+    if (pointers.length < 2) return
+    this.stopPanning()
+    const gesture = this.pinchGesture(pointers)
+    if (!gesture) return
+
+    this.isPinching = true
+    this.pinchStartDistance = gesture.distance
+    this.pinchStartZoom = this.zoom
+    this.pinchScreenX = gesture.centerX
+    this.pinchScreenY = gesture.centerY
+    this.pinchWorldX = this.scrollX + gesture.centerX / this.zoom
+    this.pinchWorldY = this.scrollY + (gesture.centerY - HEADER_H) / this.zoom
+  }
+
+  private updatePinch(pointers: Phaser.Input.Pointer[]) {
+    if (!this.isPinching || pointers.length < 2) return
+    const gesture = this.pinchGesture(pointers)
+    if (!gesture || this.pinchStartDistance <= 0) return
+
+    const nextZoom = this.pinchStartZoom * (gesture.distance / this.pinchStartDistance)
+    this.zoom = Phaser.Math.Clamp(nextZoom, MIN_ZOOM, MAX_ZOOM)
+    this.scrollX = this.pinchWorldX - this.pinchScreenX / this.zoom
+    this.scrollY = this.pinchWorldY - (this.pinchScreenY - HEADER_H) / this.zoom
+    this.clampScroll()
+    this.updateContentPosition()
+  }
+
+  private pinchGesture(pointers: Phaser.Input.Pointer[]): { distance: number, centerX: number, centerY: number } | null {
+    const [a, b] = pointers
+    if (!a || !b) return null
+    const dx = b.x - a.x
+    const dy = b.y - a.y
+    return {
+      distance: Math.max(1, Math.hypot(dx, dy)),
+      centerX: (a.x + b.x) / 2,
+      centerY: (a.y + b.y) / 2,
+    }
+  }
+
+  private zoomAtScreenPoint(screenX: number, screenY: number, nextZoom: number) {
+    const oldZoom = this.zoom
+    this.zoom = Phaser.Math.Clamp(nextZoom, MIN_ZOOM, MAX_ZOOM)
+    if (this.zoom === oldZoom) return
+
+    const localY = screenY - HEADER_H
+    const worldX = this.scrollX + screenX / oldZoom
+    const worldY = this.scrollY + localY / oldZoom
+    this.scrollX = worldX - screenX / this.zoom
+    this.scrollY = worldY - localY / this.zoom
+    this.clampScroll()
+    this.updateContentPosition()
+  }
+
   private clampScroll() {
     const viewportH = GAME_H - HEADER_H - FOOTER_H
-    const maxX = Math.max(0, this.totalContentW - GAME_W)
-    const maxY = Math.max(0, this.totalContentH - viewportH)
+    const viewportWorldW = GAME_W / this.zoom
+    const viewportWorldH = viewportH / this.zoom
+    const maxX = Math.max(0, this.totalContentW - viewportWorldW)
+    const maxY = Math.max(0, this.totalContentH - viewportWorldH)
     this.scrollX = Phaser.Math.Clamp(this.scrollX, 0, maxX)
     this.scrollY = Phaser.Math.Clamp(this.scrollY, 0, maxY)
   }
 
   private centerScrollInBounds() {
     const viewportH = GAME_H - HEADER_H - FOOTER_H
-    this.scrollX = Math.max(0, (this.totalContentW - GAME_W) / 2)
-    this.scrollY = Math.max(0, (this.totalContentH - viewportH) / 2)
+    this.scrollX = Math.max(0, (this.totalContentW - GAME_W / this.zoom) / 2)
+    this.scrollY = Math.max(0, (this.totalContentH - viewportH / this.zoom) / 2)
     this.clampScroll()
     this.updateContentPosition()
   }
 
   private updateContentPosition() {
-    this.content.setPosition(-this.scrollX, HEADER_H - this.scrollY)
+    this.content.setScale(this.zoom)
+    this.content.setPosition(-this.scrollX * this.zoom, HEADER_H - this.scrollY * this.zoom)
   }
 
   private drawEdgeLine(

@@ -169,7 +169,7 @@ function formatRecord(record: CampaignRunRecord): string {
   const available = record.availableTech.length ? record.availableTech.join(', ') : '(none)'
   return [
     `Run ${record.runNumber}: ${record.chapter} ${result}`,
-    `  earned: ${record.pcEarned ?? 0} PC, bank: ${record.pcAfter ?? record.pcBefore}, tower: ${Math.round(record.towerHp ?? 0)}, waves: ${record.wavesCleared ?? 0}/${record.totalWaves ?? 0}`,
+    `  earned: ${record.pcEarned ?? 0} Gems, bank: ${record.pcAfter ?? record.pcBefore}, tower: ${Math.round(record.towerHp ?? 0)}, waves: ${record.wavesCleared ?? 0}/${record.totalWaves ?? 0}`,
     `  bought packs: ${packs}`,
     `  bought tech since previous run: ${techBought}`,
     `  opened: ${opened}${bonus === '(none)' ? '' : ` | bonus: ${bonus}`}`,

@@ -4,6 +4,7 @@ import { GAME_H, GAME_W } from '../constants'
 import { playRingPulse, playSparkBurst } from '../effects/CombatEffects'
 import { audioManager } from '../systems/AudioManager'
 import { showOnboardingTip } from './OnboardingOverlay'
+import { isCoarseInput } from '../input/InputMode'
 
 export type PackRollResult = {
   unitId: string
@@ -32,6 +33,7 @@ export function showPackRevealOverlay(
   if (results.length === 0) return
 
   audioManager.playSfx(scene, 'pack_open')
+  const touchMode = isCoarseInput()
 
   const cols = Math.min(4, results.length)
   const rows = Math.ceil(results.length / cols)
@@ -170,7 +172,7 @@ export function showPackRevealOverlay(
       else openTile(tile)
     })
     tile.hitArea.on('pointerover', () => {
-      if (tile.opened) updateInfo(tile)
+      if (!touchMode && tile.opened) updateInfo(tile)
       tile.glow.setStrokeStyle(2, tile.opened ? 0xdbe4ff : 0xffdd77, tile.opened ? 0.8 : 0.95)
     })
     tile.hitArea.on('pointerout', () => {

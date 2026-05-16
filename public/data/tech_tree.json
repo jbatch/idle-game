@@ -91,7 +91,7 @@
     {
       "id": "deployment_drills",
       "name": "Deployment Drills",
-      "description": "Starting DC +2",
+      "description": "Starting buying power +2",
       "cost": 35,
       "requires": [],
       "effect": { "type": "dc_budget_bonus", "value": 2 },
@@ -100,7 +100,7 @@
     {
       "id": "deployment_reserves",
       "name": "Field Reserves",
-      "description": "Starting DC +2",
+      "description": "Starting buying power +2",
       "cost": 70,
       "requires": ["deployment_drills"],
       "questRequirement": "boss_chapter1_killed",
@@ -110,7 +110,7 @@
     {
       "id": "deployment_warchest",
       "name": "War Chest",
-      "description": "Starting DC +2",
+      "description": "Starting buying power +2",
       "cost": 110,
       "requires": ["deployment_reserves"],
       "questRequirement": "boss_chapter2_killed",
@@ -120,7 +120,7 @@
     {
       "id": "deployment_specialist_muster",
       "name": "Specialist Muster",
-      "description": "Starting DC +2",
+      "description": "Starting buying power +2",
       "cost": 120,
       "requires": ["deployment_reserves"],
       "questRequirement": "pack_tier2_specialist:bought:4",
@@ -130,7 +130,7 @@
     {
       "id": "deployment_specialist_contracts",
       "name": "Specialist Contracts",
-      "description": "Starting DC +2",
+      "description": "Starting buying power +2",
       "cost": 170,
       "requires": ["deployment_specialist_muster"],
       "questRequirement": "pack_tier2_specialist:bought:12",

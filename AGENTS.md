@@ -28,7 +28,7 @@ The `.claude/` directory is local-only and ignored by git.
 
 ## Current Status
 
-Layers 1–8 (recovery + progression pass) plus the first editor-tooling, v0.2.0 progression-polish pass, v0.2.1 tech-tree layout pass, and v0.2.2 playtest-onboarding pass are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, capped unopened shop packs, same-unit synergy payoffs, cursor proc tuning, supply pack-bonus tech, breakable battlefield crates, cursor/tower/DC progression expansion, first-time onboarding spotlights, and local GUI editors for tech tree and unit data. This is the **v0.2.2 checkpoint**.
+Layers 1–8 (recovery + progression pass) plus the first editor-tooling, v0.2.0 progression-polish pass, v0.2.1 tech-tree layout pass, v0.2.2 playtest-onboarding pass, and v0.2.3 mobile-polish pass are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, capped unopened shop packs, same-unit synergy payoffs, cursor proc tuning, supply pack-bonus tech, breakable battlefield crates, cursor/tower/Influence progression expansion, first-time onboarding spotlights, scalable canvas/mobile shims, and local GUI editors for tech tree and unit data. This is the **v0.2.3 checkpoint**.
 
 ### v0.1.2 Additions
 - Multi-entry Vite app structure: main game plus local-only side apps.
@@ -104,6 +104,13 @@ Layers 1–8 (recovery + progression pass) plus the first editor-tooling, v0.2.0
 - Ranged targeters keep a short target lock to reduce rapid target-swapping jitter.
 - The simulator now supports `--chapter-progress chapter3` to report per-attempt wave progression and pre-clear tech patterns.
 - A conservative UI palette foundation, custom cursors, friendly/enemy outline distinction, and enemy identity notes have been added.
+
+### v0.2.3 Additions
+- Phaser now scales the fixed 900×900 game canvas to fit smaller client windows, preserving the existing square logical world.
+- First mobile touch shims exist: coarse-pointer detection, tap-fading cursor attack radius, top-right mobile cooldown HUD, pack/tech tap inspection, and tap-to-dismiss tech detail overlays.
+- Tech tree supports mouse-wheel zoom and pinch-to-zoom, with panning adjusted for zoom level.
+- Tech nodes now show larger scan-friendly labels with short generated effect text, while detailed descriptions live in the tooltip/detail overlay.
+- Player-facing currency names changed from PC/DC to data-driven `Gems` and `Influence` labels/icons in `balance.json`.
 
 ### Development Workflow Notes
 - When adding or changing combat mechanics, enemy behavior, unit behavior, targeting, movement, effects, or balance-sensitive tuning, add or update at least one focused scenario fixture in `src/tools/scenario/scenarios.ts`.

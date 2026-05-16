@@ -16,7 +16,7 @@
     {
       "id": "tier1_squad",
       "name": "Tier 1 Squad Pack",
-      "description": "Low-tier bundle discount. Four units for 3 DC.",
+      "description": "Low-tier bundle discount. Four units for 3 buying power.",
       "cost": 3,
       "rolls": 4,
       "maxPurchases": 2,
@@ -45,7 +45,7 @@
     {
       "id": "tier2_squad",
       "name": "Tier 2 Squad Pack",
-      "description": "Specialist bundle discount. Four units for 6 DC.",
+      "description": "Specialist bundle discount. Four units for 6 buying power.",
       "cost": 6,
       "rolls": 4,
       "maxPurchases": 2,

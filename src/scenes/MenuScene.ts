@@ -7,8 +7,9 @@ import { clearDraftShopPacks } from './ShopScene'
 import { playRingPulse, playSparkBurst } from '../effects/CombatEffects'
 import { fadeInScene, fadeToScene } from '../ui/sceneTransitions'
 import { cursors } from '../ui/cursors'
+import { currencyLabels } from '../ui/currency'
 
-const VERSION_LABEL = 'v0.2.2 playtest onboarding'
+const VERSION_LABEL = 'v0.2.3 mobile polish'
 
 export class MenuScene extends Phaser.Scene {
   private orbiters: Phaser.GameObjects.Arc[] = []
@@ -57,6 +58,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private buildTitle() {
+    const currency = currencyLabels(this)
     this.add.text(GAME_W / 2, 126, 'SIEGELOOP', {
       fontSize: '56px',
       color: '#dbe4ff',
@@ -72,7 +74,7 @@ export class MenuScene extends Phaser.Scene {
       fontFamily: 'monospace',
     }).setOrigin(0.5)
 
-    this.add.text(GAME_W / 2, GAME_H - 24, `${VERSION_LABEL}   PC bank: ${techState.pc}`, {
+    this.add.text(GAME_W / 2, GAME_H - 24, `${VERSION_LABEL}   ${currency.progression.icon} ${currency.progression.name}: ${techState.pc}`, {
       fontSize: '11px',
       color: '#3d4c76',
       fontFamily: 'monospace',
@@ -137,6 +139,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private showHowToPlay() {
+    const currency = currencyLabels(this)
     const shade = this.add.rectangle(0, 0, GAME_W, GAME_H, 0x02040a, 0.72).setOrigin(0, 0).setDepth(40)
     const panel = this.add.rectangle(GAME_W / 2, GAME_H / 2, 570, 330, 0x0c1224, 0.98).setDepth(41)
     panel.setStrokeStyle(1, 0x35508c)
@@ -149,10 +152,10 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(42)
 
     const lines = [
-      '1. Spend DC on unopened packs before each run.',
+      `1. Spend ${currency.deployment.icon} ${currency.deployment.name} on unopened packs before each run.`,
       '2. Packs open at battle start and roll your squad.',
       '3. Click enemies and crates while your units defend the tower.',
-      '4. Earn PC, buy tech, unlock stronger packs and chapters.',
+      `4. Earn ${currency.progression.icon} ${currency.progression.name}, buy tech, unlock stronger packs and chapters.`,
     ]
 
     const body = this.add.text(GAME_W / 2, GAME_H / 2 - 56, lines.join('\n\n'), {

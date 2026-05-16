@@ -4,6 +4,7 @@ import { techState, checkStatQuests } from '../systems/TechState'
 import { campaignLog, type CampaignRunRecord } from '../systems/CampaignLog'
 import { GAME_W, GAME_H } from '../constants'
 import { unitIdsFromCache } from '../game/loadGameData'
+import { currencyLabels, type CurrencyLabels } from './currency'
 
 const PX = 50
 const PY = 60
@@ -21,6 +22,7 @@ type Tab = typeof TABS[number]
 export class CheatPanel {
   private scene: Phaser.Scene
   private nodes: TechNode[]
+  private currency: CurrencyLabels
   private overlay!: Phaser.GameObjects.Rectangle
   private panel!: Phaser.GameObjects.Container
   private contentContainer!: Phaser.GameObjects.Container
@@ -33,6 +35,7 @@ export class CheatPanel {
   constructor(scene: Phaser.Scene, nodes: TechNode[]) {
     this.scene = scene
     this.nodes = nodes
+    this.currency = currencyLabels(scene)
     this.build()
   }
 
@@ -90,7 +93,7 @@ export class CheatPanel {
     footerSep.lineStyle(1, 0x1a2244, 1)
     footerSep.lineBetween(16, footerY, PW - 16, footerY)
 
-    const addPcBtn = this.scene.add.text(PW / 2 - 100, footerY + 20, '[ +100 PC ]', {
+    const addPcBtn = this.scene.add.text(PW / 2 - 100, footerY + 20, `[ +100 ${this.currency.progression.icon} ]`, {
       fontSize: '13px', color: '#446622', fontFamily: 'monospace',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true })
     addPcBtn.on('pointerover', () => addPcBtn.setColor('#88cc44'))
@@ -290,7 +293,7 @@ export class CheatPanel {
       const name = this.scene.add.text(42, y, label, {
         fontSize: '12px', color: owned ? '#44cc88' : '#445566', fontFamily: 'monospace',
       })
-      const costLabel = maxed ? 'MAX' : `${techState.currentCost(node)} PC`
+      const costLabel = maxed ? 'MAX' : `${techState.currentCost(node)} ${this.currency.progression.icon}`
       const cost = this.scene.add.text(PW - 80, y, costLabel, {
         fontSize: '11px', color: owned ? '#336644' : '#2a3a4a', fontFamily: 'monospace',
       })
@@ -309,7 +312,7 @@ export class CheatPanel {
     let y = 8
 
     const rows: [string, string][] = [
-      ['PC (total)',       String(techState.pc)],
+      [`${this.currency.progression.icon} ${this.currency.progression.name} (total)`, String(techState.pc)],
       ['Nodes purchased',  String(techState.purchased.size)],
       ['Tech levels',      String(this.nodes.reduce((sum, node) => sum + techState.effectiveLevel(node), 0))],
       ['Quests completed', String(techState.completedQuests.size)],
@@ -408,7 +411,7 @@ export class CheatPanel {
       out.push(title)
       y += 18
 
-      const line1 = this.scene.add.text(28, y, `PC +${record.pcEarned ?? 0}  bank ${record.pcAfter ?? record.pcBefore}  tower ${Math.round(record.towerHp ?? 0)}  waves ${record.wavesCleared ?? 0}/${record.totalWaves ?? 0}`, {
+      const line1 = this.scene.add.text(28, y, `${this.currency.progression.icon} +${record.pcEarned ?? 0}  bank ${record.pcAfter ?? record.pcBefore}  tower ${Math.round(record.towerHp ?? 0)}  waves ${record.wavesCleared ?? 0}/${record.totalWaves ?? 0}`, {
         fontSize: '11px', color: '#667799', fontFamily: 'monospace',
       })
       out.push(line1)

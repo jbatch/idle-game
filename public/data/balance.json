@@ -2,6 +2,16 @@
   "dcBudget": 2,
   "pcMultiplier": 1.0,
   "towerHp": 140,
+  "currency": {
+    "progression": {
+      "name": "Gems",
+      "icon": "◆"
+    },
+    "deployment": {
+      "name": "Influence",
+      "icon": "⬟"
+    }
+  },
   "cursor": {
     "damage": 8,
     "radius": 30,

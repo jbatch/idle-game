@@ -12,6 +12,7 @@ import { playRingPulse, playSparkBurst, playTextToast } from '../effects/CombatE
 import { fadeInScene, fadeToScene } from '../ui/sceneTransitions'
 import { cursors } from '../ui/cursors'
 import { showOnboardingTip } from '../ui/OnboardingOverlay'
+import { currencyLabels, type CurrencyLabels } from '../ui/currency'
 
 const CHAPTER_DEFS = [
   { id: 'chapter1', questReq: null, clearQuest: 'boss_chapter1_killed' },
@@ -32,6 +33,16 @@ const PANEL_H = GAME_H - PANEL_Y - 20
 const SHOP_BRIEFING_DISMISSED_KEY = 'siegeloop_shop_briefing_dismissed'
 let draftPackPurchases: string[] = []
 
+type CurrencyLine = {
+  icon: Phaser.GameObjects.Text
+  label: Phaser.GameObjects.Text
+  anchorX: number
+  y: number
+  iconOffsetY: number
+  align: 'left' | 'center'
+  gap: number
+}
+
 export function clearDraftShopPacks() {
   draftPackPurchases = []
 }
@@ -46,13 +57,14 @@ function dismissShopBriefing() {
 
 export class ShopScene extends Phaser.Scene {
   private balance!: BalanceData
+  private currency!: CurrencyLabels
   private unitMap!: Record<string, UnitData>
   private packs: ShopPackData[] = []
   private packPurchases: string[] = []
   private dcSpent: number = 0
   private dcBudget: number = 2
 
-  private dcText!: Phaser.GameObjects.Text
+  private dcLine!: CurrencyLine
   private loadoutGroup: Phaser.GameObjects.GameObject[] = []
   private cheatPanel: CheatPanel | null = null
 
@@ -65,6 +77,7 @@ export class ShopScene extends Phaser.Scene {
     audioManager.playMusic(this, 'shop_theme')
     this.input.setDefaultCursor(cursors.menu)
     this.balance  = this.cache.json.get('balance')  as BalanceData
+    this.currency = currencyLabels(this)
     this.unitMap  = {}
     for (const id of unitIdsFromCache(this)) {
       this.unitMap[id] = this.cache.json.get(id) as UnitData
@@ -104,10 +117,14 @@ export class ShopScene extends Phaser.Scene {
       fontSize: '26px', color: '#8899cc', fontFamily: 'monospace', fontStyle: 'bold',
     }).setOrigin(0.5)
 
-    // PC balance + tech tree button
-    this.add.text(20, 28, `PC: ${techState.pc}`, {
-      fontSize: '14px', color: '#ddaa22', fontFamily: 'monospace',
-    }).setOrigin(0, 0.5)
+    // Gems balance + tech tree button
+    this.addCurrencyLine(20, 28, this.currency.progression.icon, `${this.currency.progression.name}: ${techState.pc}`, {
+      align: 'left',
+      labelSize: 14,
+      iconSize: 18,
+      color: '#ddaa22',
+      iconOffsetY: -2,
+    })
 
     const menuBtn = this.add.text(20, 52, '[ MENU ]', {
       fontSize: '11px', color: '#334455', fontFamily: 'monospace',
@@ -176,10 +193,15 @@ export class ShopScene extends Phaser.Scene {
       }
     })
 
-    // DC budget display — updated live
-    this.dcText = this.add.text(PANEL_X + PANEL_W / 2, 90, '', {
-      fontSize: '15px', color: '#ddaa22', fontFamily: 'monospace', fontStyle: 'bold',
-    }).setOrigin(0.5)
+    // Influence budget display — updated live
+    this.dcLine = this.addCurrencyLine(PANEL_X + PANEL_W / 2, 90, this.currency.deployment.icon, '', {
+      align: 'center',
+      labelSize: 15,
+      iconSize: 22,
+      color: '#ddaa22',
+      bold: true,
+      iconOffsetY: -2,
+    })
     this.refreshDCText()
 
     // Separator line
@@ -190,8 +212,83 @@ export class ShopScene extends Phaser.Scene {
 
   private refreshDCText() {
     const remaining = this.dcBudget - this.dcSpent
-    this.dcText.setText(`DC: ${remaining} / ${this.dcBudget}`)
-    this.dcText.setColor(remaining > 0 ? '#ddaa22' : '#664422')
+    const color = remaining > 0 ? '#ddaa22' : '#664422'
+    this.setCurrencyLineLabel(this.dcLine, `${this.currency.deployment.name}: ${remaining} / ${this.dcBudget}`, color)
+  }
+
+  private addCurrencyLine(
+    anchorX: number,
+    y: number,
+    iconText: string,
+    labelText: string,
+    options: {
+      align: 'left' | 'center'
+      labelSize: number
+      iconSize: number
+      color: string
+      bold?: boolean
+      gap?: number
+      iconOffsetY?: number
+    },
+  ): CurrencyLine {
+    const icon = this.add.text(anchorX, y, iconText, {
+      fontSize: `${options.iconSize}px`,
+      color: options.color,
+      fontFamily: 'monospace',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0.5)
+    const label = this.add.text(anchorX, y, labelText, {
+      fontSize: `${options.labelSize}px`,
+      color: options.color,
+      fontFamily: 'monospace',
+      fontStyle: options.bold ? 'bold' : '',
+    }).setOrigin(0, 0.5)
+    const line = { icon, label, anchorX, y, iconOffsetY: options.iconOffsetY ?? 0, align: options.align, gap: options.gap ?? 7 }
+    this.layoutCurrencyLine(line)
+    return line
+  }
+
+  private setCurrencyLineLabel(line: CurrencyLine, label: string, color?: string) {
+    line.label.setText(label)
+    if (color) {
+      line.icon.setColor(color)
+      line.label.setColor(color)
+    }
+    this.layoutCurrencyLine(line)
+  }
+
+  private layoutCurrencyLine(line: CurrencyLine) {
+    const totalW = line.icon.width + line.gap + line.label.width
+    const startX = line.align === 'center' ? line.anchorX - totalW / 2 : line.anchorX
+    line.icon.setPosition(startX, line.y + line.iconOffsetY)
+    line.label.setPosition(startX + line.icon.width + line.gap, line.y)
+  }
+
+  private addRightCurrencyAmount(
+    rightX: number,
+    y: number,
+    amount: string,
+    iconText: string,
+    options: {
+      numberSize: number
+      iconSize: number
+      color: string
+      gap: number
+      iconOffsetY: number
+    },
+  ) {
+    const icon = this.add.text(rightX, y + options.iconOffsetY, iconText, {
+      fontSize: `${options.iconSize}px`,
+      color: options.color,
+      fontFamily: 'monospace',
+      fontStyle: 'bold',
+    }).setOrigin(1, 0.5)
+    this.add.text(rightX - icon.width - options.gap, y, amount, {
+      fontSize: `${options.numberSize}px`,
+      color: options.color,
+      fontFamily: 'monospace',
+      fontStyle: 'bold',
+    }).setOrigin(1, 0.5)
   }
 
   // ─── Pack cards ──────────────────────────────────────────────────
@@ -239,9 +336,13 @@ export class ShopScene extends Phaser.Scene {
     addFittedText(this, textX, y + 12, pack.name, {
       fontSize: '16px', color: '#ccd4ff', fontFamily: 'monospace', fontStyle: 'bold',
     }, { width: copyW, maxLines: 1, minFontSize: 13 })
-    this.add.text(x + CARD_W - 12, y + 12, `${pack.cost} DC`, {
-      fontSize: '14px', color: '#ddaa22', fontFamily: 'monospace',
-    }).setOrigin(1, 0)
+    this.addRightCurrencyAmount(x + CARD_W - 12, y + 21, String(pack.cost), this.currency.deployment.icon, {
+      numberSize: 14,
+      iconSize: 18,
+      color: '#ddaa22',
+      gap: 5,
+      iconOffsetY: -2,
+    })
 
     // Hidden unit count + pool summary
     const rollText = `${pack.rolls} hidden unit${pack.rolls === 1 ? '' : 's'}`
@@ -430,7 +531,7 @@ export class ShopScene extends Phaser.Scene {
         this.loadoutGroup.push(label)
 
         const totalRolls = count * pack.rolls
-        const countText = this.add.text(PANEL_X + 42, y + 22, `x ${count}  ${totalRolls} hidden roll${totalRolls === 1 ? '' : 's'}  (${count * pack.cost} DC)`, {
+        const countText = this.add.text(PANEL_X + 42, y + 22, `x ${count}  ${totalRolls} hidden roll${totalRolls === 1 ? '' : 's'}  (${count * pack.cost} ${this.currency.deployment.icon})`, {
           fontSize: '11px', color: '#556688', fontFamily: 'monospace',
         })
         this.loadoutGroup.push(countText)
@@ -471,8 +572,8 @@ export class ShopScene extends Phaser.Scene {
       return sum + (pack?.rolls ?? 0)
     }, 0)
     const totalLabel = this.add.text(
-      PANEL_X + 16, PANEL_Y + PANEL_H - 80,
-      `Total: ${this.dcSpent} / ${this.dcBudget} DC    Hidden rolls: ${hiddenRolls}`,
+      PANEL_X + 22, PANEL_Y + PANEL_H - 82,
+      `Total: ${this.dcSpent} / ${this.dcBudget} ${this.currency.deployment.icon}    Hidden rolls: ${hiddenRolls}`,
       { fontSize: '12px', color: '#667799', fontFamily: 'monospace' }
     )
     this.loadoutGroup.push(totalLabel)
@@ -495,7 +596,7 @@ export class ShopScene extends Phaser.Scene {
     showOnboardingTip(this, {
       id: 'shop_first_start_battle',
       title: 'Start battle',
-      body: 'Good. Two packs spend all your starting DC. Start the run to reveal your squad and learn combat.',
+      body: `${this.currency.deployment.icon} ${this.currency.deployment.name} is your per-run buying power. Two packs spend all your starting ${this.currency.deployment.name}. Start the run to reveal your squad and learn combat.`,
       focus: this.startButtonFocus(),
     })
   }
@@ -611,11 +712,11 @@ export class ShopScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(62)
 
     const body = this.add.text(GAME_W / 2, GAME_H / 2 - 82, [
-      'Spend DC on unopened packs. You will not know the exact squad until battle starts.',
+      `${this.currency.deployment.icon} ${this.currency.deployment.name} is your per-run budget. Spend it on unopened packs before the battle starts.`,
       '',
       'In combat, click enemies and crates while your units defend the tower.',
       '',
-      'After each run, spend earned PC in the tech tree to unlock stronger options.',
+      `${this.currency.progression.icon} ${this.currency.progression.name} are permanent progress. Earn ${this.currency.progression.name} in combat, then spend them in the tech tree to unlock stronger options.`,
     ].join('\n'), {
       fontSize: '14px',
       color: '#aebce8',

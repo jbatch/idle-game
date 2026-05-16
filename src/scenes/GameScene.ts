@@ -20,6 +20,7 @@ import { CombatHud } from '../ui/CombatHud'
 import { createPauseOverlay } from '../ui/PauseOverlay'
 import { showOnboardingTip } from '../ui/OnboardingOverlay'
 import { cursors } from '../ui/cursors'
+import { currencyLabels } from '../ui/currency'
 
 const DEBUG_COOLDOWN = 0.05
 
@@ -556,20 +557,22 @@ export class GameScene extends Phaser.Scene {
   }
 
   private showCombatBasicsTip() {
+    const currency = currencyLabels(this)
     this.showPausedTip({
       id: 'combat_basics',
       title: 'Hold the tower',
-      body: 'Click enemies to strike them with the cursor. The circle around the pointer is your cooldown. Watch the left HUD for PC, tower health, waves, units, crates, and temporary cursor buffs.',
+      body: `Click enemies to strike them with the cursor. The circle around the pointer is your cooldown. Watch the left HUD for ${currency.progression.name}, tower health, waves, units, crates, and temporary cursor buffs.`,
       focus: new Phaser.Geom.Rectangle(92, 104, 716, 676),
       onClose: () => this.showHudTip(),
     })
   }
 
   private showHudTip() {
+    const currency = currencyLabels(this)
     this.showPausedTip({
       id: 'combat_hud',
       title: 'Read the run',
-      body: 'This status strip shows PC earned this run, tower health, wave timing, living units, active crates, and timed cursor effects.',
+      body: `This status strip shows ${currency.progression.name} earned this run, tower health, wave timing, living units, active crates, and timed cursor effects.`,
       focus: new Phaser.Geom.Rectangle(8, 8, 250, 152),
     })
   }

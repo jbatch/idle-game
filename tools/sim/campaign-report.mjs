@@ -49,7 +49,7 @@ export function printCampaignTrace(campaign, options) {
       `Run ${String(row.run).padStart(2)}:`,
       row.chapter,
       result,
-      `+${row.pcEarned} PC`,
+      `+${row.pcEarned} Gems`,
       `waves ${row.wavesCleared ?? '?'} / ${row.totalWaves ?? '?'}`,
       `tower ${row.towerHp}`,
       `packs ${formatCounts(row.packs)}`,
@@ -64,7 +64,7 @@ export function printCampaignTrace(campaign, options) {
     console.log(`  ${chapterId}: ${campaign.cleared[chapterId] ? `run ${campaign.cleared[chapterId]}` : 'not cleared'}`)
   }
   console.log(`\nFinal tech: ${formatTechSpec(campaign.tech) || '(none)'}`)
-  console.log(`Final PC bank: ${campaign.pc}`)
+  console.log(`Final Gems bank: ${campaign.pc}`)
   console.log('')
 }
 
