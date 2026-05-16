@@ -50,6 +50,7 @@ export function printCampaignTrace(campaign, options) {
       row.chapter,
       result,
       `+${row.pcEarned} PC`,
+      `waves ${row.wavesCleared ?? '?'} / ${row.totalWaves ?? '?'}`,
       `tower ${row.towerHp}`,
       `packs ${formatCounts(row.packs)}`,
       `loadout ${formatCounts(row.loadout)}`,
@@ -64,6 +65,62 @@ export function printCampaignTrace(campaign, options) {
   }
   console.log(`\nFinal tech: ${formatTechSpec(campaign.tech) || '(none)'}`)
   console.log(`Final PC bank: ${campaign.pc}`)
+  console.log('')
+}
+
+export function printCampaignProgressReport(report, chapterId) {
+  const progressions = report.campaigns
+    .map(campaign => campaign.history.filter(row => row.chapter === chapterId))
+    .filter(rows => rows.length > 0)
+
+  console.log(`\n${chapterId} progression, ${progressions.length} campaigns`)
+  console.log(`Completion: ${pct(report.completionRate)}\n`)
+
+  const attemptsToClear = progressions
+    .map(rows => rows.findIndex(row => row.won) + 1)
+    .filter(value => value > 0)
+  console.log(`Attempts to clear: median ${fmt(percentile(attemptsToClear, 0.5))}, p90 ${fmt(percentile(attemptsToClear, 0.9))}`)
+
+  const maxAttempts = Math.max(...progressions.map(rows => rows.length), 0)
+  console.log('\nAttempt   Win rate   Median wave   P75 wave   P90 wave   Most common wave')
+  console.log('-------   --------   -----------   --------   --------   ----------------')
+  for (let i = 0; i < maxAttempts; i++) {
+    const rows = progressions.map(items => items[i]).filter(Boolean)
+    if (rows.length === 0) continue
+    const waves = rows.map(row => row.wavesCleared ?? 0)
+    const waveCounts = countBy(waves.map(String))
+    const commonWave = Object.entries(waveCounts)
+      .sort((a, b) => b[1] - a[1] || Number(a[0]) - Number(b[0]))[0]
+    console.log([
+      String(i + 1).padStart(7),
+      pct(rows.filter(row => row.won).length / rows.length).padStart(8),
+      fmt(percentile(waves, 0.5)).padStart(11),
+      fmt(percentile(waves, 0.75)).padStart(8),
+      fmt(percentile(waves, 0.9)).padStart(8),
+      commonWave ? `${commonWave[0]} (${commonWave[1]}x)` : 'n/a',
+    ].join('   '))
+  }
+
+  const preClearPurchases = countPreClearPurchases(progressions)
+  console.log('\nMost common tech bought after the previous attempt before clearing:')
+  if (preClearPurchases.length === 0) {
+    console.log('  (none)')
+  } else {
+    for (const item of preClearPurchases.slice(0, 10)) {
+      console.log(`  ${item.id.padEnd(32)} ${pct(item.rate)}  (${item.count}/${item.samples})`)
+    }
+  }
+
+  const priorWaves = progressions
+    .map(rows => {
+      const winIndex = rows.findIndex(row => row.won)
+      return winIndex > 0 ? rows[winIndex - 1].wavesCleared : null
+    })
+    .filter(value => value !== null)
+  if (priorWaves.length > 0) {
+    const priorCounts = countBy(priorWaves.map(String))
+    console.log(`\nWave reached on the attempt immediately before clearing: ${formatCounts(priorCounts)}`)
+  }
   console.log('')
 }
 
@@ -116,6 +173,25 @@ function commonTechAtClear(campaigns, chapterId) {
     .filter(item => item.ownedRate >= 0.35)
     .sort((a, b) => b.ownedRate - a.ownedRate || b.avgLevel - a.avgLevel || a.id.localeCompare(b.id))
     .slice(0, 8)
+}
+
+function countPreClearPurchases(progressions) {
+  const totals = new Map()
+  let samples = 0
+  for (const rows of progressions) {
+    const winIndex = rows.findIndex(row => row.won)
+    if (winIndex <= 0) continue
+    samples += 1
+    const previous = rows[winIndex - 1]
+    for (const purchase of previous.purchases ?? []) {
+      const item = totals.get(purchase.id) ?? { id: purchase.id, count: 0, samples }
+      item.count += 1
+      totals.set(purchase.id, item)
+    }
+  }
+  return [...totals.values()]
+    .map(item => ({ ...item, samples, rate: samples ? item.count / samples : 0 }))
+    .sort((a, b) => b.count - a.count || a.id.localeCompare(b.id))
 }
 
 function formatCommonTech(items) {

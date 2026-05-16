@@ -54,6 +54,8 @@ export function runCampaign(data, options) {
       loadout: countBy(result.loadout),
       towerHp: Math.round(result.towerHp),
       unitsAlive: result.unitsAlive,
+      wavesCleared: result.wavesCleared,
+      totalWaves: result.totalWaves,
       elapsed: Math.round(result.elapsed * 10) / 10,
       techBefore,
       purchases,

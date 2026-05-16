@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { runCampaignTrials, printCampaignReport, printCampaignTrace } from './sim/campaign-report.mjs'
+import { runCampaignTrials, printCampaignProgressReport, printCampaignReport, printCampaignTrace } from './sim/campaign-report.mjs'
 import { loadData } from './sim/data.mjs'
 
 const DEFAULT_DT = 0.05
@@ -24,6 +24,7 @@ function main() {
   }
   const report = runCampaignTrials(data, campaignOptions)
   if (args.json) writeJson({ mode: campaignOptions.trace ? 'trace-campaign' : 'campaign', options: campaignOptions, report })
+  else if (args['chapter-progress']) printCampaignProgressReport(report, String(args['chapter-progress']))
   else if (campaignOptions.trace) printCampaignTrace(report.campaigns[0], campaignOptions)
   else printCampaignReport(report, campaignOptions)
 }
@@ -69,6 +70,8 @@ Options:
   --seed          Seed prefix for deterministic reruns.
   --trace-campaign Print one readable campaign timeline.
   --policy        Campaign spending policy. Default: greedy
+  --chapter-progress chapterId
+                  Print per-attempt wave progression and pre-clear tech patterns for one chapter.
   --json          Print machine-readable JSON.
 `)
 }
