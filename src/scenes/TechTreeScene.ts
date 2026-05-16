@@ -21,9 +21,19 @@ const NODE_GAP  = 28   // horizontal gap between nodes
 const ROW_H     = NODE_H + 26  // vertical space per branch row
 const ROW_PAD_X = 20   // left edge of content area
 const VIEW_PAD  = 28
-const MIN_ZOOM  = 0.62
+const MIN_ZOOM  = 0.45
 const MAX_ZOOM  = 1.45
 const WHEEL_ZOOM_SPEED = 0.0015
+const USE_PROGRAMMATIC_RADIAL_LAYOUT = true
+const RADIAL_START_ZOOM = 0.72
+const RADIAL_INNER_RADIUS = 430
+const RADIAL_DEPTH_GAP = 280
+const RADIAL_BRANCH_SPREAD_DEG = 24
+const RADIAL_INNER_ALT_OFFSET = -90
+const RADIAL_PAD = 90
+const RADIAL_RELAX_ITERATIONS = 100
+const RADIAL_RELAX_GAP_X = 28
+const RADIAL_RELAX_GAP_Y = 22
 
 type CurrencyLine = {
   icon: Phaser.GameObjects.Text
@@ -52,6 +62,7 @@ const BRANCH_LABELS: Record<string, string> = {
 }
 
 const BRANCH_ORDER = ['cursor', 'deployment', 'supply', 'crates', 'tower', 'footsoldier', 'archer', 'shieldbearer', 'healer', 'frost_mage', 'sentinel', 'bard']
+const RADIAL_BRANCH_ORDER = ['cursor', 'crates', 'tower', 'footsoldier', 'shieldbearer', 'archer', 'bard', 'healer', 'frost_mage', 'sentinel', 'supply', 'deployment']
 
 const BRANCH_COLORS: Record<string, number> = {
   cursor: 0x5aa7ff,
@@ -94,6 +105,7 @@ export class TechTreeScene extends Phaser.Scene {
   private panStartScrollX = 0
   private panStartScrollY = 0
   private tooltip: Phaser.GameObjects.Container | null = null
+  private radialHub: { x: number, y: number } | null = null
 
   constructor() {
     super({ key: 'TechTreeScene' })
@@ -108,11 +120,14 @@ export class TechTreeScene extends Phaser.Scene {
     const data = this.cache.json.get('tech_tree') as { nodes: TechNode[] }
     const layoutData = this.cache.json.get('tech_tree_layout') as TechTreeLayoutData | undefined
     this.nodes = data.nodes
-    this.layouts = new Map((layoutData?.nodes ?? []).map(layout => [layout.id, layout]))
-    this.edgeLayouts = new Map((layoutData?.edges ?? []).map(edge => [this.edgeKey(edge.from, edge.to), edge]))
+    const manualLayouts = new Map((layoutData?.nodes ?? []).map(layout => [layout.id, layout]))
+    this.layouts = USE_PROGRAMMATIC_RADIAL_LAYOUT ? this.generateRadialLayouts(manualLayouts) : manualLayouts
+    this.edgeLayouts = USE_PROGRAMMATIC_RADIAL_LAYOUT
+      ? new Map()
+      : new Map((layoutData?.edges ?? []).map(edge => [this.edgeKey(edge.from, edge.to), edge]))
     this.scrollX = 0
     this.scrollY = 0
-    this.zoom = 1
+    this.zoom = USE_PROGRAMMATIC_RADIAL_LAYOUT ? RADIAL_START_ZOOM : 1
     this.isPanning = false
     this.isPinching = false
 
@@ -310,6 +325,11 @@ export class TechTreeScene extends Phaser.Scene {
     const visibleNodes = this.nodes.filter(node => this.shouldShowNode(node))
     const visibleById = new Map(visibleNodes.map(node => [node.id, node]))
 
+    if (this.radialHub) {
+      this.totalContentW = Math.max(this.totalContentW, this.radialHub.x + VIEW_PAD)
+      this.totalContentH = Math.max(this.totalContentH, this.radialHub.y + VIEW_PAD)
+    }
+
     for (const node of visibleNodes) {
       const layout = this.layouts.get(node.id)
       if (!layout) continue
@@ -321,6 +341,25 @@ export class TechTreeScene extends Phaser.Scene {
       if (!edge.elbow) continue
       this.totalContentW = Math.max(this.totalContentW, edge.elbow.x + VIEW_PAD)
       this.totalContentH = Math.max(this.totalContentH, edge.elbow.y + VIEW_PAD)
+    }
+
+    if (this.radialHub) {
+      const hub = this.add.graphics()
+      hub.lineStyle(1, uiPalette.border.dim, 0.5)
+      for (const node of visibleNodes) {
+        if (node.requires.length > 0) continue
+        const layout = this.layouts.get(node.id)
+        if (!layout) continue
+        const center = this.nodeCenter(layout)
+        hub.lineBetween(this.radialHub.x, this.radialHub.y, center.x, center.y)
+      }
+      hub.fillStyle(uiPalette.surface.panel, 1)
+      hub.fillCircle(this.radialHub.x, this.radialHub.y, 18)
+      hub.lineStyle(2, uiPalette.border.strong, 0.85)
+      hub.strokeCircle(this.radialHub.x, this.radialHub.y, 18)
+      hub.fillStyle(uiPalette.state.reward, 0.8)
+      hub.fillCircle(this.radialHub.x, this.radialHub.y, 4)
+      this.content.add(hub)
     }
 
     for (const node of visibleNodes) {
@@ -368,6 +407,121 @@ export class TechTreeScene extends Phaser.Scene {
         y: 8 + branchIndex * (ROW_H + 8),
         visibleWhen: 'always',
       })
+    }
+  }
+
+  private generateRadialLayouts(manualLayouts: Map<string, TechNodeLayout>): Map<string, TechNodeLayout> {
+    this.radialHub = null
+
+    const byId = new Map(this.nodes.map(node => [node.id, node]))
+    const depthMemo = new Map<string, number>()
+    const visiting = new Set<string>()
+
+    const depthFor = (node: TechNode): number => {
+      const cached = depthMemo.get(node.id)
+      if (cached !== undefined) return cached
+      if (visiting.has(node.id)) return 0
+      visiting.add(node.id)
+      const parentDepths = node.requires
+        .map(requiredId => byId.get(requiredId))
+        .filter((requiredNode): requiredNode is TechNode => Boolean(requiredNode))
+        .map(requiredNode => depthFor(requiredNode) + 1)
+      visiting.delete(node.id)
+      const depth = parentDepths.length > 0 ? Math.max(...parentDepths) : 0
+      depthMemo.set(node.id, depth)
+      return depth
+    }
+
+    const groups = new Map<string, TechNode[]>()
+    for (const node of this.nodes) {
+      const depth = depthFor(node)
+      const key = `${node.branch}:${depth}`
+      groups.set(key, [...(groups.get(key) ?? []), node])
+    }
+
+    const branchAngles = new Map<string, number>()
+    const branchOrder = [...RADIAL_BRANCH_ORDER]
+    for (const node of this.nodes) {
+      if (!branchOrder.includes(node.branch)) branchOrder.push(node.branch)
+    }
+    branchOrder.forEach((branch, index) => {
+      branchAngles.set(branch, Phaser.Math.DegToRad(-90 + (index * 360) / branchOrder.length))
+    })
+
+    const rawPositions = new Map<string, { x: number, y: number }>()
+    for (const node of this.nodes) {
+      const depth = depthFor(node)
+      const siblings = groups.get(`${node.branch}:${depth}`) ?? [node]
+      const siblingIndex = Math.max(0, siblings.findIndex(sibling => sibling.id === node.id))
+      const siblingOffset = siblingIndex - (siblings.length - 1) / 2
+      const baseAngle = branchAngles.get(node.branch) ?? 0
+      const angle = baseAngle + Phaser.Math.DegToRad(siblingOffset * RADIAL_BRANCH_SPREAD_DEG)
+      const multiDependencyBonus = Math.max(0, node.requires.length - 1) * 70
+      const branchIndex = Math.max(0, branchOrder.indexOf(node.branch))
+      const alternatingInnerOffset = depth === 0 && branchIndex % 2 === 1 ? RADIAL_INNER_ALT_OFFSET : 0
+      const radius = RADIAL_INNER_RADIUS + alternatingInnerOffset + depth * RADIAL_DEPTH_GAP + multiDependencyBonus
+
+      rawPositions.set(node.id, {
+        x: Math.cos(angle) * radius - NODE_W / 2,
+        y: Math.sin(angle) * radius - NODE_H / 2,
+      })
+    }
+
+    this.relaxRadialOverlaps(rawPositions)
+
+    let minX = -RADIAL_PAD
+    let minY = -RADIAL_PAD
+    for (const pos of rawPositions.values()) {
+      minX = Math.min(minX, pos.x)
+      minY = Math.min(minY, pos.y)
+    }
+
+    const offsetX = RADIAL_PAD - minX
+    const offsetY = RADIAL_PAD - minY
+    this.radialHub = { x: offsetX, y: offsetY }
+
+    const layouts = new Map<string, TechNodeLayout>()
+    for (const node of this.nodes) {
+      const pos = rawPositions.get(node.id)
+      if (!pos) continue
+      layouts.set(node.id, {
+        id: node.id,
+        x: Math.round(pos.x + offsetX),
+        y: Math.round(pos.y + offsetY),
+        visibleWhen: manualLayouts.get(node.id)?.visibleWhen ?? 'always',
+      })
+    }
+
+    return layouts
+  }
+
+  private relaxRadialOverlaps(positions: Map<string, { x: number, y: number }>) {
+    const entries = [...positions.values()]
+    for (let iteration = 0; iteration < RADIAL_RELAX_ITERATIONS; iteration += 1) {
+      for (let i = 0; i < entries.length; i += 1) {
+        for (let j = i + 1; j < entries.length; j += 1) {
+          const a = entries[i]
+          const b = entries[j]
+          const dx = (a.x + NODE_W / 2) - (b.x + NODE_W / 2)
+          const dy = (a.y + NODE_H / 2) - (b.y + NODE_H / 2)
+          const overlapX = NODE_W + RADIAL_RELAX_GAP_X - Math.abs(dx)
+          const overlapY = NODE_H + RADIAL_RELAX_GAP_Y - Math.abs(dy)
+
+          if (overlapX <= 0 || overlapY <= 0) continue
+
+          if (overlapX < overlapY) {
+            const push = overlapX / 2 + 0.5
+            const direction = dx >= 0 ? 1 : -1
+            a.x += direction * push
+            b.x -= direction * push
+          } else {
+            const push = overlapY / 2 + 0.5
+            const direction = dy >= 0 ? 1 : -1
+            a.y += direction * push
+            b.y -= direction * push
+          }
+        }
+      }
     }
   }
 
@@ -783,8 +937,13 @@ export class TechTreeScene extends Phaser.Scene {
 
   private centerScrollInBounds() {
     const viewportH = GAME_H - HEADER_H - FOOTER_H
-    this.scrollX = Math.max(0, (this.totalContentW - GAME_W / this.zoom) / 2)
-    this.scrollY = Math.max(0, (this.totalContentH - viewportH / this.zoom) / 2)
+    if (this.radialHub) {
+      this.scrollX = this.radialHub.x - (GAME_W / this.zoom) / 2
+      this.scrollY = this.radialHub.y - (viewportH / this.zoom) / 2
+    } else {
+      this.scrollX = Math.max(0, (this.totalContentW - GAME_W / this.zoom) / 2)
+      this.scrollY = Math.max(0, (this.totalContentH - viewportH / this.zoom) / 2)
+    }
     this.clampScroll()
     this.updateContentPosition()
   }
@@ -816,6 +975,8 @@ export class TechTreeScene extends Phaser.Scene {
     toLayout: TechNodeLayout,
     edge?: TechEdgeLayout,
   ): Array<{ x: number, y: number }> {
+    if (USE_PROGRAMMATIC_RADIAL_LAYOUT) return [this.nodeCenter(fromLayout), this.nodeCenter(toLayout)]
+
     const fromAnchor = edge?.fromAnchor ?? 'right'
     const toAnchor = edge?.toAnchor ?? 'left'
     const start = this.anchorPoint(fromLayout, fromAnchor)
@@ -830,6 +991,10 @@ export class TechTreeScene extends Phaser.Scene {
     const last = toHorizontal ? { x: elbow.x, y: end.y } : { x: end.x, y: elbow.y }
 
     return this.removeDuplicatePoints([start, first, elbow, last, end])
+  }
+
+  private nodeCenter(layout: TechNodeLayout): { x: number, y: number } {
+    return { x: layout.x + NODE_W / 2, y: layout.y + NODE_H / 2 }
   }
 
   private anchorPoint(layout: TechNodeLayout, anchor: TechNodeAnchor): { x: number, y: number } {
