@@ -167,7 +167,7 @@ export class TechTreeScene extends Phaser.Scene {
       showOnboardingTip(this, {
         id: 'tech_tree_first_visit',
         title: 'Spend PC here',
-        body: 'Each node is a permanent upgrade. Drag empty space to explore branches, then buy available nodes with PC earned from runs.',
+        body: 'Buy permanent upgrades with PC. Drag empty space to explore branches. +DC upgrades are very valuable as soon as they appear: more DC means more packs every run.',
         focus: new Phaser.Geom.Rectangle(122, HEADER_H + 34, 650, 360),
       })
     })

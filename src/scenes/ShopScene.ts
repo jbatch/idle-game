@@ -121,12 +121,16 @@ export class ShopScene extends Phaser.Scene {
       this.showBriefing()
     })
 
-    const techBtn = this.add.text(GAME_W - 20, 28, '[ TECH TREE ]', {
-      fontSize: '13px', color: '#4455aa', fontFamily: 'monospace',
-    }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true })
-    techBtn.on('pointerover', () => techBtn.setColor('#7788cc'))
-    techBtn.on('pointerout',  () => techBtn.setColor('#4455aa'))
-    techBtn.on('pointerdown', () => fadeToScene(this, 'TechTreeScene', undefined, { sfx: 'ui_click' }))
+    const hasCompletedRun = campaignLog.records.length > 0
+    const techBtn = this.add.text(GAME_W - 20, 28, hasCompletedRun ? '[ TECH TREE ]' : '[ TECH TREE AFTER RUN ]', {
+      fontSize: '13px', color: hasCompletedRun ? '#4455aa' : '#334455', fontFamily: 'monospace',
+    }).setOrigin(1, 0.5)
+    if (hasCompletedRun) {
+      techBtn.setInteractive({ useHandCursor: true })
+      techBtn.on('pointerover', () => techBtn.setColor('#7788cc'))
+      techBtn.on('pointerout',  () => techBtn.setColor('#4455aa'))
+      techBtn.on('pointerdown', () => fadeToScene(this, 'TechTreeScene', undefined, { sfx: 'ui_click' }))
+    }
 
     if (this.debugToolsEnabled()) {
       const runsBtn = this.add.text(GAME_W - 20, 74, '[ RUN LOG ]', {

@@ -13,7 +13,7 @@ type TipConfig = {
 }
 
 const PANEL_W = 330
-const PANEL_H = 172
+const PANEL_H = 188
 
 export function showOnboardingTip(scene: Phaser.Scene, config: TipConfig): boolean {
   if (!onboardingState.shouldShow(config.id)) return false
