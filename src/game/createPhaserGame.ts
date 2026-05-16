@@ -9,11 +9,15 @@ export function createPhaserGame(
 ): Phaser.Game {
   const config: Phaser.Types.Core.GameConfig = {
     type: Phaser.AUTO,
-    width: GAME_W,
-    height: GAME_H,
+    scale: {
+      parent,
+      width: GAME_W,
+      height: GAME_H,
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH,
+    },
     backgroundColor: '#0a0a0f',
     scene: scenes,
-    parent,
   }
 
   return new Phaser.Game(config)

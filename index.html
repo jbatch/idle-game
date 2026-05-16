@@ -6,11 +6,18 @@
     <title>SiegeLoop</title>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { background: #0a0a0f; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+      body { background: #0a0a0f; }
       canvas { display: block; }
     </style>
   </head>
   <body>
+    <main id="app"></main>
+    <aside class="viewport-warning" aria-live="polite">
+      <div>
+        <strong>SiegeLoop needs a larger screen</strong>
+        <span>Use a window at least 600 x 600 pixels so the battlefield and text stay readable.</span>
+      </div>
+    </aside>
     <script type="module" src="/src/apps/game/main.ts"></script>
   </body>
 </html>

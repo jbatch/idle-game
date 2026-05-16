@@ -7,4 +7,4 @@ import { GameScene } from '../../scenes/GameScene'
 import { GameOverScene } from '../../scenes/GameOverScene'
 import { TechTreeScene } from '../../scenes/TechTreeScene'
 
-createPhaserGame([BootScene, MenuScene, ShopScene, GameScene, GameOverScene, TechTreeScene])
+createPhaserGame([BootScene, MenuScene, ShopScene, GameScene, GameOverScene, TechTreeScene], 'app')
