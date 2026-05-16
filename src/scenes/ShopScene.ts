@@ -11,6 +11,7 @@ import { audioManager } from '../systems/AudioManager'
 import { playRingPulse, playSparkBurst, playTextToast } from '../effects/CombatEffects'
 import { fadeInScene, fadeToScene } from '../ui/sceneTransitions'
 import { cursors } from '../ui/cursors'
+import { showOnboardingTip } from '../ui/OnboardingOverlay'
 
 const CHAPTER_DEFS = [
   { id: 'chapter1', questReq: null, clearQuest: 'boss_chapter1_killed' },
@@ -88,7 +89,11 @@ export class ShopScene extends Phaser.Scene {
       this.bindDebugCheatHotkey()
     }
     if (!hasDismissedShopBriefing()) {
-      this.time.delayedCall(180, () => this.showBriefing())
+      this.time.delayedCall(180, () => this.showBriefing(() => {
+        this.time.delayedCall(120, () => this.maybeShowFirstRunPackTip())
+      }))
+    } else {
+      this.time.delayedCall(220, () => this.maybeShowFirstRunPackTip())
     }
   }
 
@@ -471,6 +476,37 @@ export class ShopScene extends Phaser.Scene {
       { fontSize: '12px', color: '#667799', fontFamily: 'monospace' }
     )
     this.loadoutGroup.push(totalLabel)
+    this.maybeShowFirstRunStartTip()
+  }
+
+  private maybeShowFirstRunPackTip() {
+    if (!this.isBeforeFirstRun()) return
+    showOnboardingTip(this, {
+      id: 'shop_first_two_packs',
+      title: 'Buy two packs',
+      body: 'This is your starter pack. Buy it twice for the first run so you begin with two hidden units defending the tower.',
+      focus: new Phaser.Geom.Rectangle(CARD_X - 8, CARDS_Y - 8, CARD_W + 16, CARD_H + 16),
+    })
+  }
+
+  private maybeShowFirstRunStartTip() {
+    if (!this.isBeforeFirstRun()) return
+    if ((this.packPurchaseCounts().tier1_recruit ?? 0) < 2) return
+    showOnboardingTip(this, {
+      id: 'shop_first_start_battle',
+      title: 'Start battle',
+      body: 'Good. Two packs spend all your starting DC. Start the run to reveal your squad and learn combat.',
+      focus: this.startButtonFocus(),
+    })
+  }
+
+  private isBeforeFirstRun(): boolean {
+    return campaignLog.records.length === 0 && !campaignLog.pending
+  }
+
+  private startButtonFocus(): Phaser.Geom.Rectangle {
+    const btnY = PANEL_Y + PANEL_H - 54
+    return new Phaser.Geom.Rectangle(PANEL_X + 8, btnY - 8, PANEL_W - 16, 56)
   }
 
   private packPurchaseCounts(): Record<string, number> {
@@ -562,7 +598,7 @@ export class ShopScene extends Phaser.Scene {
     draftPackPurchases = [...this.packPurchases]
   }
 
-  private showBriefing() {
+  private showBriefing(onClose?: () => void) {
     const shade = this.add.rectangle(0, 0, GAME_W, GAME_H, 0x03050b, 0.76).setOrigin(0, 0).setDepth(60)
     const panel = this.add.rectangle(GAME_W / 2, GAME_H / 2, 610, 344, 0x0b1224, 0.98).setDepth(61)
     panel.setStrokeStyle(1, 0x334d88)
@@ -603,6 +639,7 @@ export class ShopScene extends Phaser.Scene {
       audioManager.playSfx(this, 'ui_click')
       dismissShopBriefing()
       items.forEach(item => item.destroy())
+      onClose?.()
     })
   }
 }
