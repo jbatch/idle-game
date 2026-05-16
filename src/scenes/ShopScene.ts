@@ -127,7 +127,7 @@ export class ShopScene extends Phaser.Scene {
     })
 
     const hasCompletedRun = campaignLog.records.length > 0
-    const techBtn = this.add.text(GAME_W - 20, 28, hasCompletedRun ? '[ TECH TREE ]' : '[ TECH TREE AFTER RUN ]', {
+    const techBtn = this.add.text(GAME_W - 20, 28, '[ TECH TREE ]', {
       fontSize: '13px', color: hasCompletedRun ? '#4455aa' : '#334455', fontFamily: 'monospace',
     }).setOrigin(1, 0.5)
     if (hasCompletedRun) {
