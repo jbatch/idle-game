@@ -28,7 +28,7 @@ The `.claude/` directory is local-only and ignored by git.
 
 ## Current Status
 
-Layers 1–8 (recovery + progression pass) plus the first editor-tooling, v0.2.0 progression-polish pass, and v0.2.1 tech-tree layout pass are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, capped unopened shop packs, same-unit synergy payoffs, cursor proc tuning, supply pack-bonus tech, breakable battlefield crates, cursor/tower/DC progression expansion, and local GUI editors for tech tree and unit data. This is the **v0.2.1 checkpoint**.
+Layers 1–8 (recovery + progression pass) plus the first editor-tooling, v0.2.0 progression-polish pass, v0.2.1 tech-tree layout pass, and v0.2.2 playtest-onboarding pass are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, capped unopened shop packs, same-unit synergy payoffs, cursor proc tuning, supply pack-bonus tech, breakable battlefield crates, cursor/tower/DC progression expansion, first-time onboarding spotlights, and local GUI editors for tech tree and unit data. This is the **v0.2.2 checkpoint**.
 
 ### v0.1.2 Additions
 - Multi-entry Vite app structure: main game plus local-only side apps.
@@ -92,6 +92,18 @@ Layers 1–8 (recovery + progression pass) plus the first editor-tooling, v0.2.0
 ### v0.2.1 Additions
 - Tech tree layout has been reorganized for clearer branch readability.
 - Opening the tech tree now starts centered within the scrollable graph bounds instead of at the top-left.
+
+### v0.2.2 Additions
+- First external playtest notes are captured in `TODO.md`, with a running dev diary in `docs/playtest-dev-diary.md`.
+- First-time onboarding spotlights exist for the first shop flow, combat basics, HUD, enemy introductions, crate introductions, synergy discovery, and the first tech tree visit. Players can skip tips globally.
+- Fresh players are guided to buy two Tier 1 Recruit Packs before starting their first run, and the shop Tech Tree button stays disabled until after the first recorded run.
+- First tech-tree tip now highlights the value of +DC upgrades, and tech nodes have branch-colored strips plus hover tooltips for full descriptions and lock requirements.
+- T1 Squad Pack unlock now requires 14 Tier 1 Recruit buys, and T2 Squad purchases also advance shared T2 Specialist buy progress.
+- Game Over now makes the Tech Tree the primary CTA.
+- Bosses with unit-targeting behavior ignore faster non-taunt units and return to tower pressure, reducing final boss kiting cheese.
+- Ranged targeters keep a short target lock to reduce rapid target-swapping jitter.
+- The simulator now supports `--chapter-progress chapter3` to report per-attempt wave progression and pre-clear tech patterns.
+- A conservative UI palette foundation, custom cursors, friendly/enemy outline distinction, and enemy identity notes have been added.
 
 ### Development Workflow Notes
 - When adding or changing combat mechanics, enemy behavior, unit behavior, targeting, movement, effects, or balance-sensitive tuning, add or update at least one focused scenario fixture in `src/tools/scenario/scenarios.ts`.

@@ -8,7 +8,7 @@ import { playRingPulse, playSparkBurst } from '../effects/CombatEffects'
 import { fadeInScene, fadeToScene } from '../ui/sceneTransitions'
 import { cursors } from '../ui/cursors'
 
-const VERSION_LABEL = 'v0.2.1 tech tree layout'
+const VERSION_LABEL = 'v0.2.2 playtest onboarding'
 
 export class MenuScene extends Phaser.Scene {
   private orbiters: Phaser.GameObjects.Arc[] = []
