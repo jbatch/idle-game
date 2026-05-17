@@ -6,6 +6,10 @@ type DataAsset = {
   path: string
 }
 
+type SvgAsset = DataAsset & {
+  size: number
+}
+
 export const gameDataAssets: DataAsset[] = [
   { key: 'grunt', path: '/data/enemies/grunt.json' },
   { key: 'runner', path: '/data/enemies/runner.json' },
@@ -28,9 +32,31 @@ export const gameDataAssets: DataAsset[] = [
   { key: 'tech_tree_layout', path: '/data/tech_tree_layout.json' },
 ]
 
+export const unitVisualAssets: SvgAsset[] = [
+  { key: 'unit_footsoldier_body', path: '/assets/sprites/units/footsoldier-body.svg', size: 64 },
+  { key: 'unit_archer_body', path: '/assets/sprites/units/archer-body.svg', size: 64 },
+  { key: 'unit_shieldbearer_body', path: '/assets/sprites/units/shieldbearer-body.svg', size: 64 },
+  { key: 'unit_healer_body', path: '/assets/sprites/units/healer-body.svg', size: 64 },
+  { key: 'unit_frost_mage_body', path: '/assets/sprites/units/frost-mage-body.svg', size: 64 },
+  { key: 'unit_sentinel_body', path: '/assets/sprites/units/sentinel-body.svg', size: 64 },
+  { key: 'unit_bard_body', path: '/assets/sprites/units/bard-body.svg', size: 64 },
+  { key: 'unit_weapon_sword', path: '/assets/sprites/weapons/sword.svg', size: 64 },
+  { key: 'unit_weapon_bow', path: '/assets/sprites/weapons/bow.svg', size: 64 },
+  { key: 'unit_weapon_shield', path: '/assets/sprites/weapons/shield.svg', size: 64 },
+  { key: 'unit_weapon_staff', path: '/assets/sprites/weapons/staff.svg', size: 64 },
+  { key: 'unit_weapon_frost_orb', path: '/assets/sprites/weapons/frost-orb.svg', size: 64 },
+  { key: 'unit_weapon_crossbow', path: '/assets/sprites/weapons/crossbow.svg', size: 64 },
+  { key: 'unit_weapon_lute', path: '/assets/sprites/weapons/lute.svg', size: 64 },
+]
+
 export function loadGameData(scene: Phaser.Scene): void {
   for (const asset of gameDataAssets) {
     scene.load.json(asset.key, asset.path)
+  }
+  for (const asset of unitVisualAssets) {
+    if (!scene.textures.exists(asset.key)) {
+      scene.load.svg(asset.key, asset.path, { width: asset.size, height: asset.size })
+    }
   }
 }
 

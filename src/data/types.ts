@@ -43,6 +43,18 @@ export interface UnitEffects {
   attack?: UnitAttackEffect
 }
 
+export interface UnitVisualData {
+  bodyTexture: string
+  weaponTexture?: string
+  bodyScale?: number
+  weaponScale?: number
+  weaponOffset?: number
+  weaponOrigin?: {
+    x: number
+    y: number
+  }
+}
+
 export interface UnitManifestData {
   units: string[]
 }
@@ -77,6 +89,7 @@ export interface UnitData {
   attackCooldown: number
   behaviour: UnitBehaviour
   effects?: UnitEffects
+  visual?: UnitVisualData
   params?: Record<string, number | boolean>
   tags: string[]
   description: string

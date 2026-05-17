@@ -103,6 +103,25 @@ export const combatScenarios: CombatScenario[] = [
     ],
   },
   {
+    id: 'all_unit_sprites',
+    name: 'All Unit Sprites',
+    description: 'Full player roster check for body sprites, weapon aiming, and support activation pulses.',
+    units: [
+      { id: 'shieldbearer', count: 1, radius: 102, angle: -105 },
+      { id: 'footsoldier', count: 1, radius: 128, angle: -92 },
+      { id: 'sentinel', count: 1, radius: 92, angle: -74 },
+      { id: 'archer', count: 1, radius: 78, angle: 56 },
+      { id: 'frost_mage', count: 1, radius: 82, angle: 92 },
+      { id: 'healer', count: 1, radius: 60, angle: 135 },
+      { id: 'bard', count: 1, radius: 54, angle: 26 },
+    ],
+    enemies: [
+      { id: 'grunt', count: 5, radius: 332, angle: -98, spread: 62 },
+      { id: 'runner', count: 3, radius: 326, angle: 28, spread: 46 },
+      { id: 'brute', count: 1, radius: 330, angle: -40 },
+    ],
+  },
+  {
     id: 'enemy_ranged_tells',
     name: 'Enemy Ranged Tells',
     description: 'Enemy archers should visibly fire projectiles at player units.',

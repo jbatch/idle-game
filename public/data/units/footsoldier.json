@@ -10,6 +10,14 @@
   "attackCooldown": 1,
   "behaviour": "melee_basic",
   "effects": { "attack": "melee_slash" },
+  "visual": {
+    "bodyTexture": "unit_footsoldier_body",
+    "weaponTexture": "unit_weapon_sword",
+    "bodyScale": 0.43,
+    "weaponScale": 0.39,
+    "weaponOffset": 15,
+    "weaponOrigin": { "x": 0.18, "y": 0.5 }
+  },
   "params": { "separationRadius": 28 },
   "tags": ["melee"],
   "description": "Charges the nearest enemy and attacks.",

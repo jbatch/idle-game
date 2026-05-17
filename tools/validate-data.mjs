@@ -60,6 +60,22 @@ const KNOWN_RARITIES = new Set(['common', 'rare', 'specialist'])
 const KNOWN_EVENT_QUESTS = new Set(['boss_chapter1_killed', 'boss_chapter2_killed', 'boss_chapter3_killed'])
 const KNOWN_UNIT_BEHAVIOURS = new Set(['melee_basic', 'melee_taunt', 'ranged_kite', 'heal_support', 'aoe_slow', 'stationary_guard', 'aura_haste'])
 const KNOWN_UNIT_ATTACK_EFFECTS = new Set(['melee_slash', 'quick_projectile'])
+const KNOWN_UNIT_VISUAL_TEXTURES = new Set([
+  'unit_footsoldier_body',
+  'unit_archer_body',
+  'unit_shieldbearer_body',
+  'unit_healer_body',
+  'unit_frost_mage_body',
+  'unit_sentinel_body',
+  'unit_bard_body',
+  'unit_weapon_sword',
+  'unit_weapon_bow',
+  'unit_weapon_shield',
+  'unit_weapon_staff',
+  'unit_weapon_frost_orb',
+  'unit_weapon_crossbow',
+  'unit_weapon_lute',
+])
 
 const errors = []
 const warnings = []
@@ -169,6 +185,8 @@ function validateUnits(data) {
       }
     }
 
+    if (unit.visual !== undefined) validateUnitVisual(unit.visual, at)
+
     if (unit.params !== undefined) {
       if (!isRecord(unit.params)) {
         error(`${at}.params must be an object`)
@@ -179,6 +197,38 @@ function validateUnits(data) {
           else if (typeof value !== 'boolean') error(`${paramAt} must be a number or boolean`)
         }
       }
+    }
+  }
+}
+
+function validateUnitVisual(visual, at) {
+  if (!isRecord(visual)) {
+    error(`${at}.visual must be an object`)
+    return
+  }
+
+  expectString(visual.bodyTexture, `${at}.visual.bodyTexture`)
+  if (visual.bodyTexture && !KNOWN_UNIT_VISUAL_TEXTURES.has(visual.bodyTexture)) {
+    error(`${at}.visual.bodyTexture references unknown texture "${visual.bodyTexture}"`)
+  }
+
+  if (visual.weaponTexture !== undefined) {
+    expectString(visual.weaponTexture, `${at}.visual.weaponTexture`)
+    if (!KNOWN_UNIT_VISUAL_TEXTURES.has(visual.weaponTexture)) {
+      error(`${at}.visual.weaponTexture references unknown texture "${visual.weaponTexture}"`)
+    }
+  }
+
+  if (visual.bodyScale !== undefined) expectNumber(visual.bodyScale, `${at}.visual.bodyScale`, { min: 0.01 })
+  if (visual.weaponScale !== undefined) expectNumber(visual.weaponScale, `${at}.visual.weaponScale`, { min: 0.01 })
+  if (visual.weaponOffset !== undefined) expectNumber(visual.weaponOffset, `${at}.visual.weaponOffset`, { min: 0 })
+
+  if (visual.weaponOrigin !== undefined) {
+    if (!isRecord(visual.weaponOrigin)) {
+      error(`${at}.visual.weaponOrigin must be an object`)
+    } else {
+      expectNumber(visual.weaponOrigin.x, `${at}.visual.weaponOrigin.x`, { min: 0, max: 1 })
+      expectNumber(visual.weaponOrigin.y, `${at}.visual.weaponOrigin.y`, { min: 0, max: 1 })
     }
   }
 }

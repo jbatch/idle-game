@@ -3,6 +3,7 @@ import type { Enemy } from './Enemy'
 import type { UnitData, UnitBuff, UnitSynergyEffect, StatusEffect, Targetable } from '../data/types'
 import { CX, CY, ARENA_RADIUS } from '../constants'
 import { floatDamageNumber, floatHealNumber, playUnitAttackEffect } from '../effects/CombatEffects'
+import { UnitVisual } from './UnitVisual'
 
 export class Unit implements Targetable {
   scene: Phaser.Scene
@@ -23,6 +24,9 @@ export class Unit implements Targetable {
   private fxGraphics: Phaser.GameObjects.Graphics
   private graphics: Phaser.GameObjects.Graphics
   private hpBar: Phaser.GameObjects.Graphics
+  private visual?: UnitVisual
+  private aimX: number
+  private aimY: number
   private destroyed: boolean = false
 
   constructor(scene: Phaser.Scene, x: number, y: number, data: UnitData) {
@@ -33,9 +37,12 @@ export class Unit implements Targetable {
     this.maxHp = data.hp
     this.data = data
     this.color = Number(data.color)
-    this.graphics = scene.add.graphics()
-    this.hpBar = scene.add.graphics()
-    this.fxGraphics = scene.add.graphics().setDepth(5)
+    this.aimX = CX
+    this.aimY = CY
+    this.graphics = scene.add.graphics().setDepth(3)
+    this.hpBar = scene.add.graphics().setDepth(7)
+    this.fxGraphics = scene.add.graphics().setDepth(8)
+    if (data.visual) this.visual = new UnitVisual(scene, x, y, data.visual)
     this.draw()
   }
 
@@ -62,7 +69,7 @@ export class Unit implements Targetable {
     this.applySynergyCohesion(dt, allies)
     this.applySeparation(dt, allies)
     this.clampToArena()
-    this.draw()
+    this.draw(dt)
   }
 
   // ─── Behaviours ──────────────────────────────────────────────────
@@ -99,6 +106,7 @@ export class Unit implements Targetable {
     }
     const dx = target.x - this.x
     const dy = target.y - this.y
+    this.setAimTarget(target)
     const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy))
     const preferred = this.getParam('preferredRange', this.data.attackRange * 0.78)
     const dangerRadius = this.getParam('dangerRadius', 70)
@@ -142,6 +150,7 @@ export class Unit implements Targetable {
 
     const dx = target.x - this.x
     const dy = target.y - this.y
+    this.setAimTarget(target)
     const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy))
 
     if (dist > healRange) {
@@ -149,6 +158,7 @@ export class Unit implements Targetable {
       this.y += (dy / dist) * this.data.speed * dt
     } else if (this.attackTimer === 0) {
       const actualHeal = Math.min((target as Unit).maxHp - target.hp, healAmount)
+      this.visual?.playAttack()
       target.heal(healAmount)
       this.attackTimer = this.effectiveCooldown()
       if (actualHeal > 0) this.statCallback?.('heal', actualHeal)
@@ -164,6 +174,7 @@ export class Unit implements Targetable {
     if (!target) return
     const dx = target.x - this.x
     const dy = target.y - this.y
+    this.setAimTarget(target)
     const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy))
 
     if (dist > this.data.attackRange) {
@@ -185,6 +196,7 @@ export class Unit implements Targetable {
       if (inBlast.length === 0) return
 
       const effect: StatusEffect = { type: 'slow', duration: dur, magnitude: slow }
+      this.visual?.playAttack()
       for (const e of enemies) {
         if (!e.alive) continue
         const ex = e.x - target.x, ey = e.y - target.y
@@ -221,6 +233,7 @@ export class Unit implements Targetable {
     }
 
     if (best && this.attackTimer === 0) {
+      this.setAimTarget(best)
       const wasAlive = best.alive
       this.playAttackEffect(best)
       best.takeDamage(this.effectiveAttackDamage())
@@ -244,6 +257,7 @@ export class Unit implements Targetable {
     this.moveToAlliedCluster(dt, allies, auraR * 0.45)
 
     if (this.attackTimer === 0) {
+      this.visual?.playAttack()
       for (const a of allies) {
         if (!a.alive || a === this) continue
         const dx = a.x - this.x, dy = a.y - this.y
@@ -264,6 +278,7 @@ export class Unit implements Targetable {
   private moveAndAttack(dt: number, target: Targetable) {
     const dx = target.x - this.x
     const dy = target.y - this.y
+    this.setAimTarget(target)
     const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy))
     const stop = target.radius + this.data.attackRange
 
@@ -537,7 +552,13 @@ export class Unit implements Targetable {
   }
 
   private playAttackEffect(target: Targetable) {
+    this.visual?.playAttack()
     playUnitAttackEffect(this.scene, this.data.effects?.attack, this, target, this.color)
+  }
+
+  private setAimTarget(target: { x: number, y: number }) {
+    this.aimX = target.x
+    this.aimY = target.y
   }
 
   setSynergyEffects(effects: UnitSynergyEffect[]) {
@@ -592,7 +613,7 @@ export class Unit implements Targetable {
     this.fxGraphics.clear()
 
     this.scene.tweens.add({
-      targets: [this.graphics, this.hpBar, this.fxGraphics],
+      targets: [this.graphics, this.hpBar, this.fxGraphics, ...(this.visual?.fadeTargets() ?? [])],
       alpha: 0,
       duration: 340,
       ease: 'Quad.easeOut',
@@ -618,7 +639,7 @@ export class Unit implements Targetable {
     return this.synergyEffects.length > 0
   }
 
-  private draw() {
+  private draw(dt = 0) {
     this.graphics.clear()
 
     // Same-unit synergy glow
@@ -640,12 +661,28 @@ export class Unit implements Targetable {
       this.graphics.strokeCircle(this.x, this.y, this.data.radius + 7)
     }
 
-    this.graphics.lineStyle(2, 0x88ccff, 0.65)
-    this.graphics.strokeCircle(this.x, this.y, this.data.radius + 3)
-    this.graphics.fillStyle(this.color, 1)
-    this.graphics.fillCircle(this.x, this.y, this.data.radius)
-    this.graphics.lineStyle(1, 0xffffff, 0.4)
-    this.graphics.strokeCircle(this.x, this.y, this.data.radius)
+    if (this.visual) {
+      this.graphics.lineStyle(2, 0x88ccff, 0.48)
+      this.graphics.strokeCircle(this.x, this.y, this.data.radius + 4)
+      this.visual.update({
+        x: this.x,
+        y: this.y,
+        radius: this.data.radius,
+        aimX: this.aimX,
+        aimY: this.aimY,
+        cooldownProgress: this.data.attackCooldown > 0 ? 1 - (this.attackTimer / this.effectiveCooldown()) : 1,
+        hasSynergy: this.hasSynergyBuff(),
+        isHasted: this.isHasted(),
+        dt,
+      })
+    } else {
+      this.graphics.lineStyle(2, 0x88ccff, 0.65)
+      this.graphics.strokeCircle(this.x, this.y, this.data.radius + 3)
+      this.graphics.fillStyle(this.color, 1)
+      this.graphics.fillCircle(this.x, this.y, this.data.radius)
+      this.graphics.lineStyle(1, 0xffffff, 0.4)
+      this.graphics.strokeCircle(this.x, this.y, this.data.radius)
+    }
 
     const bw = this.data.radius * 2.4
     const bh = 3
@@ -668,5 +705,6 @@ export class Unit implements Targetable {
     this.graphics.destroy()
     this.hpBar.destroy()
     this.fxGraphics.destroy()
+    this.visual?.destroy()
   }
 }

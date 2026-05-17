@@ -9,6 +9,14 @@
   "attackRange": 110,
   "attackCooldown": 2.8,
   "behaviour": "aoe_slow",
+  "visual": {
+    "bodyTexture": "unit_frost_mage_body",
+    "weaponTexture": "unit_weapon_frost_orb",
+    "bodyScale": 0.43,
+    "weaponScale": 0.34,
+    "weaponOffset": 15,
+    "weaponOrigin": { "x": 0.5, "y": 0.5 }
+  },
   "params": { "aoeRadius": 75, "slowMagnitude": 0.45, "slowDuration": 2.5, "leashRadius": 300 },
   "tags": ["ranged", "cc"],
   "description": "Blasts a zone of enemies, dealing damage and slowing them.",

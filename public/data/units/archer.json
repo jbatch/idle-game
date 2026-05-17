@@ -10,6 +10,14 @@
   "attackCooldown": 1.5,
   "behaviour": "ranged_kite",
   "effects": { "attack": "quick_projectile" },
+  "visual": {
+    "bodyTexture": "unit_archer_body",
+    "weaponTexture": "unit_weapon_bow",
+    "bodyScale": 0.4,
+    "weaponScale": 0.36,
+    "weaponOffset": 14,
+    "weaponOrigin": { "x": 0.28, "y": 0.5 }
+  },
   "params": { "preferredRange": 82, "dangerRadius": 72, "leashRadius": 285 },
   "tags": ["ranged"],
   "description": "Attacks from range, retreating when enemies close in.",

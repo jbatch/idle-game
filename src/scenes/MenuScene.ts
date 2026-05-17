@@ -9,7 +9,7 @@ import { fadeInScene, fadeToScene } from '../ui/sceneTransitions'
 import { cursors } from '../ui/cursors'
 import { currencyLabels } from '../ui/currency'
 
-const VERSION_LABEL = 'v0.2.3 mobile polish'
+const VERSION_LABEL = 'v0.2.5 unit sprites - For Dan <3'
 
 export class MenuScene extends Phaser.Scene {
   private orbiters: Phaser.GameObjects.Arc[] = []
@@ -166,7 +166,7 @@ export class MenuScene extends Phaser.Scene {
       lineSpacing: 4,
     }).setOrigin(0.5, 0).setDepth(42)
 
-    const hint = this.add.text(GAME_W / 2, GAME_H / 2 + 106, 'Demo note: graphics are placeholder, the loop is the slice.', {
+    const hint = this.add.text(GAME_W / 2, GAME_H / 2 + 106, 'Demo note: visuals are still prototype-first, the loop is the slice.', {
       fontSize: '12px',
       color: '#5f719e',
       fontFamily: 'monospace',

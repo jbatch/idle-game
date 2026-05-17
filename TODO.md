@@ -141,3 +141,6 @@ Captured from the first real-player playtest. Keep these as the current qualitat
 
 9. [DONE] **v0.2.0 Progression Checkpoint**
    First pass complete: no old-chapter farming, shop draft persistence, pack caps, backtick shop cheats, first-play dialog persistence, abandon-run cashout, faster first specialist upgrade gates, and two specialist-focused +2 DC nodes. Playtest clear landed Chapter 3 around run 15, which is the current target feel.
+
+10. [DONE] **v0.2.5 Unit Sprite Checkpoint**
+   First pass complete: all player units now have tiny SVG body sprites plus separate weapon/focus sprites using the shared paper-doll renderer. Continue with enemy/boss sprites or support-unit-specific animation only after the next playtest read.

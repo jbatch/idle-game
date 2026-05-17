@@ -10,6 +10,14 @@
   "attackCooldown": 1.5,
   "behaviour": "melee_taunt",
   "effects": { "attack": "melee_slash" },
+  "visual": {
+    "bodyTexture": "unit_shieldbearer_body",
+    "weaponTexture": "unit_weapon_shield",
+    "bodyScale": 0.5,
+    "weaponScale": 0.36,
+    "weaponOffset": 16,
+    "weaponOrigin": { "x": 0.5, "y": 0.5 }
+  },
   "params": { "tauntRadius": 160, "guardRadius": 150, "leashRadius": 190, "separationRadius": 32 },
   "tags": ["melee", "tank"],
   "description": "High HP frontliner. Nearby enemies redirect to it over the Tower.",

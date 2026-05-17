@@ -9,6 +9,14 @@
   "attackRange": 0,
   "attackCooldown": 1.8,
   "behaviour": "aura_haste",
+  "visual": {
+    "bodyTexture": "unit_bard_body",
+    "weaponTexture": "unit_weapon_lute",
+    "bodyScale": 0.42,
+    "weaponScale": 0.34,
+    "weaponOffset": 14,
+    "weaponOrigin": { "x": 0.5, "y": 0.5 }
+  },
   "params": { "auraRadius": 150, "hasteMultiplier": 0.5, "separationRadius": 26 },
   "tags": ["support"],
   "description": "Keeps near allied clusters and doubles attack speed of nearby allies.",

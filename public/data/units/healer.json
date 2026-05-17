@@ -9,6 +9,14 @@
   "attackRange": 80,
   "attackCooldown": 2.2,
   "behaviour": "heal_support",
+  "visual": {
+    "bodyTexture": "unit_healer_body",
+    "weaponTexture": "unit_weapon_staff",
+    "bodyScale": 0.4,
+    "weaponScale": 0.37,
+    "weaponOffset": 14,
+    "weaponOrigin": { "x": 0.25, "y": 0.5 }
+  },
   "params": { "healAmount": 22, "healRange": 80, "avoidRadius": 90, "separationRadius": 26 },
   "tags": ["support"],
   "description": "Follows the lowest HP ally and restores their health.",

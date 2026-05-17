@@ -28,7 +28,7 @@ The `.claude/` directory is local-only and ignored by git.
 
 ## Current Status
 
-Layers 1–8 (recovery + progression pass) plus the first editor-tooling, v0.2.0 progression-polish pass, v0.2.1 tech-tree layout pass, v0.2.2 playtest-onboarding pass, v0.2.3 mobile-polish pass, and v0.2.4 radial tech-tree layout pass are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, capped unopened shop packs, same-unit synergy payoffs, cursor proc tuning, supply pack-bonus tech, breakable battlefield crates, cursor/tower/Influence progression expansion, first-time onboarding spotlights, scalable canvas/mobile shims, local GUI editors for tech tree and unit data, and a programmatic radial tech-tree layout prototype. This is the **v0.2.4 checkpoint**.
+Layers 1–8 (recovery + progression pass) plus the first editor-tooling, v0.2.0 progression-polish pass, v0.2.1 tech-tree layout pass, v0.2.2 playtest-onboarding pass, v0.2.3 mobile-polish pass, v0.2.4 radial tech-tree layout pass, and v0.2.5 unit-sprite pass are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, capped unopened shop packs, same-unit synergy payoffs, cursor proc tuning, supply pack-bonus tech, breakable battlefield crates, cursor/tower/Influence progression expansion, first-time onboarding spotlights, scalable canvas/mobile shims, local GUI editors for tech tree and unit data, a programmatic radial tech-tree layout prototype, and static SVG paper-doll sprites for every player unit. This is the **v0.2.5 checkpoint**.
 
 ### v0.1.2 Additions
 - Multi-entry Vite app structure: main game plus local-only side apps.
@@ -117,6 +117,13 @@ Layers 1–8 (recovery + progression pass) plus the first editor-tooling, v0.2.0
 - Tech dependency lines can render center-to-center in radial mode, replacing manually anchored side/elbow routing for the runtime prototype.
 - The radial layout keeps branch categories clustered by angle, alternates entry-node radii for a less uniform inner ring, and applies a small collision-relax pass to keep compact nodes from overlapping.
 - The existing `tech_tree_layout.json` and tech tree editor remain intact as the authored-layout fallback path.
+
+### v0.2.5 Additions
+- Player units now render with tiny SVG paper-doll sprites instead of placeholder filled circles.
+- Each unit has a separate weapon/focus SVG that aims toward the current target and shows cooldown charge/release through simple transform/tint animation.
+- T1 units use sword, bow, and shield sprites; T2 units use staff, frost orb, crossbow, and lute sprites.
+- Units without visual metadata still fall back to the previous circle renderer, keeping the visual system safe for incremental content.
+- Unit visual metadata is validated by `pnpm validate:data`, and the main menu version label now reads `v0.2.5 unit sprites - For Dan <3`.
 
 ### Development Workflow Notes
 - When adding or changing combat mechanics, enemy behavior, unit behavior, targeting, movement, effects, or balance-sensitive tuning, add or update at least one focused scenario fixture in `src/tools/scenario/scenarios.ts`.
