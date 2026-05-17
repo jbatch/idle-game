@@ -144,3 +144,6 @@ Captured from the first real-player playtest. Keep these as the current qualitat
 
 10. [DONE] **v0.2.5 Unit Sprite Checkpoint**
    First pass complete: all player units now have tiny SVG body sprites plus separate weapon/focus sprites using the shared paper-doll renderer. Continue with enemy/boss sprites or support-unit-specific animation only after the next playtest read.
+
+11. [DONE] **v0.2.6 Data Cache Fix**
+   Hotfix complete: data JSON requests now carry a deploy cache key so prod does not reuse stale unit JSON after sprite metadata changes.

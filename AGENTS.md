@@ -28,7 +28,7 @@ The `.claude/` directory is local-only and ignored by git.
 
 ## Current Status
 
-Layers 1–8 (recovery + progression pass) plus the first editor-tooling, v0.2.0 progression-polish pass, v0.2.1 tech-tree layout pass, v0.2.2 playtest-onboarding pass, v0.2.3 mobile-polish pass, v0.2.4 radial tech-tree layout pass, and v0.2.5 unit-sprite pass are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, capped unopened shop packs, same-unit synergy payoffs, cursor proc tuning, supply pack-bonus tech, breakable battlefield crates, cursor/tower/Influence progression expansion, first-time onboarding spotlights, scalable canvas/mobile shims, local GUI editors for tech tree and unit data, a programmatic radial tech-tree layout prototype, and static SVG paper-doll sprites for every player unit. This is the **v0.2.5 checkpoint**.
+Layers 1–8 (recovery + progression pass) plus the first editor-tooling, v0.2.0 progression-polish pass, v0.2.1 tech-tree layout pass, v0.2.2 playtest-onboarding pass, v0.2.3 mobile-polish pass, v0.2.4 radial tech-tree layout pass, v0.2.5 unit-sprite pass, and v0.2.6 data-cache fix are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, capped unopened shop packs, same-unit synergy payoffs, cursor proc tuning, supply pack-bonus tech, breakable battlefield crates, cursor/tower/Influence progression expansion, first-time onboarding spotlights, scalable canvas/mobile shims, local GUI editors for tech tree and unit data, a programmatic radial tech-tree layout prototype, static SVG paper-doll sprites for every player unit, and versioned JSON data requests to avoid stale prod caches. This is the **v0.2.6 checkpoint**.
 
 ### v0.1.2 Additions
 - Multi-entry Vite app structure: main game plus local-only side apps.
@@ -124,6 +124,10 @@ Layers 1–8 (recovery + progression pass) plus the first editor-tooling, v0.2.0
 - T1 units use sword, bow, and shield sprites; T2 units use staff, frost orb, crossbow, and lute sprites.
 - Units without visual metadata still fall back to the previous circle renderer, keeping the visual system safe for incremental content.
 - Unit visual metadata is validated by `pnpm validate:data`, and the main menu version label now reads `v0.2.5 unit sprites - For Dan <3`.
+
+### v0.2.6 Additions
+- Game data JSON loads now include a deploy cache version query, preventing prod from mixing new hashed JS with stale `/data/units/*.json`.
+- Main menu version label now reads `v0.2.6 unit sprites - For Dan <3`.
 
 ### Development Workflow Notes
 - When adding or changing combat mechanics, enemy behavior, unit behavior, targeting, movement, effects, or balance-sensitive tuning, add or update at least one focused scenario fixture in `src/tools/scenario/scenarios.ts`.
