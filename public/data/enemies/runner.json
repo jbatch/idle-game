@@ -10,6 +10,10 @@
   "reward": 3,
   "radius": 7,
   "color": "0xee6622",
+  "visual": {
+    "bodyTexture": "enemy_runner_body",
+    "bodyScale": 0.36
+  },
   "tags": ["melee", "fast"],
   "isBoss": false,
   "behaviour": "rush_tower"

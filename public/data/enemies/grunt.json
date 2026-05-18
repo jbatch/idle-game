@@ -10,6 +10,10 @@
   "reward": 2,
   "radius": 10,
   "color": "0xcc4422",
+  "visual": {
+    "bodyTexture": "enemy_grunt_body",
+    "bodyScale": 0.42
+  },
   "tags": ["melee"],
   "isBoss": false
 }

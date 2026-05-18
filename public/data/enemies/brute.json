@@ -10,6 +10,10 @@
   "reward": 8,
   "radius": 16,
   "color": "0x993322",
+  "visual": {
+    "bodyTexture": "enemy_brute_body",
+    "bodyScale": 0.56
+  },
   "tags": ["melee", "tank"],
   "isBoss": false,
   "behaviour": "rush_tower"

@@ -10,6 +10,10 @@
   "reward": 200,
   "radius": 24,
   "color": "0xaa22cc",
+  "visual": {
+    "bodyTexture": "enemy_void_sovereign_body",
+    "bodyScale": 0.9
+  },
   "tags": ["boss", "melee", "fast"],
   "isBoss": true,
   "behaviour": "ranged_unit_targeter"

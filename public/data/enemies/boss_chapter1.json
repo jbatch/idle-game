@@ -10,6 +10,10 @@
   "reward": 50,
   "radius": 22,
   "color": "0xddaa22",
+  "visual": {
+    "bodyTexture": "enemy_stone_warden_body",
+    "bodyScale": 0.82
+  },
   "tags": ["boss", "melee"],
   "isBoss": true
 }

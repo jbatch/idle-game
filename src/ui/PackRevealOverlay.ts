@@ -350,8 +350,12 @@ function createPackRevealTile(
     fontStyle: isBonus ? 'bold' : '',
   }).setOrigin(0, 0)
 
-  const unitDisc = scene.add.circle(0, -8, 18, unitColor, 1).setAlpha(0)
-  unitDisc.setStrokeStyle(2, 0xffffff, 0.55)
+  const unitPreview = unit?.visual
+    ? createUnitPreviewObjects(scene, unit)
+    : [scene.add.circle(0, -8, 18, unitColor, 1).setAlpha(0)]
+  for (const object of unitPreview) (object as unknown as Phaser.GameObjects.Components.Alpha).setAlpha(0)
+  const unitDisc = unitPreview[0]
+  if (unitDisc instanceof Phaser.GameObjects.Arc) unitDisc.setStrokeStyle(2, 0xffffff, 0.55)
   const unitName = scene.add.text(0, 25, unit?.name ?? result.unitId, {
     fontSize: '11px',
     color: isBonus ? '#7cff9f' : '#dbe4ff',
@@ -361,8 +365,8 @@ function createPackRevealTile(
     wordWrap: { width: tileW - 16 },
   }).setOrigin(0.5).setAlpha(0)
 
-  const resultObjects: Phaser.GameObjects.GameObject[] = [unitDisc, unitName]
-  container.add([halo, glow, body, lid, band, seal, tierText, unitDisc, unitName])
+  const resultObjects: Phaser.GameObjects.GameObject[] = [...unitPreview, unitName]
+  container.add([halo, glow, body, lid, band, seal, tierText, ...unitPreview, unitName])
 
   if (isBonus) {
     scene.tweens.add({
@@ -377,6 +381,27 @@ function createPackRevealTile(
   }
 
   return { result, container, body, lid, band, glow, hitArea: glow, resultObjects, opened: false }
+}
+
+function createUnitPreviewObjects(scene: Phaser.Scene, unit: UnitData): Phaser.GameObjects.GameObject[] {
+  if (!unit.visual) return []
+  const objects: Phaser.GameObjects.GameObject[] = []
+  const shadow = scene.add.ellipse(0, 6, 30, 10, 0x03050b, 0.42)
+  const body = scene.add.image(0, -8, unit.visual.bodyTexture)
+  body.setOrigin(0.5, 0.56)
+  body.setScale((unit.visual.bodyScale ?? 0.44) * 1.12)
+  objects.push(shadow, body)
+
+  if (unit.visual.weaponTexture) {
+    const weapon = scene.add.image(15, -9, unit.visual.weaponTexture)
+    weapon.setOrigin(unit.visual.weaponOrigin?.x ?? 0.22, unit.visual.weaponOrigin?.y ?? 0.5)
+    weapon.setRotation(-0.12)
+    weapon.setScale((unit.visual.weaponScale ?? 0.36) * 1.08)
+    weapon.setTint(0xe6edf8)
+    objects.push(weapon)
+  }
+
+  return objects
 }
 
 function compactSynergyDescription(description: string): string {

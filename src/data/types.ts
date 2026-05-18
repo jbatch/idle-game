@@ -75,6 +75,7 @@ export interface EnemyData {
   isBoss: boolean
   behaviour?: string
   params?: Record<string, number>
+  visual?: UnitVisualData
 }
 
 export interface UnitData {

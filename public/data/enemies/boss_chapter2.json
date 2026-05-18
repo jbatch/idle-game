@@ -10,6 +10,10 @@
   "reward": 100,
   "radius": 28,
   "color": "0x8899bb",
+  "visual": {
+    "bodyTexture": "enemy_iron_colossus_body",
+    "bodyScale": 1
+  },
   "tags": ["boss", "melee", "aoe"],
   "isBoss": true,
   "behaviour": "rush_tower_aoe",

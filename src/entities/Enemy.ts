@@ -10,6 +10,7 @@ import {
   playEnemyProjectileEffect,
   playEnemySplashEffect,
 } from '../effects/CombatEffects'
+import { UnitVisual } from './UnitVisual'
 
 export class Enemy implements Targetable {
   scene: Phaser.Scene
@@ -34,6 +35,9 @@ export class Enemy implements Targetable {
   private effects: StatusEffect[] = []
   private graphics: Phaser.GameObjects.Graphics
   private hpBar: Phaser.GameObjects.Graphics
+  private visual?: UnitVisual
+  private aimX: number
+  private aimY: number
   private destroyed: boolean = false
   private lockedUnitTarget: Unit | null = null
   private retargetTimer: number = 0
@@ -57,8 +61,17 @@ export class Enemy implements Targetable {
     this.name = data.name
     this.color = Number(data.color)
     this.data = data
+    this.aimX = scene.scale.width / 2
+    this.aimY = scene.scale.height / 2
     this.graphics = scene.add.graphics()
     this.hpBar = scene.add.graphics()
+    if (data.visual) {
+      this.visual = new UnitVisual(scene, x, y, data.visual, {
+        depth: this.isBoss ? 3 : 2,
+        shadowColor: 0x120505,
+        shadowAlpha: this.isBoss ? 0.42 : 0.32,
+      })
+    }
     this.draw()
   }
 
@@ -114,6 +127,7 @@ export class Enemy implements Targetable {
 
     const dx = tower.x - this.x
     const dy = tower.y - this.y
+    this.setAimTarget(tower)
     const dist = Math.sqrt(dx * dx + dy * dy)
     const stop = tower.radius + this.attackRange
 
@@ -172,6 +186,7 @@ export class Enemy implements Targetable {
     if (target) {
       const dx = target.x - this.x
       const dy = target.y - this.y
+      this.setAimTarget(target)
       const dist = Math.sqrt(dx * dx + dy * dy)
       if (dist > healRange) {
         this.x += (dx / dist) * speed * dt
@@ -192,6 +207,7 @@ export class Enemy implements Targetable {
   private moveAndAttack(dt: number, target: Targetable, speed: number) {
     const dx = target.x - this.x
     const dy = target.y - this.y
+    this.setAimTarget(target)
     const dist = Math.sqrt(dx * dx + dy * dy)
     const stop = target.radius + this.attackRange
 
@@ -211,6 +227,7 @@ export class Enemy implements Targetable {
   private runTowerOnly(dt: number, tower: Tower, speed: number) {
     const dx = tower.x - this.x
     const dy = tower.y - this.y
+    this.setAimTarget(tower)
     const dist = Math.sqrt(dx * dx + dy * dy)
     const stop = tower.radius + this.attackRange
 
@@ -287,11 +304,17 @@ export class Enemy implements Targetable {
   }
 
   private playAttackEffect(target: Targetable) {
+    this.visual?.playAttack()
     if (this.data.tags.includes('ranged')) {
       playEnemyProjectileEffect(this.scene, this, target, this.color)
     } else {
       playEnemyMeleeAttackEffect(this.scene, this, target, this.color)
     }
+  }
+
+  private setAimTarget(target: Targetable) {
+    this.aimX = target.x
+    this.aimY = target.y
   }
 
   applyEffect(effect: StatusEffect) {
@@ -338,7 +361,7 @@ export class Enemy implements Targetable {
     this.hpBar.clear()
 
     this.scene.tweens.add({
-      targets: [this.graphics, this.hpBar],
+      targets: [this.graphics, this.hpBar, ...(this.visual?.fadeTargets() ?? [])],
       alpha: 0,
       duration: this.isBoss ? 520 : 320,
       ease: 'Quad.easeOut',
@@ -350,8 +373,9 @@ export class Enemy implements Targetable {
     return this.effects.some(e => e.type === 'slow' || e.type === 'freeze')
   }
 
-  private draw() {
+  private draw(dt = 0) {
     this.graphics.clear()
+    const visualScale = this.data.visual?.bodyScale ?? 0.44
 
     // Slow visual — blue outer ring
     if (this.isSlowed()) {
@@ -366,16 +390,31 @@ export class Enemy implements Targetable {
 
     this.graphics.lineStyle(this.isBoss ? 3 : 2, 0xff5533, this.isBoss ? 0.75 : 0.55)
     this.graphics.strokeCircle(this.x, this.y, this.radius + (this.isBoss ? 5 : 3))
-    this.graphics.fillStyle(this.color, 1)
-    this.graphics.fillCircle(this.x, this.y, this.radius)
-    this.graphics.lineStyle(this.isBoss ? 2 : 1, 0xffffff, this.isBoss ? 0.6 : 0.3)
-    this.graphics.strokeCircle(this.x, this.y, this.radius)
+
+    if (this.visual) {
+      this.visual.update({
+        x: this.x,
+        y: this.y,
+        radius: this.radius,
+        aimX: this.aimX,
+        aimY: this.aimY,
+        cooldownProgress: this.attackCooldown > 0 ? 1 - (this.attackTimer / this.attackCooldown) : 1,
+        hasSynergy: false,
+        isHasted: false,
+        dt,
+      })
+    } else {
+      this.graphics.fillStyle(this.color, 1)
+      this.graphics.fillCircle(this.x, this.y, this.radius)
+      this.graphics.lineStyle(this.isBoss ? 2 : 1, 0xffffff, this.isBoss ? 0.6 : 0.3)
+      this.graphics.strokeCircle(this.x, this.y, this.radius)
+    }
 
     if (!this.isBoss) {
-      const bw = this.radius * 2
+      const bw = this.radius * 2.2
       const bh = 3
       const bx = this.x - bw / 2
-      const by = this.y - this.radius - 5
+      const by = this.y - Math.max(this.radius + 5, 34 * visualScale)
       this.hpBar.clear()
       this.hpBar.fillStyle(0x330000, 1)
       this.hpBar.fillRect(bx, by, bw, bh)
@@ -391,5 +430,6 @@ export class Enemy implements Targetable {
     this.destroyed = true
     this.graphics.destroy()
     this.hpBar.destroy()
+    this.visual?.destroy()
   }
 }

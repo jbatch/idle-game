@@ -13,6 +13,12 @@ type UnitVisualUpdate = {
   dt: number
 }
 
+type UnitVisualOptions = {
+  depth?: number
+  shadowColor?: number
+  shadowAlpha?: number
+}
+
 export class UnitVisual {
   private container: Phaser.GameObjects.Container
   private shadow: Phaser.GameObjects.Ellipse
@@ -20,8 +26,8 @@ export class UnitVisual {
   private weapon?: Phaser.GameObjects.Image
   private attackPulse: number = 0
 
-  constructor(scene: Phaser.Scene, x: number, y: number, private config: UnitVisualData) {
-    this.shadow = scene.add.ellipse(0, 8, 28, 10, 0x05070c, 0.35)
+  constructor(scene: Phaser.Scene, x: number, y: number, private config: UnitVisualData, options: UnitVisualOptions = {}) {
+    this.shadow = scene.add.ellipse(0, 8, 28, 10, options.shadowColor ?? 0x05070c, options.shadowAlpha ?? 0.35)
     this.body = scene.add.image(0, 0, config.bodyTexture)
     this.body.setOrigin(0.5, 0.55)
 
@@ -32,7 +38,7 @@ export class UnitVisual {
       children.push(this.weapon)
     }
 
-    this.container = scene.add.container(x, y, children).setDepth(4)
+    this.container = scene.add.container(x, y, children).setDepth(options.depth ?? 4)
   }
 
   update(state: UnitVisualUpdate) {
@@ -44,6 +50,7 @@ export class UnitVisual {
 
     this.attackPulse = Math.max(0, this.attackPulse - state.dt / 0.18)
     this.container.setPosition(state.x, state.y + bob)
+    this.shadow.setScale(Math.max(0.75, bodyScale / 0.44))
     this.body.setScale(bodyScale * (1 + pulseScale), bodyScale * (1 - pulseScale * 0.35))
     this.body.setFlipX(facingLeft)
 

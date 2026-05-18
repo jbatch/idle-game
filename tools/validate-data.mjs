@@ -60,7 +60,7 @@ const KNOWN_RARITIES = new Set(['common', 'rare', 'specialist'])
 const KNOWN_EVENT_QUESTS = new Set(['boss_chapter1_killed', 'boss_chapter2_killed', 'boss_chapter3_killed'])
 const KNOWN_UNIT_BEHAVIOURS = new Set(['melee_basic', 'melee_taunt', 'ranged_kite', 'heal_support', 'aoe_slow', 'stationary_guard', 'aura_haste'])
 const KNOWN_UNIT_ATTACK_EFFECTS = new Set(['melee_slash', 'quick_projectile'])
-const KNOWN_UNIT_VISUAL_TEXTURES = new Set([
+const KNOWN_VISUAL_TEXTURES = new Set([
   'unit_footsoldier_body',
   'unit_archer_body',
   'unit_shieldbearer_body',
@@ -75,6 +75,15 @@ const KNOWN_UNIT_VISUAL_TEXTURES = new Set([
   'unit_weapon_frost_orb',
   'unit_weapon_crossbow',
   'unit_weapon_lute',
+  'enemy_grunt_body',
+  'enemy_runner_body',
+  'enemy_brute_body',
+  'enemy_archer_body',
+  'enemy_shaman_body',
+  'enemy_siege_golem_body',
+  'enemy_stone_warden_body',
+  'enemy_iron_colossus_body',
+  'enemy_void_sovereign_body',
 ])
 
 const errors = []
@@ -87,6 +96,7 @@ function main() {
   validateUniqueIds(data)
   validateUnitManifest(data)
   validateUnits(data)
+  validateEnemies(data)
   validateTechTree(data)
   validateTechLayout(data)
   validateShopPacks(data)
@@ -201,6 +211,13 @@ function validateUnits(data) {
   }
 }
 
+function validateEnemies(data) {
+  for (const enemy of data.enemies) {
+    const at = `enemies/${enemy.id ?? '(missing id)'}.json`
+    if (enemy.visual !== undefined) validateUnitVisual(enemy.visual, at)
+  }
+}
+
 function validateUnitVisual(visual, at) {
   if (!isRecord(visual)) {
     error(`${at}.visual must be an object`)
@@ -208,13 +225,13 @@ function validateUnitVisual(visual, at) {
   }
 
   expectString(visual.bodyTexture, `${at}.visual.bodyTexture`)
-  if (visual.bodyTexture && !KNOWN_UNIT_VISUAL_TEXTURES.has(visual.bodyTexture)) {
+  if (visual.bodyTexture && !KNOWN_VISUAL_TEXTURES.has(visual.bodyTexture)) {
     error(`${at}.visual.bodyTexture references unknown texture "${visual.bodyTexture}"`)
   }
 
   if (visual.weaponTexture !== undefined) {
     expectString(visual.weaponTexture, `${at}.visual.weaponTexture`)
-    if (!KNOWN_UNIT_VISUAL_TEXTURES.has(visual.weaponTexture)) {
+    if (!KNOWN_VISUAL_TEXTURES.has(visual.weaponTexture)) {
       error(`${at}.visual.weaponTexture references unknown texture "${visual.weaponTexture}"`)
     }
   }

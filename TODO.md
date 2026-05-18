@@ -191,3 +191,6 @@ Captured after Dan's full playtest. These are categorized by player value and im
 
 12. [DONE] **v0.2.7 Dan Playtest Quick Fixes**
    First sweep complete: onboarding tips now block background input and prevent stacked dialogs, locked tech quest gates show current progress, knockback labels say chance, and crate rewards avoid Tower Patch / Field Mending when those restores would do nothing. Simulator crate reward selection mirrors the no-op reward filter.
+
+13. [DONE] **v0.2.8 Enemy Sprite Checkpoint**
+   First pass complete: all regular enemies and bosses now have static SVG body sprites using the shared body/weapon renderer, enemy visual metadata is validated, and pack reveal/loadout tiles use SVG unit previews instead of circles when unit visual metadata exists.

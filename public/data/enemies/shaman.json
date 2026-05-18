@@ -10,6 +10,14 @@
   "reward": 10,
   "radius": 10,
   "color": "0x44aa88",
+  "visual": {
+    "bodyTexture": "enemy_shaman_body",
+    "weaponTexture": "unit_weapon_staff",
+    "bodyScale": 0.43,
+    "weaponScale": 0.34,
+    "weaponOffset": 14,
+    "weaponOrigin": { "x": 0.22, "y": 0.5 }
+  },
   "tags": ["support"],
   "isBoss": false,
   "behaviour": "healer_support",

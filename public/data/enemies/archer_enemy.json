@@ -10,6 +10,14 @@
   "reward": 5,
   "radius": 8,
   "color": "0xaa7733",
+  "visual": {
+    "bodyTexture": "enemy_archer_body",
+    "weaponTexture": "unit_weapon_bow",
+    "bodyScale": 0.38,
+    "weaponScale": 0.34,
+    "weaponOffset": 13,
+    "weaponOrigin": { "x": 0.28, "y": 0.5 }
+  },
   "tags": ["ranged"],
   "isBoss": false,
   "behaviour": "ranged_unit_targeter"

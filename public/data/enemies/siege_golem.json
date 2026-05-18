@@ -10,6 +10,10 @@
   "reward": 20,
   "radius": 18,
   "color": "0x665544",
+  "visual": {
+    "bodyTexture": "enemy_siege_golem_body",
+    "bodyScale": 0.64
+  },
   "tags": ["melee", "tank"],
   "isBoss": false,
   "behaviour": "rush_tower_aoe",

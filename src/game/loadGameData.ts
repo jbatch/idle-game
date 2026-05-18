@@ -10,7 +10,7 @@ type SvgAsset = DataAsset & {
   size: number
 }
 
-const DATA_CACHE_VERSION = '0.2.6'
+const DATA_CACHE_VERSION = '0.2.8'
 
 export const gameDataAssets: DataAsset[] = [
   { key: 'grunt', path: '/data/enemies/grunt.json' },
@@ -51,11 +51,23 @@ export const unitVisualAssets: SvgAsset[] = [
   { key: 'unit_weapon_lute', path: '/assets/sprites/weapons/lute.svg', size: 64 },
 ]
 
+export const enemyVisualAssets: SvgAsset[] = [
+  { key: 'enemy_grunt_body', path: '/assets/sprites/enemies/grunt-body.svg', size: 64 },
+  { key: 'enemy_runner_body', path: '/assets/sprites/enemies/runner-body.svg', size: 64 },
+  { key: 'enemy_brute_body', path: '/assets/sprites/enemies/brute-body.svg', size: 64 },
+  { key: 'enemy_archer_body', path: '/assets/sprites/enemies/archer-body.svg', size: 64 },
+  { key: 'enemy_shaman_body', path: '/assets/sprites/enemies/shaman-body.svg', size: 64 },
+  { key: 'enemy_siege_golem_body', path: '/assets/sprites/enemies/siege-golem-body.svg', size: 64 },
+  { key: 'enemy_stone_warden_body', path: '/assets/sprites/enemies/stone-warden-body.svg', size: 64 },
+  { key: 'enemy_iron_colossus_body', path: '/assets/sprites/enemies/iron-colossus-body.svg', size: 64 },
+  { key: 'enemy_void_sovereign_body', path: '/assets/sprites/enemies/void-sovereign-body.svg', size: 64 },
+]
+
 export function loadGameData(scene: Phaser.Scene): void {
   for (const asset of gameDataAssets) {
     scene.load.json(asset.key, versionedDataPath(asset.path))
   }
-  for (const asset of unitVisualAssets) {
+  for (const asset of [...unitVisualAssets, ...enemyVisualAssets]) {
     if (!scene.textures.exists(asset.key)) {
       scene.load.svg(asset.key, asset.path, { width: asset.size, height: asset.size })
     }
