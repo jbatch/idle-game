@@ -80,7 +80,7 @@ export function runGameSimulation(data, options, rng) {
 
     tickTowerShield(tower, options.dt)
     tickCursorBuffs(cursor, options.dt)
-    if (cursor.cooldownTimer <= 0) fireBotCursor(cursor, enemies, crates, rng)
+    if (cursor.cooldownTimer <= 0) fireBotCursor(cursor, enemies, crates, rng, options)
 
     for (const enemy of enemies) updateEnemy(enemy, options.dt, tower, units, enemies)
     applySynergies(units, data.unitSynergies)
@@ -572,11 +572,12 @@ function spawnPositions(event, rng) {
   return out
 }
 
-function fireBotCursor(cursor, enemies, crates, rng) {
+function fireBotCursor(cursor, enemies, crates, rng, options) {
   const target = chooseCursorTarget(cursor, enemies, crates)
   if (!target) return false
 
-  const comboEligible = cursor.readyTimer <= cursor.comboGrace
+  const comboAccuracy = clamp(options.comboAccuracy ?? 1, 0, 1)
+  const comboEligible = cursor.readyTimer <= cursor.comboGrace && rng() < comboAccuracy
   cursor.combo = comboEligible ? Math.min(cursor.maxCombo, cursor.combo + 1) : 1
   cursor.readyTimer = 0
   cursor.cooldownTimer = cursor.cooldown

@@ -19,6 +19,7 @@ function main() {
     seed: String(args.seed ?? 'siegeloop-sim'),
     campaigns: args['trace-campaign'] ? 1 : readNumber(args.campaigns, DEFAULT_CAMPAIGNS),
     maxRuns: readNumber(args['max-runs'], DEFAULT_MAX_RUNS),
+    comboAccuracy: readNumber(args['combo-accuracy'], 1),
     policy: String(args.policy ?? 'greedy'),
     trace: Boolean(args['trace-campaign']),
   }
@@ -70,6 +71,8 @@ Options:
   --seed          Seed prefix for deterministic reruns.
   --trace-campaign Print one readable campaign timeline.
   --policy        Campaign spending policy. Default: greedy
+  --combo-accuracy
+                  Cursor combo timing accuracy from 0 to 1. Default: 1
   --chapter-progress chapterId
                   Print per-attempt wave progression and pre-clear tech patterns for one chapter.
   --json          Print machine-readable JSON.
