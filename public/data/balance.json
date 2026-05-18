@@ -15,6 +15,9 @@
   "cursor": {
     "damage": 8,
     "radius": 30,
-    "cooldown": 1.2
+    "cooldown": 1.2,
+    "comboDamageBonus": 0.1,
+    "maxCombo": 5,
+    "comboGrace": 0.28
   }
 }

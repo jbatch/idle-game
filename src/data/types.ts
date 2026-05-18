@@ -181,6 +181,9 @@ export interface BalanceData {
     damage: number
     radius: number
     cooldown: number
+    comboDamageBonus?: number
+    maxCombo?: number
+    comboGrace?: number
   }
 }
 
@@ -191,8 +194,9 @@ export interface CurrencyDisplayData {
 
 export interface TechEffect {
   type: 'cursor_knockback' | 'cursor_knockback_chance' | 'cursor_cooldown' | 'cursor_damage' | 'cursor_radius_bonus'
-       | 'cursor_boss_damage_mult' | 'cursor_crate_damage_mult'
-       | 'tower_hp_bonus' | 'tower_starting_shield' | 'tower_thorns_damage' | 'dc_budget_bonus'
+       | 'cursor_boss_damage_mult' | 'cursor_crate_damage_mult' | 'cursor_combo_damage_bonus' | 'cursor_max_combo_bonus'
+       | 'tower_hp_bonus' | 'tower_starting_shield' | 'tower_thorns_damage' | 'tower_shield_capacity'
+       | 'tower_shield_regen_rate' | 'tower_shield_regen_delay' | 'dc_budget_bonus'
        | 'pack_bonus_tier1_chance' | 'pack_bonus_tier2_chance'
        | 'crate_drop_chance_bonus'
        | 'unit_atk_bonus' | 'unit_hp_bonus' | 'unit_range_bonus'

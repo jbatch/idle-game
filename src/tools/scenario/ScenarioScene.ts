@@ -60,9 +60,11 @@ export class ScenarioScene extends Phaser.Scene {
     applyUnitSynergies(this.units, this.unitSynergies)
     for (let i = this.units.length - 1; i >= 0; i--) {
       const unit = this.units[i]
-      unit.update(delta, this.enemies, this.units)
+      unit.update(delta, this.enemies, this.units, this.crates)
       if (!unit.alive) this.units.splice(i, 1)
     }
+
+    this.tower.update(delta)
 
     for (let i = this.crates.length - 1; i >= 0; i--) {
       if (!this.crates[i].alive) this.crates.splice(i, 1)
@@ -90,6 +92,11 @@ export class ScenarioScene extends Phaser.Scene {
     this.tower = new Tower(this, CX, CY, scenario.tower?.hp ?? balance.towerHp)
     this.tower.godMode = scenario.tower?.godMode ?? true
     this.tower.thornsDamage = scenario.tower?.thornsDamage ?? 0
+    this.tower.configureShield(
+      scenario.tower?.shieldCapacity ?? scenario.tower?.startingShield ?? 0,
+      scenario.tower?.shieldRegenRate ?? 0,
+      scenario.tower?.shieldRegenDelay ?? 4.5,
+    )
     if (scenario.tower?.startingShield) this.tower.applyShield(scenario.tower.startingShield)
 
     if (scenario.cursor) {

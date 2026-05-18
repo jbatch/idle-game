@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { Enemy } from './Enemy'
+import type { Crate } from './Crate'
 import type { UnitData, UnitBuff, UnitSynergyEffect, StatusEffect, Targetable } from '../data/types'
 import { CX, CY, ARENA_RADIUS } from '../constants'
 import { floatDamageNumber, floatHealNumber, playUnitAttackEffect } from '../effects/CombatEffects'
@@ -48,7 +49,7 @@ export class Unit implements Targetable {
 
   get radius(): number { return this.data.radius }
 
-  update(delta: number, enemies: Enemy[], allies: Unit[] = []) {
+  update(delta: number, enemies: Enemy[], allies: Unit[] = [], crates: Crate[] = []) {
     if (!this.alive) return
     const dt = delta / 1000
     this.tickBuffs(dt)
@@ -60,10 +61,10 @@ export class Unit implements Targetable {
       case 'melee_basic':   this.runMeleeBasic(dt, enemies);      break
       case 'melee_taunt':   this.runMeleeTaunt(dt, enemies);      break
       case 'ranged_kite':   this.runRangedKite(dt, enemies, allies); break
-      case 'heal_support':  this.runHealSupport(dt, enemies, allies); break
+      case 'heal_support':  this.runHealSupport(dt, enemies, allies, crates); break
       case 'aoe_slow':      this.runAoeSlow(dt, enemies);         break
       case 'stationary_guard': this.runStationaryGuard(dt, enemies); break
-      case 'aura_haste':    this.runAuraHaste(dt, allies);        break
+      case 'aura_haste':    this.runAuraHaste(dt, allies, crates);        break
     }
 
     this.applySynergyCohesion(dt, allies)
@@ -133,7 +134,7 @@ export class Unit implements Targetable {
     this.enforceMaxTowerDistance(dt, this.getParam('leashRadius', 285))
   }
 
-  private runHealSupport(dt: number, enemies: Enemy[], allies: Unit[]) {
+  private runHealSupport(dt: number, enemies: Enemy[], allies: Unit[], crates: Crate[]) {
     const healRange = this.getParam('healRange', this.data.attackRange)
     const healAmount = this.getParam('healAmount', 20)
     const avoidRadius = this.getParam('avoidRadius', 90)
@@ -144,6 +145,7 @@ export class Unit implements Targetable {
     const target = this.bestHealTarget(allies)
 
     if (!target) {
+      if (!threat && this.openNearestCrate(dt, crates)) return
       this.moveToAlliedCluster(dt, allies, 80)
       return
     }
@@ -249,12 +251,12 @@ export class Unit implements Targetable {
     this.fxGraphics.strokeCircle(CX, CY, guardRange)
   }
 
-  private runAuraHaste(dt: number, allies: Unit[]) {
+  private runAuraHaste(dt: number, allies: Unit[], crates: Crate[]) {
     const auraR  = this.getParam('auraRadius', 150)
     const haste  = this.getParam('hasteMultiplier', 0.5)
     const buffDur = this.data.attackCooldown + 0.1  // refresh slightly longer than interval
 
-    this.moveToAlliedCluster(dt, allies, auraR * 0.45)
+    if (!this.openNearestCrate(dt, crates)) this.moveToAlliedCluster(dt, allies, auraR * 0.45)
 
     if (this.attackTimer === 0) {
       this.visual?.playAttack()
@@ -271,6 +273,34 @@ export class Unit implements Targetable {
     // Aura ring visual
     this.fxGraphics.lineStyle(1, 0xff88cc, 0.15)
     this.fxGraphics.strokeCircle(this.x, this.y, auraR)
+  }
+
+  private openNearestCrate(dt: number, crates: Crate[]): boolean {
+    if (!this.data.tags.includes('support')) return false
+    const target = this.nearestCrate(crates)
+    if (!target) return false
+
+    const dx = target.x - this.x
+    const dy = target.y - this.y
+    const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy))
+    this.setAimTarget(target)
+    const openRange = this.getParam('crateOpenRange', Math.max(28, this.data.attackRange * 0.55))
+    const damage = this.getParam('crateOpenDamage', Math.max(6, this.data.attackDamage))
+
+    if (dist > target.radius + openRange) {
+      this.x += (dx / dist) * this.data.speed * 0.9 * dt
+      this.y += (dy / dist) * this.data.speed * 0.9 * dt
+      return true
+    }
+
+    if (this.attackTimer === 0) {
+      this.visual?.playAttack()
+      target.takeDamage(damage)
+      this.fxGraphics.lineStyle(2, 0xffdd77, 0.65)
+      this.fxGraphics.lineBetween(this.x, this.y, target.x, target.y)
+      this.attackTimer = Math.max(0.45, this.effectiveCooldown() * 0.7)
+    }
+    return true
   }
 
   // ─── Helpers ─────────────────────────────────────────────────────
@@ -394,6 +424,20 @@ export class Unit implements Targetable {
       if (d < bestDist) {
         bestDist = d
         best = e
+      }
+    }
+    return best
+  }
+
+  private nearestCrate(crates: Crate[]): Crate | null {
+    let best: Crate | null = null
+    let bestDist = Infinity
+    for (const crate of crates) {
+      if (!crate.alive) continue
+      const d = this.distance(this.x, this.y, crate.x, crate.y)
+      if (d < bestDist) {
+        bestDist = d
+        best = crate
       }
     }
     return best

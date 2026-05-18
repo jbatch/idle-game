@@ -18,6 +18,8 @@ export function runGameSimulation(data, options, rng) {
     baseDamage: 0,
     baseCooldown: 0,
     cooldownTimer: 0,
+    readyTimer: 0,
+    combo: 0,
     buffs: [],
   }
   cursor.baseDamage = cursor.damage
@@ -31,6 +33,10 @@ export function runGameSimulation(data, options, rng) {
     hp: towerMods.maxHp,
     maxHp: towerMods.maxHp,
     shield: towerMods.startingShield,
+    shieldCapacity: towerMods.shieldCapacity,
+    shieldRegenRate: towerMods.shieldRegenRate,
+    shieldRegenDelay: towerMods.shieldRegenDelay,
+    shieldRegenTimer: 0,
     thornsDamage: towerMods.thornsDamage,
     alive: true,
   }
@@ -72,12 +78,13 @@ export function runGameSimulation(data, options, rng) {
       waveFired = nextEvent
     }
 
+    tickTowerShield(tower, options.dt)
     tickCursorBuffs(cursor, options.dt)
     if (cursor.cooldownTimer <= 0) fireBotCursor(cursor, enemies, crates, rng)
 
     for (const enemy of enemies) updateEnemy(enemy, options.dt, tower, units, enemies)
     applySynergies(units, data.unitSynergies)
-    for (const unit of units) updateUnit(unit, options.dt, enemies, units)
+    for (const unit of units) updateUnit(unit, options.dt, enemies, units, crates)
 
     for (let i = enemies.length - 1; i >= 0; i--) {
       const enemy = enemies[i]
@@ -126,7 +133,12 @@ export function runGameSimulation(data, options, rng) {
     } else {
       elapsed += options.dt
     }
-    cursor.cooldownTimer = Math.max(0, cursor.cooldownTimer - options.dt)
+    if (cursor.cooldownTimer > 0) {
+      cursor.cooldownTimer = Math.max(0, cursor.cooldownTimer - options.dt)
+      if (cursor.cooldownTimer === 0) cursor.readyTimer = 0
+    } else {
+      cursor.readyTimer += options.dt
+    }
   }
 
   for (const unit of units) collectUnitStats(unit, unitStats)
@@ -191,6 +203,9 @@ function applyCursorMods(base, tech) {
     knockbackChance: 0,
     bossDamageMultiplier: 1,
     crateDamageMultiplier: 1,
+    comboDamageBonus: base.comboDamageBonus ?? 0.1,
+    maxCombo: base.maxCombo ?? 5,
+    comboGrace: base.comboGrace ?? 0.28,
   }
 
   for (const effect of purchasedEffects(tech)) {
@@ -201,8 +216,11 @@ function applyCursorMods(base, tech) {
     if (effect.type === 'cursor_knockback_chance') cursor.knockbackChance += effect.value
     if (effect.type === 'cursor_boss_damage_mult') cursor.bossDamageMultiplier *= effect.value
     if (effect.type === 'cursor_crate_damage_mult') cursor.crateDamageMultiplier *= effect.value
+    if (effect.type === 'cursor_combo_damage_bonus') cursor.comboDamageBonus += effect.value
+    if (effect.type === 'cursor_max_combo_bonus') cursor.maxCombo += effect.value
   }
   cursor.knockbackChance = clamp(cursor.knockbackChance, 0, 1)
+  cursor.maxCombo = Math.max(1, Math.round(cursor.maxCombo))
   return cursor
 }
 
@@ -218,12 +236,19 @@ function applyTowerBattleMods(baseHp, tech) {
   let maxHp = baseHp
   let startingShield = 0
   let thornsDamage = 0
+  let shieldCapacity = 0
+  let shieldRegenRate = 0
+  let shieldRegenDelay = 4.5
   for (const effect of purchasedEffects(tech)) {
     if (effect.type === 'tower_hp_bonus') maxHp += effect.value
     if (effect.type === 'tower_starting_shield') startingShield += effect.value
     if (effect.type === 'tower_thorns_damage') thornsDamage += effect.value
+    if (effect.type === 'tower_shield_capacity') shieldCapacity += effect.value
+    if (effect.type === 'tower_shield_regen_rate') shieldRegenRate += effect.value
+    if (effect.type === 'tower_shield_regen_delay') shieldRegenDelay = Math.min(shieldRegenDelay, effect.value)
   }
-  return { maxHp, startingShield, thornsDamage }
+  shieldCapacity = Math.max(shieldCapacity, startingShield)
+  return { maxHp, startingShield, thornsDamage, shieldCapacity, shieldRegenRate, shieldRegenDelay }
 }
 
 function applyPackBonusMods(tech) {
@@ -551,26 +576,31 @@ function fireBotCursor(cursor, enemies, crates, rng) {
   const target = chooseCursorTarget(cursor, enemies, crates)
   if (!target) return false
 
+  const comboEligible = cursor.readyTimer <= cursor.comboGrace
+  cursor.combo = comboEligible ? Math.min(cursor.maxCombo, cursor.combo + 1) : 1
+  cursor.readyTimer = 0
   cursor.cooldownTimer = cursor.cooldown
+  const comboMultiplier = 1 + cursor.combo * cursor.comboDamageBonus
   const knockbackTriggered = cursor.knockback > 0 && rng() < cursor.knockbackChance
   for (const enemy of enemies) {
     if (!enemy.alive) continue
     if (distanceSq(enemy.x, enemy.y, target.x, target.y) > cursor.radius * cursor.radius) continue
-    damage(enemy, cursorDamageFor(cursor, enemy))
+    damage(enemy, cursorDamageFor(cursor, enemy, comboMultiplier))
     if (knockbackTriggered) applyKnockback(enemy, target.x, target.y, cursor.knockback)
   }
   for (const crate of crates) {
     if (!crate.alive) continue
     if (distanceSq(crate.x, crate.y, target.x, target.y) > cursor.radius * cursor.radius) continue
-    damage(crate, cursorDamageFor(cursor, crate))
+    damage(crate, cursorDamageFor(cursor, crate, comboMultiplier))
   }
   return true
 }
 
-function cursorDamageFor(cursor, target) {
-  if (target.targetType === 'crate') return Math.round(cursor.damage * cursor.crateDamageMultiplier)
-  if (target.targetType === 'enemy' && target.isBoss) return Math.round(cursor.damage * cursor.bossDamageMultiplier)
-  return cursor.damage
+function cursorDamageFor(cursor, target, comboMultiplier = 1) {
+  const damageAmount = cursor.damage * comboMultiplier
+  if (target.targetType === 'crate') return Math.round(damageAmount * cursor.crateDamageMultiplier)
+  if (target.targetType === 'enemy' && target.isBoss) return Math.round(damageAmount * cursor.bossDamageMultiplier)
+  return Math.round(damageAmount)
 }
 
 function chooseCursorTarget(cursor, enemies, crates) {
@@ -741,7 +771,7 @@ function nearestUnit(enemy, units) {
   return best
 }
 
-function updateUnit(unit, dt, enemies, allies) {
+function updateUnit(unit, dt, enemies, allies, crates) {
   if (!unit.alive) return
   tickBuffs(unit, dt)
   unit.attackTimer = Math.max(0, unit.attackTimer - dt)
@@ -749,10 +779,10 @@ function updateUnit(unit, dt, enemies, allies) {
   if (unit.data.behaviour === 'melee_basic') runMeleeBasic(unit, dt, enemies)
   if (unit.data.behaviour === 'melee_taunt') runMeleeTaunt(unit, dt, enemies)
   if (unit.data.behaviour === 'ranged_kite') runRangedKite(unit, dt, enemies, allies)
-  if (unit.data.behaviour === 'heal_support') runHealSupport(unit, dt, enemies, allies)
+  if (unit.data.behaviour === 'heal_support') runHealSupport(unit, dt, enemies, allies, crates)
   if (unit.data.behaviour === 'aoe_slow') runAoeSlow(unit, dt, enemies)
   if (unit.data.behaviour === 'stationary_guard') runStationaryGuard(unit, enemies)
-  if (unit.data.behaviour === 'aura_haste') runAuraHaste(unit, dt, allies)
+  if (unit.data.behaviour === 'aura_haste') runAuraHaste(unit, dt, allies, crates)
 
   applySynergyCohesion(unit, dt, allies)
   applySeparation(unit, dt, allies)
@@ -804,7 +834,7 @@ function runRangedKite(unit, dt, enemies, allies) {
   enforceMaxTowerDistance(unit, dt, getUnitParam(unit, 'leashRadius', 285))
 }
 
-function runHealSupport(unit, dt, enemies, allies) {
+function runHealSupport(unit, dt, enemies, allies, crates) {
   const healRange = getUnitParam(unit, 'healRange', unit.data.attackRange)
   const healAmount = getUnitParam(unit, 'healAmount', 20)
   const avoidRadius = getUnitParam(unit, 'avoidRadius', 90)
@@ -813,6 +843,7 @@ function runHealSupport(unit, dt, enemies, allies) {
 
   const target = bestHealTarget(unit, allies)
   if (!target) {
+    if (!threat && openNearestCrate(unit, dt, crates)) return
     moveToAlliedCluster(unit, dt, allies, 80)
     return
   }
@@ -870,10 +901,10 @@ function runStationaryGuard(unit, enemies) {
   }
 }
 
-function runAuraHaste(unit, dt, allies) {
+function runAuraHaste(unit, dt, allies, crates) {
   const auraRadius = getUnitParam(unit, 'auraRadius', 150)
   const haste = getUnitParam(unit, 'hasteMultiplier', 0.5)
-  moveToAlliedCluster(unit, dt, allies, auraRadius * 0.45)
+  if (!openNearestCrate(unit, dt, crates)) moveToAlliedCluster(unit, dt, allies, auraRadius * 0.45)
   if (unit.attackTimer !== 0) return
   for (const ally of allies) {
     if (!ally.alive || ally === unit) continue
@@ -882,6 +913,38 @@ function runAuraHaste(unit, dt, allies) {
     }
   }
   unit.attackTimer = effectiveCooldown(unit)
+}
+
+function openNearestCrate(unit, dt, crates) {
+  if (!unit.data.tags.includes('support')) return false
+  const target = nearestCrate(unit, crates)
+  if (!target) return false
+  const openRange = getUnitParam(unit, 'crateOpenRange', Math.max(28, unit.data.attackRange * 0.55))
+  const dist = distance(unit.x, unit.y, target.x, target.y)
+  if (dist > target.radius + openRange) {
+    moveTowardUnit(unit, dt, target.x, target.y, 0.9)
+    return true
+  }
+  if (unit.attackTimer === 0) {
+    const damageAmount = getUnitParam(unit, 'crateOpenDamage', Math.max(6, unit.data.attackDamage))
+    damage(target, damageAmount)
+    unit.attackTimer = Math.max(0.45, effectiveCooldown(unit) * 0.7)
+  }
+  return true
+}
+
+function nearestCrate(unit, crates) {
+  let best = null
+  let bestDist = Infinity
+  for (const crate of crates) {
+    if (!crate.alive) continue
+    const d = distance(unit.x, unit.y, crate.x, crate.y)
+    if (d < bestDist) {
+      bestDist = d
+      best = crate
+    }
+  }
+  return best
 }
 
 function moveAndAttackUnit(unit, dt, target) {
@@ -1202,6 +1265,7 @@ function damage(target, amount) {
   if (!target.alive) return false
   const absorbed = Math.min(target.shield ?? 0, amount)
   target.shield = Math.max(0, (target.shield ?? 0) - absorbed)
+  if (target.kind === 'tower' && amount > 0) target.shieldRegenTimer = target.shieldRegenDelay ?? 0
   target.hp = Math.max(0, target.hp - (amount - absorbed))
   if (target.hp <= 0) {
     target.alive = false
@@ -1219,6 +1283,17 @@ function heal(target, amount) {
 function applyShield(target, amount) {
   if (!target.alive) return
   target.shield = (target.shield ?? 0) + amount
+}
+
+function tickTowerShield(tower, dt) {
+  if (!tower.alive) return
+  if ((tower.shieldRegenTimer ?? 0) > 0) {
+    tower.shieldRegenTimer = Math.max(0, tower.shieldRegenTimer - dt)
+    return
+  }
+  if ((tower.shieldCapacity ?? 0) <= 0 || (tower.shieldRegenRate ?? 0) <= 0) return
+  if ((tower.shield ?? 0) >= tower.shieldCapacity) return
+  tower.shield = Math.min(tower.shieldCapacity, (tower.shield ?? 0) + tower.shieldRegenRate * dt)
 }
 
 function moveToward(entity, x, y, amount) {

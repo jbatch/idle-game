@@ -75,6 +75,25 @@
       "branch": "cursor"
     },
     {
+      "id": "cursor_combo_rhythm",
+      "name": "Combo Rhythm",
+      "description": "Cursor combo damage +5% per stack",
+      "cost": 55,
+      "requires": ["cursor_fast"],
+      "effect": { "type": "cursor_combo_damage_bonus", "value": 0.05 },
+      "branch": "cursor"
+    },
+    {
+      "id": "cursor_combo_mastery",
+      "name": "Perfect Chain",
+      "description": "Cursor max combo +2",
+      "cost": 90,
+      "requires": ["cursor_combo_rhythm"],
+      "questRequirement": "boss_chapter1_killed",
+      "effect": { "type": "cursor_max_combo_bonus", "value": 2 },
+      "branch": "cursor"
+    },
+    {
       "id": "cursor_siegebreaker",
       "name": "Siegebreaker",
       "description": "Cursor deals 40% more damage to bosses and crates",
@@ -222,11 +241,35 @@
     {
       "id": "tower_guard_pulse",
       "name": "Guard Pulse",
-      "description": "Battle start tower shield +90",
+      "description": "Tower gains 90 regenerating shield",
       "cost": 70,
       "requires": ["tower_reinforce"],
       "questRequirement": "boss_chapter1_killed",
-      "effect": { "type": "tower_starting_shield", "value": 90 },
+      "effect": [
+        { "type": "tower_starting_shield", "value": 90 },
+        { "type": "tower_shield_capacity", "value": 90 },
+        { "type": "tower_shield_regen_rate", "value": 12 }
+      ],
+      "branch": "tower"
+    },
+    {
+      "id": "tower_shield_matrix",
+      "name": "Shield Matrix",
+      "description": "Tower shield capacity +70",
+      "cost": 105,
+      "requires": ["tower_guard_pulse"],
+      "questRequirement": "boss_chapter2_killed",
+      "effect": { "type": "tower_shield_capacity", "value": 70 },
+      "branch": "tower"
+    },
+    {
+      "id": "tower_quick_ward",
+      "name": "Quick Ward",
+      "description": "Tower shield begins regenerating after 3.2s",
+      "cost": 130,
+      "requires": ["tower_shield_matrix"],
+      "questRequirement": "boss_chapter2_killed",
+      "effect": { "type": "tower_shield_regen_delay", "value": 3.2 },
       "branch": "tower"
     },
     {

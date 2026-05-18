@@ -15,11 +15,15 @@ export class Tower {
   hp: number
   maxHp: number
   shield: number = 0
+  shieldCapacity: number = 0
+  shieldRegenRate: number = 0
+  shieldRegenDelay: number = 4.5
   thornsDamage: number = 0
   radius: number = RADIUS
   alive: boolean = true
   godMode: boolean = false
   targetType: 'tower' = 'tower'
+  private shieldRegenTimer: number = 0
 
   constructor(scene: Phaser.Scene, x: number, y: number, maxHp: number) {
     this.hp = maxHp
@@ -42,6 +46,7 @@ export class Tower {
     if (!this.alive || this.godMode) return
     const absorbed = Math.min(this.shield, amount)
     this.shield -= absorbed
+    if (amount > 0) this.shieldRegenTimer = this.shieldRegenDelay
     const remaining = amount - absorbed
     if (remaining > 0) this.hp = Math.max(0, this.hp - remaining)
     floatDamageNumber(this.graphics.scene, this.x, this.y, amount)
@@ -54,6 +59,19 @@ export class Tower {
     this.draw()
   }
 
+  update(delta: number) {
+    if (!this.alive) return
+    const dt = delta / 1000
+    if (this.shieldRegenTimer > 0) {
+      this.shieldRegenTimer = Math.max(0, this.shieldRegenTimer - dt)
+      return
+    }
+    if (this.shieldCapacity <= 0 || this.shieldRegenRate <= 0 || this.shield >= this.shieldCapacity) return
+    const before = this.shield
+    this.shield = Math.min(this.shieldCapacity, this.shield + this.shieldRegenRate * dt)
+    if (Math.floor(before) !== Math.floor(this.shield)) this.draw()
+  }
+
   heal(amount: number) {
     if (!this.alive) return
     const actualHeal = Math.min(this.maxHp - this.hp, amount)
@@ -64,8 +82,16 @@ export class Tower {
 
   applyShield(amount: number) {
     if (!this.alive) return
-    this.shield += amount
+    this.shield = Math.max(0, this.shield + amount)
     floatHealNumber(this.graphics.scene, this.x, this.y - 14, amount)
+    this.draw()
+  }
+
+  configureShield(capacity: number, regenRate: number, regenDelay: number) {
+    this.shieldCapacity = Math.max(0, capacity)
+    this.shieldRegenRate = Math.max(0, regenRate)
+    this.shieldRegenDelay = Math.max(0, regenDelay)
+    this.shield = Math.max(0, this.shield)
     this.draw()
   }
 
@@ -88,9 +114,13 @@ export class Tower {
     // Outer glow ring
     this.graphics.lineStyle(2, 0x4444aa, 0.4)
     this.graphics.strokeCircle(this.x, this.y, RADIUS + 6)
-    if (this.shield > 0) {
+    if (this.shield > 0 || this.shieldCapacity > 0) {
       this.graphics.lineStyle(3, 0x66ddff, 0.75)
       this.graphics.strokeCircle(this.x, this.y, RADIUS + 11)
+      if (this.shieldCapacity > 0 && this.shield < this.shieldCapacity && this.shieldRegenTimer <= 0 && this.shieldRegenRate > 0) {
+        this.graphics.lineStyle(1, 0xb8f3ff, 0.45)
+        this.graphics.strokeCircle(this.x, this.y, RADIUS + 15)
+      }
     }
     // Tower body
     this.graphics.fillStyle(0x2233aa, 1)
@@ -118,6 +148,10 @@ export class Tower {
     if (this.shield > 0) {
       this.hpBarFill.fillStyle(0x66ddff, 0.9)
       this.hpBarFill.fillRect(bx + 1, by - 4, Math.min(barW - 2, this.shield / this.maxHp * (barW - 2)), 2)
+    }
+    if (this.shieldCapacity > 0) {
+      this.hpBarFill.lineStyle(1, 0xb8f3ff, 0.7)
+      this.hpBarFill.strokeRect(bx + 1, by - 5, Math.min(barW - 2, this.shieldCapacity / this.maxHp * (barW - 2)), 3)
     }
   }
 

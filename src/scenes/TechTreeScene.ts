@@ -799,12 +799,22 @@ export class TechTreeScene extends Phaser.Scene {
         return `+${this.formatPercent(value - 1)} boss dmg`
       case 'cursor_crate_damage_mult':
         return `+${this.formatPercent(value - 1)} crate dmg`
+      case 'cursor_combo_damage_bonus':
+        return `+${this.formatPercent(value)} combo dmg`
+      case 'cursor_max_combo_bonus':
+        return `+${value} max combo`
       case 'tower_hp_bonus':
         return `+${value} tower HP`
       case 'tower_starting_shield':
         return `+${value} tower shield`
       case 'tower_thorns_damage':
         return `+${value} thorns`
+      case 'tower_shield_capacity':
+        return `+${value} shield cap`
+      case 'tower_shield_regen_rate':
+        return `+${value}/s shield regen`
+      case 'tower_shield_regen_delay':
+        return `${value.toFixed(1)}s shield delay`
       case 'dc_budget_bonus':
         return `+${value} ${this.currency.deployment.name}`
       case 'pack_bonus_tier1_chance':

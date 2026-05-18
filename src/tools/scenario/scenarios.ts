@@ -17,6 +17,9 @@ export type CombatScenario = {
     hp?: number
     godMode?: boolean
     startingShield?: number
+    shieldCapacity?: number
+    shieldRegenRate?: number
+    shieldRegenDelay?: number
     thornsDamage?: number
   }
   cursor?: {
@@ -27,6 +30,9 @@ export type CombatScenario = {
     knockbackChance: number
     bossDamageMultiplier?: number
     crateDamageMultiplier?: number
+    comboDamageBonus?: number
+    maxCombo?: number
+    comboGrace?: number
   }
 }
 
@@ -176,6 +182,29 @@ export const combatScenarios: CombatScenario[] = [
     crates: [{ id: 'field_cache', rewardId: 'tower_patch', count: 1, radius: 205, angle: -58 }],
   },
   {
+    id: 'support_crate_openers',
+    name: 'Support Crate Openers',
+    description: 'Healer and bard should move to nearby crates and crack them open when no urgent support target exists.',
+    units: [
+      { id: 'healer', count: 1, radius: 90, angle: 145 },
+      { id: 'bard', count: 1, radius: 82, angle: 35 },
+      { id: 'footsoldier', count: 1, radius: 120, angle: -90 },
+    ],
+    enemies: [{ id: 'grunt', count: 1, radius: 330, angle: -90 }],
+    crates: [
+      { id: 'field_cache', rewardId: 'tower_patch', count: 1, radius: 155, angle: 70 },
+      { id: 'field_cache', rewardId: 'unit_mending', count: 1, radius: 185, angle: 135 },
+    ],
+  },
+  {
+    id: 'cursor_combo',
+    name: 'Cursor Combo',
+    description: 'Click immediately as the cursor comes off cooldown; combo text and particles should ramp to MAX.',
+    cursor: { damage: 7, radius: 46, cooldown: 0.45, knockback: 0, knockbackChance: 0, comboDamageBonus: 0.15, maxCombo: 7, comboGrace: 0.34 },
+    units: [],
+    enemies: [{ id: 'boss_chapter1', count: 1, radius: 190, angle: -90 }],
+  },
+  {
     id: 'boss_anti_kite',
     name: 'Boss: Anti-Kite',
     description: 'Void Sovereign should ignore faster non-taunt units and return to tower pressure instead of chasing forever.',
@@ -198,8 +227,8 @@ export const combatScenarios: CombatScenario[] = [
   {
     id: 'tower_guard_pulse',
     name: 'Tower: Guard Pulse',
-    description: 'Tower should start with a visible shield that absorbs the first attacks.',
-    tower: { hp: 360, godMode: false, startingShield: 150 },
+    description: 'Tower should start with a visible shield, absorb hits, then regenerate after the damage delay.',
+    tower: { hp: 360, godMode: false, startingShield: 150, shieldCapacity: 150, shieldRegenRate: 28, shieldRegenDelay: 2.2 },
     units: [{ id: 'shieldbearer', count: 1, radius: 96, angle: -96 }],
     enemies: [
       { id: 'grunt', count: 6, radius: 320, angle: -90, spread: 78 },

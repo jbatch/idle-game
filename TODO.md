@@ -12,30 +12,10 @@ Priority key:
 
 Captured from the first real-player playtest. Keep these as the current qualitative backlog until each item is investigated, implemented, or deliberately cut.
 
-#### Onboarding / Teaching
-
-| Item | Impact | Complexity | Priority | Notes |
-|---|---:|---:|---:|---|
-| First-run tutorial battle | Very High | High | P0 | First run should teach cursor attacks, click targeting, cooldown-circle meaning, and where to read key UI information. It can end in a scripted death to the first boss. |
-| First tech-tree onboarding | High | Medium | P0 | The first time the tech tree is shown, explain what the player is looking at, how unlocks work, and what they should do next. |
-| First enemy-introduction pause | High | Medium/High | P1 | When a new enemy appears for the first time, pause, highlight it, and explain its role. Design this so future enemy types can also be introduced from pre-combat or combat. |
-| First synergy discovery callout | Medium/High | Medium | P1 | The first time rolled units activate a synergy, pause/highlight the synergy description area so players learn where to look. |
-| Tutorial crate introduction | High | Medium | P1 | Tutorial should introduce field crates, explain reward types, and point players to where active effects appear. Check short-lived rewards like Field Mending so they remain readable. |
-
-#### Tech Tree UX
-
-| Item | Impact | Complexity | Priority | Notes |
-|---|---:|---:|---:|---|
-| Tech tree color grouping | High | Medium | P1 | Add a visual grouping/color system for related branches such as cursor, tower, deployment, supply, crates, and units. |
-| Manual tech-tree relayout pass | High | Medium | P1 | Layout is still messy and does not guide the player to look around. Do a deliberate hand layout pass after deciding color/group language. |
-| Locked tech presentation | High | Medium | P1 | Locked tech should be greyed out while still showing name and effect. Move requirements into a lock hover/focus overlay instead of tiny squeezed text. |
-| Tech description truncation | Medium | Low/Medium | P1 | Several descriptions, e.g. Cache Prospecting, truncate with ellipses. Make full text visible or show truncated text on hover/focus. |
-
 #### Combat / Balance Investigations
 
 | Item | Impact | Complexity | Priority | Notes |
 |---|---:|---:|---:|---|
-| Chapter 3 wave 15 difficulty wall | Very High | High | P0 | Validate with simulations before tuning. Goal: introduce a smaller wall earlier in Chapter 3, then keep wave 15 hard but reduce how long players are stuck there. Needs a planned balance pass, not random number churn. |
 | Final boss kiting cheese | Very High | High | P0 | A single archer/healer can grab aggro and outrun the boss while cursor damage finishes it. Explore boss secondary attacks, longer-cooldown ranged attacks, phase behavior, or logic that retargets tower when remaining units are faster unless taunt is active. |
 | T2 specialist pack buy tracking bug | High | Medium | P0 | Player bought multiple T2 squad packs across rounds but stats appeared stuck at 12. Check for hardcoded tracking caps or quest/stat update logic that stops incrementing. |
 | Same-unit synergy dropoff check | High | Low/Medium | P0 | Verify whether synergies are removed once living unit counts fall below the threshold. If 3 archers become 2, the buff should drop unless intentionally sticky. |
@@ -62,35 +42,11 @@ Captured from the first real-player playtest. Keep these as the current qualitat
 
 Captured after Dan's full playtest. These are categorized by player value and implementation size so the next pass can separate quick wins from larger design milestones.
 
-#### Onboarding / Input Safety
-
-| Item | Impact | Complexity | Priority | Notes |
-|---|---:|---:|---:|---|
-| Full tutorial input QA pass | Medium | Low/Medium | P1 | Quick fix added a shared onboarding click blocker and open-tip guard. Do a manual pass through main menu, loadout, battle, and pack reveal tutorials to catch any scene-specific overlay edge cases. |
-
-#### Tech Tree UX
-
-| Item | Impact | Complexity | Priority | Notes |
-|---|---:|---:|---:|---|
-| Crisp tech-tree text at zoom | Medium/High | Medium | P1 | Dan noticed anti-aliasing artifacts at many zoom levels, both zoomed in and out. Investigate Phaser text rendering, resolution, bitmap text, render texture scaling, or redraw-on-zoom so node labels stay crisp instead of being scaled from a blurry cached texture. |
-
-#### Combat Rewards / Feel
-
-| Item | Impact | Complexity | Priority | Notes |
-|---|---:|---:|---:|---|
-| Cursor skill-expression system | High | High | P2 | The cursor currently rewards cooldown timing and target selection, but not much precision. Explore rewards for accurate clicking, immediate off-cooldown attacks, weak-spot hits, quick-time timing, combo streaks, or optional risk/reward cursor modes. Likely hold until cursor weapon/loadout ideas are clearer so skill expression can vary by attack style. |
-
 #### Readability / Visual Identity
 
 | Item | Impact | Complexity | Priority | Notes |
 |---|---:|---:|---:|---|
 | Footsoldier vs Archer silhouette pass | Medium/High | Low/Medium | P1 | At distance the Footsoldier and Archer sprites are not distinct enough. Consider stronger weapon silhouettes, clearer body posture, different shield/outline accents, or a more noticeable class-colored shadow/glow. |
-
-#### Tower Survivability
-
-| Item | Impact | Complexity | Priority | Notes |
-|---|---:|---:|---:|---|
-| Regenerating tower shield system | High | High | P2 | Replace or extend flat battle-start shield with a Halo-like shield capacity: shield absorbs damage before HP, waits after taking damage, then regenerates to capacity. Health does not regenerate. This could become a major survivability layer, so gate it later in progression and rebalance tower tech around shield capacity, regen delay, and regen rate. |
 
 #### Synergies / Long-Term Progression
 
@@ -119,14 +75,13 @@ Captured after Dan's full playtest. These are categorized by player value and im
 | Deepen distinct unit strategies | High | Medium | P1 | First pass exists. Continue deepening targeting, positioning, and idle behavior. |
 | Same-unit synergy expansion | High | Medium/High | P2 | First pass exists: Archer Volley, Footsoldier Phalanx, and Shield Wall. Continue tuning and adding payoffs selectively. |
 | Unit idle behavior/squads | Medium | Medium | P2 | Same-type units loosely cluster near tower with small idle drift. |
-| Support units opening crates | Medium | Medium | P2 | Support/passive units should beeline to crates and open them for the player. Sim currently auto-clicks crates when no healer enemy target exists. |
 | Necromancer unit | Medium/High | Medium/High | P2/P3 | Targets dead allied units/corpses and revives them as temporary zombie or skeleton units. Requires corpse/dead-unit tracking. |
 
 ### Shop / Progression
 
 | Item | Impact | Complexity | Priority | Notes |
 |---|---:|---:|---:|---|
-| Pack balance and unlock thresholds | Very High | High | P1 | v0.2.0 pass feels good through a first Chapter 3 clear around run 15. Continue watching Chapter 3 specialist variance and late support-unit upgrade pacing. |
+| Pack balance and unlock thresholds | Very High | High | P1 | Current Chapter 3 balance pass is complete. Continue watching pack variance and late support-unit upgrade pacing as new content lands. |
 | Multipack/mega-pack expansion | Very High | High | P1 | Singles unlock squad packs via purchase-count quests; T2 singles unlock with Chapter 2. Per-run pack caps now prevent all-in spam; mega packs later. |
 | More cursor upgrades by chapter | High | Medium | P1 | Cursor Reach/Wide Arc/Battlefield Sweep expand radius by chapter and Siegebreaker boosts boss/crate damage. Continue with stun/control or support modes later. |
 | Cursor power modes | High | High | P2 | Weak knockback AOE, stun/control, heal/support pulse, strong single-target. Decide pre-run vs hot-swap vs tech branches. |
@@ -151,7 +106,7 @@ Captured after Dan's full playtest. These are categorized by player value and im
 | TechTree reset shortcut | Low | Low | P3 | Currently only available in ShopScene CheatPanel. |
 | SFX | Medium | Medium | P3 | Clicks, hits, heals, purchases, unlocks, boss spawns, unit deaths, crate opens, win/loss. |
 | Music | Medium | Medium | P3 | Shop, tech, combat, boss tracks or layers. |
-| Options menu | Medium | Medium | P3 | Audio volume, fullscreen/scaling, readability toggles, reset/export save. |
+| Options menu expansion | Medium | Medium | P3 | First audio sliders exist. Later: fullscreen/scaling, readability toggles, reset/export save. |
 | Main menu scene | Low/Medium | Low | P3 | Add once the prototype becomes more game-like. |
 
 ## Completed Milestones
@@ -197,3 +152,9 @@ Captured after Dan's full playtest. These are categorized by player value and im
 
 14. [DONE] **v0.2.9 Loadout Polish**
    First pass complete: Archer sprite tint is now blue-on-blue, active synergy summaries no longer overflow the loadout box, full synergy text is available through a hover/tap overlay, and the Start Battle button has stable green visibility plus explicit margin below the synergies panel.
+
+15. [DONE] **Onboarding, Chapter 3 Balance, and Tech Tree UX Pass**
+   Completed follow-up pass covering first-player onboarding, Chapter 3 balance, and the major tech tree readability/layout work. These items have been removed from the active backlog so remaining priorities are easier to scan.
+
+16. [DONE] **v0.3.0 Combo, Shields, Support Crates, and Options**
+   First pass complete: tower shields can regenerate after a damage delay, healers and bards can open crates, the main/pause options overlay persists Master/Music/SFX volumes, and cursor timing combos add visible damage scaling with no-op SFX hooks. Simulator and scenario sandbox coverage mirror the new mechanics.

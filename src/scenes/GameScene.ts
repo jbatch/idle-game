@@ -115,6 +115,7 @@ export class GameScene extends Phaser.Scene {
     const towerMods = applyTowerBattleMods(balance.towerHp, this.techNodes)
     this.tower = new Tower(this, CX, CY, towerMods.maxHp)
     this.tower.thornsDamage = towerMods.thornsDamage
+    this.tower.configureShield(towerMods.shieldCapacity, towerMods.shieldRegenRate, towerMods.shieldRegenDelay)
     if (towerMods.startingShield > 0) this.tower.applyShield(towerMods.startingShield)
 
     // Open unopened shop packs at battle start, then spawn the rolled units.
@@ -309,6 +310,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.elapsed += delta / 1000
+    this.tower.update(delta)
     this.waves.update(delta)
 
     const ptr = this.input.activePointer
@@ -333,7 +335,7 @@ export class GameScene extends Phaser.Scene {
     applyUnitSynergies(this.units, this.unitSynergies)
     for (let i = this.units.length - 1; i >= 0; i--) {
       const u = this.units[i]
-      u.update(delta, this.enemies, this.units)
+      u.update(delta, this.enemies, this.units, this.crates)
       if (!u.alive) this.units.splice(i, 1)
     }
 
@@ -371,6 +373,7 @@ export class GameScene extends Phaser.Scene {
       unitCount: this.units.length,
       crateCount: this.crates.length,
       cursorBuffLabel: this.cursorBuffLabel(),
+      cursorCombo: this.cursor.getComboState(),
       boss: this.boss,
     })
   }

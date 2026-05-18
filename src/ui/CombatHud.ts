@@ -15,6 +15,11 @@ export type CombatHudState = {
   unitCount: number
   crateCount: number
   cursorBuffLabel: string
+  cursorCombo: {
+    combo: number
+    maxCombo: number
+    multiplier: number
+  }
   boss: Enemy | null
 }
 
@@ -47,10 +52,13 @@ export class CombatHud {
     this.hudText.setText([
       `${state.chapterName}`,
       `${this.currency.progression.icon} ${this.currency.progression.name}: ${state.runPc}`,
-      `Tower: ${Math.round(state.tower.hp)} / ${state.tower.maxHp}${state.tower.shield > 0 ? `  Shield: ${Math.round(state.tower.shield)}` : ''}`,
+      `Tower: ${Math.round(state.tower.hp)} / ${state.tower.maxHp}${this.shieldLabel(state.tower)}`,
       state.skippedWaveThisFrame ? `${waveStr}  (advanced)` : waveStr,
       state.unitCount > 0 ? `Units: ${state.unitCount}` : '',
       state.crateCount > 0 ? `Crates: ${state.crateCount}` : '',
+      state.cursorCombo.combo > 0
+        ? `Combo: ${state.cursorCombo.combo}/${state.cursorCombo.maxCombo}  x${state.cursorCombo.multiplier.toFixed(2)} dmg${state.cursorCombo.combo >= state.cursorCombo.maxCombo ? '  MAX' : ''}`
+        : '',
       'P: pause',
       state.cursorBuffLabel,
     ])
@@ -73,5 +81,11 @@ export class CombatHud {
     this.bossBarGfx.lineStyle(1, 0x886600, 1)
     this.bossBarGfx.strokeRect(bx, by, barW, barH)
     this.bossLabel.setText(`${state.boss.name}  ${state.boss.hp} / ${state.boss.maxHp}`)
+  }
+
+  private shieldLabel(tower: Tower): string {
+    if (tower.shieldCapacity <= 0 && tower.shield <= 0) return ''
+    const capacity = tower.shieldCapacity > 0 ? `/${Math.round(tower.shieldCapacity)}` : ''
+    return `  Shield: ${Math.round(tower.shield)}${capacity}`
   }
 }

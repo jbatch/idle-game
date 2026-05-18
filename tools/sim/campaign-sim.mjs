@@ -267,6 +267,9 @@ function techPriorityScore(node, state, lastResult) {
     if (effect.type?.startsWith('cursor')) score += 8
     if (effect.type === 'tower_hp_bonus') score += lastResult.outcome === 'tower_destroyed' ? 12 : 5
     if (effect.type === 'tower_starting_shield') score += lastResult.outcome === 'tower_destroyed' ? 11 : 5
+    if (effect.type === 'tower_shield_capacity') score += lastResult.outcome === 'tower_destroyed' ? 10 : 4
+    if (effect.type === 'tower_shield_regen_rate') score += lastResult.outcome === 'tower_destroyed' ? 8 : 3
+    if (effect.type === 'tower_shield_regen_delay') score += lastResult.outcome === 'tower_destroyed' ? 7 : 2
     if (effect.type === 'tower_thorns_damage') score += lastResult.outcome === 'tower_destroyed' ? 9 : 4
     if (effect.type?.startsWith('unit')) {
       const summoned = state.stats[statKey(effect.unitId, 'summoned')] ?? 0

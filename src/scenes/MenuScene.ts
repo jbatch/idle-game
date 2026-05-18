@@ -8,8 +8,9 @@ import { playRingPulse, playSparkBurst } from '../effects/CombatEffects'
 import { fadeInScene, fadeToScene } from '../ui/sceneTransitions'
 import { cursors } from '../ui/cursors'
 import { currencyLabels } from '../ui/currency'
+import { showOptionsOverlay } from '../ui/OptionsOverlay'
 
-const VERSION_LABEL = 'v0.2.9 loadout polish - For Dan <3'
+const VERSION_LABEL = 'v0.3.0 combo and options'
 
 export class MenuScene extends Phaser.Scene {
   private orbiters: Phaser.GameObjects.Arc[] = []
@@ -102,9 +103,14 @@ export class MenuScene extends Phaser.Scene {
       }, true)
     }
 
-    this.addButton(GAME_W / 2, y + (hasSave ? 116 : 58), 'HOW TO PLAY', () => {
+    const howToY = y + (hasSave ? 116 : 58)
+    this.addButton(GAME_W / 2, howToY, 'HOW TO PLAY', () => {
       audioManager.playSfx(this, 'ui_click')
       this.showHowToPlay()
+    })
+    this.addButton(GAME_W / 2, howToY + 58, 'OPTIONS', () => {
+      audioManager.playSfx(this, 'ui_click')
+      showOptionsOverlay(this)
     })
   }
 
