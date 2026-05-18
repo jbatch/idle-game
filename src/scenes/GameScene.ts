@@ -431,18 +431,35 @@ export class GameScene extends Phaser.Scene {
   }
 
   private rollCrateReward(crateKind: CrateKindData): CrateRewardData | null {
+    return this.rollEligibleCrateReward(crateKind, null)
+  }
+
+  private rollEligibleCrateReward(crateKind: CrateKindData, currentRewardId: string | null): CrateRewardData | null {
     const rewards = new Map(this.crateData.rewards.map(reward => [reward.id, reward]))
     const available = crateKind.rewardTable
       .map(entry => ({ entry, reward: rewards.get(entry.rewardId) }))
       .filter((item): item is { entry: { rewardId: string, weight: number }, reward: CrateRewardData } =>
-        Boolean(item.reward) && (!item.reward?.requiresTechId || techState.has(item.reward.requiresTechId))
+        item.reward !== undefined
+          && item.reward.id !== currentRewardId
+          && (!item.reward.requiresTechId || techState.has(item.reward.requiresTechId))
+          && this.isCrateRewardUseful(item.reward)
       )
     const picked = this.weightedPick(available, item => item.entry.weight * item.reward.weight)
     return picked?.reward ?? null
   }
 
+  private isCrateRewardUseful(reward: CrateRewardData): boolean {
+    if (reward.type === 'tower_heal') return this.tower.hp < this.tower.maxHp
+    if (reward.type === 'heal_all_units') return this.units.some(unit => unit.alive && unit.hp < unit.maxHp)
+    if (reward.type === 'shield_all_units') return this.units.some(unit => unit.alive)
+    return true
+  }
+
   private openCrate(crate: Crate) {
-    const reward = crate.reward
+    const reward = this.isCrateRewardUseful(crate.reward)
+      ? crate.reward
+      : this.rollEligibleCrateReward(crate.data, crate.reward.id) ?? crate.reward
+    crate.reward = reward
     this.cratesOpened += 1
     this.crateRewards.push(reward.name)
     audioManager.playSfx(this, 'crate_open')

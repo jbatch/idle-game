@@ -14,14 +14,27 @@ type TipConfig = {
 
 const PANEL_W = 330
 const PANEL_H = 188
+const TIP_OPEN_KEY = 'onboardingTipOpen'
 
 export function showOnboardingTip(scene: Phaser.Scene, config: TipConfig): boolean {
   if (!onboardingState.shouldShow(config.id)) return false
+  if (scene.data.get(TIP_OPEN_KEY)) return false
+  scene.data.set(TIP_OPEN_KEY, true)
 
   const root = scene.add.container(0, 0).setDepth(900)
   const focus = clampFocus(config.focus)
   const shadeColor = uiPalette.surface.shade
   const shadeAlpha = 0.78
+  const inputBlocker = scene.add.zone(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H)
+    .setInteractive()
+  ;['pointerdown', 'pointerup', 'pointermove'].forEach(eventName => {
+    inputBlocker.on(eventName, (
+      _pointer: Phaser.Input.Pointer,
+      _localX: number,
+      _localY: number,
+      event: Phaser.Types.Input.EventData,
+    ) => event.stopPropagation())
+  })
 
   const shades = [
     scene.add.rectangle(0, 0, GAME_W, focus.y, shadeColor, shadeAlpha).setOrigin(0, 0),
@@ -74,6 +87,7 @@ export function showOnboardingTip(scene: Phaser.Scene, config: TipConfig): boole
     audioManager.playSfx(scene, 'ui_click')
     if (skipAll) onboardingState.skipAll()
     onboardingState.complete(config.id)
+    scene.data.set(TIP_OPEN_KEY, false)
     root.destroy(true)
     config.onClose?.()
   }
@@ -85,7 +99,7 @@ export function showOnboardingTip(scene: Phaser.Scene, config: TipConfig): boole
   skip.on('pointerout', () => skip.setColor(cssColor(uiPalette.text.muted)))
   skip.on('pointerdown', () => close(true))
 
-  root.add([...shades, glow, border, panel, title, body, gotIt, gotItText, skip])
+  root.add([inputBlocker, ...shades, glow, border, panel, title, body, gotIt, gotItText, skip])
   scene.tweens.add({ targets: [border, glow], alpha: 0.42, yoyo: true, repeat: -1, duration: 760 })
   return true
 }

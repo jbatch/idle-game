@@ -58,6 +58,47 @@ Captured from the first real-player playtest. Keep these as the current qualitat
 |---|---:|---:|---:|---|
 | Game-over CTA order | Medium | Low | P1 | Swap Back to Shop and Back to Tech Tree. Tech Tree should be the primary CTA because players usually need to spend PC after a run. |
 
+### Dan Playtest Triage
+
+Captured after Dan's full playtest. These are categorized by player value and implementation size so the next pass can separate quick wins from larger design milestones.
+
+#### Onboarding / Input Safety
+
+| Item | Impact | Complexity | Priority | Notes |
+|---|---:|---:|---:|---|
+| Full tutorial input QA pass | Medium | Low/Medium | P1 | Quick fix added a shared onboarding click blocker and open-tip guard. Do a manual pass through main menu, loadout, battle, and pack reveal tutorials to catch any scene-specific overlay edge cases. |
+
+#### Tech Tree UX
+
+| Item | Impact | Complexity | Priority | Notes |
+|---|---:|---:|---:|---|
+| Crisp tech-tree text at zoom | Medium/High | Medium | P1 | Dan noticed anti-aliasing artifacts at many zoom levels, both zoomed in and out. Investigate Phaser text rendering, resolution, bitmap text, render texture scaling, or redraw-on-zoom so node labels stay crisp instead of being scaled from a blurry cached texture. |
+
+#### Combat Rewards / Feel
+
+| Item | Impact | Complexity | Priority | Notes |
+|---|---:|---:|---:|---|
+| Cursor skill-expression system | High | High | P2 | The cursor currently rewards cooldown timing and target selection, but not much precision. Explore rewards for accurate clicking, immediate off-cooldown attacks, weak-spot hits, quick-time timing, combo streaks, or optional risk/reward cursor modes. Likely hold until cursor weapon/loadout ideas are clearer so skill expression can vary by attack style. |
+
+#### Readability / Visual Identity
+
+| Item | Impact | Complexity | Priority | Notes |
+|---|---:|---:|---:|---|
+| Footsoldier vs Archer silhouette pass | Medium/High | Low/Medium | P1 | At distance the Footsoldier and Archer sprites are not distinct enough. Consider stronger weapon silhouettes, clearer body posture, different shield/outline accents, or a more noticeable class-colored shadow/glow. |
+
+#### Tower Survivability
+
+| Item | Impact | Complexity | Priority | Notes |
+|---|---:|---:|---:|---|
+| Regenerating tower shield system | High | High | P2 | Replace or extend flat battle-start shield with a Halo-like shield capacity: shield absorbs damage before HP, waits after taking damage, then regenerates to capacity. Health does not regenerate. This could become a major survivability layer, so gate it later in progression and rebalance tower tech around shield capacity, regen delay, and regen rate. |
+
+#### Synergies / Long-Term Progression
+
+| Item | Impact | Complexity | Priority | Notes |
+|---|---:|---:|---:|---|
+| Unit synergies v2 milestone | High | High | P2 | Dedicate a milestone to deeper same-unit and mixed-unit synergies. Ideas: more synergy definitions, richer behaviour effects, formations, squad splitting where 6 Footsoldiers form two cohesive groups that spread apart from each other, and clearer UI/readability for active synergies. |
+| Prestige system design | Medium/High | High | P3 | Keep as a later meta-progression candidate. Reset the game for a new loop, then spend an extra currency on permanent buffs that survive restarts. Probably only makes sense after adding more than 3 chapters or a longer campaign arc. |
+
 ### Core Combat Feel
 
 | Item | Impact | Complexity | Priority | Notes |
@@ -89,9 +130,9 @@ Captured from the first real-player playtest. Keep these as the current qualitat
 | Multipack/mega-pack expansion | Very High | High | P1 | Singles unlock squad packs via purchase-count quests; T2 singles unlock with Chapter 2. Per-run pack caps now prevent all-in spam; mega packs later. |
 | More cursor upgrades by chapter | High | Medium | P1 | Cursor Reach/Wide Arc/Battlefield Sweep expand radius by chapter and Siegebreaker boosts boss/crate damage. Continue with stun/control or support modes later. |
 | Cursor power modes | High | High | P2 | Weak knockback AOE, stun/control, heal/support pulse, strong single-target. Decide pre-run vs hot-swap vs tech branches. |
-| Tower self-defense expansion | Medium/High | Medium | P2 | Retaliating Stone/Sharpened Battlements add thorns and Guard Pulse adds a battle-start shield. Later: splash, shield pulses, low-HP panic blast. |
+| Tower self-defense expansion | Medium/High | Medium | P2 | Retaliating Stone/Sharpened Battlements add thorns and Guard Pulse adds a battle-start shield. Later: splash, shield pulses, low-HP panic blast, and possibly regenerating shield capacity. |
 | Achievement system | Medium | Medium | P2 | Track notable events: big Archer group, big AOE hit, monster kill goals, speed clears, low-HP wins, crate runs. |
-| Prestige/Ascension | Very High | High | P3 | Late-game reset layer with higher difficulty and higher-level permanent unlocks. |
+| Prestige/Ascension | Medium/High | High | P3 | Late-game reset layer with higher difficulty, extra currency, and permanent unlocks. Likely only worth designing after expanding beyond the current 3-chapter prototype. |
 
 ### Tooling
 
@@ -147,3 +188,6 @@ Captured from the first real-player playtest. Keep these as the current qualitat
 
 11. [DONE] **v0.2.6 Data Cache Fix**
    Hotfix complete: data JSON requests now carry a deploy cache key so prod does not reuse stale unit JSON after sprite metadata changes.
+
+12. [DONE] **v0.2.7 Dan Playtest Quick Fixes**
+   First sweep complete: onboarding tips now block background input and prevent stacked dialogs, locked tech quest gates show current progress, knockback labels say chance, and crate rewards avoid Tower Patch / Field Mending when those restores would do nothing. Simulator crate reward selection mirrors the no-op reward filter.

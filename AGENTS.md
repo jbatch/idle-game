@@ -28,7 +28,7 @@ The `.claude/` directory is local-only and ignored by git.
 
 ## Current Status
 
-Layers 1–8 (recovery + progression pass) plus the first editor-tooling, v0.2.0 progression-polish pass, v0.2.1 tech-tree layout pass, v0.2.2 playtest-onboarding pass, v0.2.3 mobile-polish pass, v0.2.4 radial tech-tree layout pass, v0.2.5 unit-sprite pass, and v0.2.6 data-cache fix are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, capped unopened shop packs, same-unit synergy payoffs, cursor proc tuning, supply pack-bonus tech, breakable battlefield crates, cursor/tower/Influence progression expansion, first-time onboarding spotlights, scalable canvas/mobile shims, local GUI editors for tech tree and unit data, a programmatic radial tech-tree layout prototype, static SVG paper-doll sprites for every player unit, and versioned JSON data requests to avoid stale prod caches. This is the **v0.2.6 checkpoint**.
+Layers 1–8 (recovery + progression pass) plus the first editor-tooling, v0.2.0 progression-polish pass, v0.2.1 tech-tree layout pass, v0.2.2 playtest-onboarding pass, v0.2.3 mobile-polish pass, v0.2.4 radial tech-tree layout pass, v0.2.5 unit-sprite pass, v0.2.6 data-cache fix, and v0.2.7 Dan playtest quick-fix pass are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, capped unopened shop packs, same-unit synergy payoffs, cursor proc tuning, supply pack-bonus tech, breakable battlefield crates, cursor/tower/Influence progression expansion, first-time onboarding spotlights, scalable canvas/mobile shims, local GUI editors for tech tree and unit data, a programmatic radial tech-tree layout prototype, static SVG paper-doll sprites for every player unit, versioned JSON data requests, and first Dan playtest UX fixes. This is the **v0.2.7 checkpoint**.
 
 ### v0.1.2 Additions
 - Multi-entry Vite app structure: main game plus local-only side apps.
@@ -128,6 +128,13 @@ Layers 1–8 (recovery + progression pass) plus the first editor-tooling, v0.2.0
 ### v0.2.6 Additions
 - Game data JSON loads now include a deploy cache version query, preventing prod from mixing new hashed JS with stale `/data/units/*.json`.
 - Main menu version label now reads `v0.2.6 unit sprites - For Dan <3`.
+
+### v0.2.7 Additions
+- Onboarding tips now block background input and prevent stacked tutorial dialogs.
+- Locked tech quest gates now show current stat progress in node status and tooltip copy.
+- Knockback tech labels now say knockback chance instead of implying strength.
+- Crate rewards avoid no-op Tower Patch, Field Mending, and squad shield rolls when they would do nothing; the simulator mirrors this reward filter.
+- Main menu version label now reads `v0.2.7 playtest quick fixes - For Dan <3`.
 
 ### Development Workflow Notes
 - When adding or changing combat mechanics, enemy behavior, unit behavior, targeting, movement, effects, or balance-sensitive tuning, add or update at least one focused scenario fixture in `src/tools/scenario/scenarios.ts`.

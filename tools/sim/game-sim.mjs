@@ -84,7 +84,7 @@ export function runGameSimulation(data, options, rng) {
       if (enemy.alive) continue
       pc += Math.round(enemy.reward * data.balance.pcMultiplier)
       if (enemy.isBoss) bossAlive = false
-      maybeSpawnCrate(crates, data.crates, tech, enemy, rng)
+      maybeSpawnCrate(crates, data.crates, tech, enemy, rng, tower, units)
       enemies.splice(i, 1)
     }
     for (let i = units.length - 1; i >= 0; i--) {
@@ -97,7 +97,7 @@ export function runGameSimulation(data, options, rng) {
       const crate = crates[i]
       if (crate.alive) continue
       if (!crate.opened) {
-        applyCrateReward(crate.reward, cursor, tower, units, data.units, tech, unitStats, crateStats, rng, crate)
+        applyCrateReward(crate.reward, cursor, tower, units, data.units, data.crates, tech, unitStats, crateStats, rng, crate)
         crate.opened = true
       }
       crates.splice(i, 1)
@@ -305,7 +305,7 @@ function weightedUnitRoll(pack, rng) {
   return pack.rollTable.at(-1)?.unitId ?? null
 }
 
-function maybeSpawnCrate(crates, crateData, tech, enemy, rng) {
+function maybeSpawnCrate(crates, crateData, tech, enemy, rng, tower, units) {
   if (!crateData || crates.length >= crateData.maxActive) return
   const { dropChance } = applyCrateMods(crateData, tech)
   const chance = enemy.isBoss ? Math.min(1, dropChance * 2.5) : dropChance
@@ -313,7 +313,7 @@ function maybeSpawnCrate(crates, crateData, tech, enemy, rng) {
 
   const crateKind = rollCrateKind(crateData, tech, rng)
   if (!crateKind) return
-  const reward = rollCrateReward(crateData, crateKind, tech, rng)
+  const reward = rollCrateReward(crateData, crateKind, tech, rng, { tower, units })
   if (!reward) return
 
   const pos = clampCratePosition(enemy.x, enemy.y, crateKind.radius)
@@ -338,16 +338,37 @@ function rollCrateKind(crateData, tech, rng) {
   return weightedPick(available, crate => crate.spawnWeight, rng)
 }
 
-function rollCrateReward(crateData, crateKind, tech, rng) {
+function rollCrateReward(crateData, crateKind, tech, rng, context = {}) {
   const rewards = new Map(crateData.rewards.map(reward => [reward.id, reward]))
   const available = crateKind.rewardTable
     .map(entry => ({ entry, reward: rewards.get(entry.rewardId) }))
-    .filter(item => item.reward && (!item.reward.requiresTechId || tech.level(item.reward.requiresTechId) > 0))
+    .filter(item =>
+      item.reward
+      && item.reward.id !== context.excludeRewardId
+      && (!item.reward.requiresTechId || tech.level(item.reward.requiresTechId) > 0)
+      && isCrateRewardUseful(item.reward, context.tower, context.units)
+    )
   const picked = weightedPick(available, item => item.entry.weight * item.reward.weight, rng)
   return picked?.reward ?? null
 }
 
-function applyCrateReward(reward, cursor, tower, units, unitData, tech, unitStats, crateStats, rng, crate) {
+function isCrateRewardUseful(reward, tower, units) {
+  if (reward.type === 'tower_heal') return !tower || tower.hp < tower.maxHp
+  if (reward.type === 'heal_all_units') return !units || units.some(unit => unit.alive && unit.hp < unit.maxHp)
+  if (reward.type === 'shield_all_units') return !units || units.some(unit => unit.alive)
+  return true
+}
+
+function applyCrateReward(reward, cursor, tower, units, unitData, crateData, tech, unitStats, crateStats, rng, crate) {
+  if (!isCrateRewardUseful(reward, tower, units)) {
+    reward = rollCrateReward(crateData, crate.data, tech, rng, {
+      tower,
+      units,
+      excludeRewardId: reward.id,
+    }) ?? reward
+    crate.reward = reward
+  }
+
   crateStats.opened += 1
   crateStats.rewards[reward.id] = (crateStats.rewards[reward.id] ?? 0) + 1
 

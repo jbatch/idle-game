@@ -608,7 +608,7 @@ export class TechTreeScene extends Phaser.Scene {
     } else if (purchased) {
       statusStr = 'OWNED'; statusColor = cssColor(uiPalette.state.success)
     } else if (unmetQuest) {
-      statusStr = 'QUEST LOCKED [?]'; statusColor = cssColor(0xb98a55)
+      statusStr = this.questProgressLabel(unmetQuest) ?? 'QUEST LOCKED [?]'; statusColor = cssColor(0xb98a55)
     } else if (locked) {
       statusStr = 'LOCKED [?]'; statusColor = cssColor(0x8d97a6)
     } else {
@@ -678,7 +678,7 @@ export class TechTreeScene extends Phaser.Scene {
       node.description,
       `Effect: ${effectLabel}`,
       locked || unmetQuest
-        ? `Unlock: ${unmetQuest ? this.formatQuestLabel(unmetQuest).replace(/^req: /, '') : 'buy prerequisite tech first'}`
+        ? `Unlock: ${unmetQuest ? this.formatQuestLabel(unmetQuest, true).replace(/^req: /, '') : 'buy prerequisite tech first'}`
         : `Cost: ${techState.currentCost(node)} ${this.currency.progression.icon} ${this.currency.progression.name}`,
       node.repeatable ? `Repeatable: ${techState.effectiveLevel(node)}/${node.repeatable.maxLevel}` : '',
       node.repeatable && techState.effectiveLevel(node) > 0 ? `Current: ${this.repeatableCurrentLabel(node, techState.effectiveLevel(node)) ?? effectLabel}` : '',
@@ -739,7 +739,7 @@ export class TechTreeScene extends Phaser.Scene {
     }
   }
 
-  private formatQuestLabel(req: string): string {
+  private formatQuestLabel(req: string, includeProgress = false): string {
     if (req === 'boss_chapter1_killed') return 'req: Chapter 2'
     if (req === 'boss_chapter2_killed') return 'req: Chapter 3'
 
@@ -747,11 +747,24 @@ export class TechTreeScene extends Phaser.Scene {
     if (parts.length !== 3) return req
     const [unitId, stat, threshold] = parts
     const name = this.humanizeId(unitId)
-    if (unitId.startsWith('pack_') && stat === 'bought') return `req: buy ${threshold} ${this.humanizeId(unitId.replace(/^pack_/, ''))} packs`
-    if (stat === 'kills')    return `req: ${threshold} ${name} kills`
-    if (stat === 'healed')   return `req: ${threshold} HP healed`
-    if (stat === 'summoned') return `req: summon ${name} ×${threshold}`
+    const progress = includeProgress ? this.questProgressSuffix(req) : ''
+    if (unitId.startsWith('pack_') && stat === 'bought') return `req: buy ${threshold} ${this.humanizeId(unitId.replace(/^pack_/, ''))} packs${progress}`
+    if (stat === 'kills')    return `req: ${threshold} ${name} kills${progress}`
+    if (stat === 'healed')   return `req: ${threshold} HP healed${progress}`
+    if (stat === 'summoned') return `req: summon ${name} x${threshold}${progress}`
     return req
+  }
+
+  private questProgressLabel(req: string): string | null {
+    const progress = techState.questProgress(req)
+    if (!progress) return null
+    return `${Math.min(progress.current, progress.threshold)}/${progress.threshold} [?]`
+  }
+
+  private questProgressSuffix(req: string): string {
+    const progress = techState.questProgress(req)
+    if (!progress) return ''
+    return ` (current: ${Math.min(progress.current, progress.threshold)}/${progress.threshold})`
   }
 
   private shortEffectLabel(node: TechNode): string {
@@ -775,7 +788,7 @@ export class TechTreeScene extends Phaser.Scene {
       case 'cursor_knockback':
         return ''
       case 'cursor_knockback_chance':
-        return `+${this.formatPercent(value)} knockback`
+        return `+${this.formatPercent(value)} knockback chance`
       case 'cursor_cooldown':
         return `${value.toFixed(1)}s cursor CD`
       case 'cursor_damage':
@@ -821,7 +834,7 @@ export class TechTreeScene extends Phaser.Scene {
       totals.set(effect.type, (totals.get(effect.type) ?? 0) + effect.value * level)
     }
 
-    if (totals.has('cursor_knockback_chance')) return `${this.formatPercent(totals.get('cursor_knockback_chance') ?? 0)} knockback`
+    if (totals.has('cursor_knockback_chance')) return `${this.formatPercent(totals.get('cursor_knockback_chance') ?? 0)} knockback chance`
     if (totals.has('cursor_damage')) return `+${totals.get('cursor_damage')} cursor damage`
     if (totals.has('unit_atk_bonus')) return `+${totals.get('unit_atk_bonus')} attack`
     if (totals.has('unit_hp_bonus')) return `+${totals.get('unit_hp_bonus')} HP`
