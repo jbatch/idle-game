@@ -156,5 +156,5 @@ Captured after Dan's full playtest. These are categorized by player value and im
 15. [DONE] **Onboarding, Chapter 3 Balance, and Tech Tree UX Pass**
    Completed follow-up pass covering first-player onboarding, Chapter 3 balance, and the major tech tree readability/layout work. These items have been removed from the active backlog so remaining priorities are easier to scan.
 
-16. [DONE] **v0.3.0 Combo, Shields, Support Crates, and Options**
+16. [DONE] **v0.2.10 Combo, Shields, Support Crates, and Options**
    First pass complete: tower shields can regenerate after a damage delay, healers and bards can open crates, the main/pause options overlay persists Master/Music/SFX volumes, and cursor timing combos add visible damage scaling with no-op SFX hooks. Simulator and scenario sandbox coverage mirror the new mechanics.

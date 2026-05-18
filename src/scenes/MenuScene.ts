@@ -10,7 +10,7 @@ import { cursors } from '../ui/cursors'
 import { currencyLabels } from '../ui/currency'
 import { showOptionsOverlay } from '../ui/OptionsOverlay'
 
-const VERSION_LABEL = 'v0.3.0 combo and options'
+const VERSION_LABEL = 'v0.2.10 combo and options'
 
 export class MenuScene extends Phaser.Scene {
   private orbiters: Phaser.GameObjects.Arc[] = []

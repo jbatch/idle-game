@@ -28,7 +28,7 @@ The `.claude/` directory is local-only and ignored by git.
 
 ## Current Status
 
-Layers 1–8 (recovery + progression pass) plus the first editor-tooling, v0.2.0 progression-polish pass, v0.2.1 tech-tree layout pass, v0.2.2 playtest-onboarding pass, v0.2.3 mobile-polish pass, v0.2.4 radial tech-tree layout pass, v0.2.5 unit-sprite pass, v0.2.6 data-cache fix, v0.2.7 playtest quick-fix pass, v0.2.8 enemy-sprite pass, v0.2.9 loadout-polish pass, and v0.3.0 combo/options systems pass are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, capped unopened shop packs, same-unit synergy payoffs, cursor proc and combo tuning, supply pack-bonus tech, breakable battlefield crates, cursor/tower/Influence progression expansion, regenerating tower shields, support-unit crate opening, first-time onboarding spotlights, scalable canvas/mobile shims, local GUI editors for tech tree and unit data, a programmatic radial tech-tree layout prototype, static SVG paper-doll sprites for every player unit and enemy/boss, versioned JSON/SVG asset requests, playtest UX fixes, polished SVG loadout previews, and persisted audio options. This is the **v0.3.0 checkpoint**.
+Layers 1–8 (recovery + progression pass) plus the first editor-tooling, v0.2.0 progression-polish pass, v0.2.1 tech-tree layout pass, v0.2.2 playtest-onboarding pass, v0.2.3 mobile-polish pass, v0.2.4 radial tech-tree layout pass, v0.2.5 unit-sprite pass, v0.2.6 data-cache fix, v0.2.7 playtest quick-fix pass, v0.2.8 enemy-sprite pass, v0.2.9 loadout-polish pass, and v0.2.10 combo/options systems pass are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, capped unopened shop packs, same-unit synergy payoffs, cursor proc and combo tuning, supply pack-bonus tech, breakable battlefield crates, cursor/tower/Influence progression expansion, regenerating tower shields, support-unit crate opening, first-time onboarding spotlights, scalable canvas/mobile shims, local GUI editors for tech tree and unit data, a programmatic radial tech-tree layout prototype, static SVG paper-doll sprites for every player unit and enemy/boss, versioned JSON/SVG asset requests, playtest UX fixes, polished SVG loadout previews, and persisted audio options. This is the **v0.2.10 checkpoint**.
 
 ### v0.1.2 Additions
 - Multi-entry Vite app structure: main game plus local-only side apps.
@@ -151,14 +151,14 @@ Layers 1–8 (recovery + progression pass) plus the first editor-tooling, v0.2.0
 - SVG assets now use the same deploy cache version query as JSON data.
 - Main menu version label now reads `v0.2.9 loadout polish`.
 
-### v0.3.0 Additions
+### v0.2.10 Additions
 - Tower shields now support capacity, damage-delay regeneration, and regen-rate tech. Guard Pulse starts the regenerating shield branch, with Shield Matrix and Quick Ward extending capacity and delay.
 - Healers and bards can move to nearby crates and open them when they are not handling urgent support priorities.
 - The main menu and pause overlay now expose an Options menu with persisted Master, Music, and SFX volume sliders.
 - Cursor attacks now build a visible timing combo when successful hits are fired immediately off cooldown, increasing damage up to a max combo. Combo Rhythm and Perfect Chain add combo effectiveness and max combo tech.
 - Combo state is shown near the cursor and in the HUD, combo particles ramp as the chain grows, and no-op combo SFX hooks are registered for future audio assets.
 - Scenario sandbox fixtures and the headless simulator mirror the new shield, support-crate, and cursor-combo mechanics.
-- Game data cache version now reads `0.3.0`, and the main menu version label now reads `v0.3.0 combo and options`.
+- Game data cache version now reads `0.2.10`, and the main menu version label now reads `v0.2.10 combo and options`.
 
 ### Development Workflow Notes
 - When adding or changing combat mechanics, enemy behavior, unit behavior, targeting, movement, effects, or balance-sensitive tuning, add or update at least one focused scenario fixture in `src/tools/scenario/scenarios.ts`.
