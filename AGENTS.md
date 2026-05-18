@@ -28,7 +28,7 @@ The `.claude/` directory is local-only and ignored by git.
 
 ## Current Status
 
-Layers 1–8 (recovery + progression pass) plus the first editor-tooling, v0.2.0 progression-polish pass, v0.2.1 tech-tree layout pass, v0.2.2 playtest-onboarding pass, v0.2.3 mobile-polish pass, v0.2.4 radial tech-tree layout pass, v0.2.5 unit-sprite pass, v0.2.6 data-cache fix, v0.2.7 Dan playtest quick-fix pass, and v0.2.8 enemy-sprite pass are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, capped unopened shop packs, same-unit synergy payoffs, cursor proc tuning, supply pack-bonus tech, breakable battlefield crates, cursor/tower/Influence progression expansion, first-time onboarding spotlights, scalable canvas/mobile shims, local GUI editors for tech tree and unit data, a programmatic radial tech-tree layout prototype, static SVG paper-doll sprites for every player unit and enemy/boss, versioned JSON data requests, first Dan playtest UX fixes, and SVG loadout previews. This is the **v0.2.8 checkpoint**.
+Layers 1–8 (recovery + progression pass) plus the first editor-tooling, v0.2.0 progression-polish pass, v0.2.1 tech-tree layout pass, v0.2.2 playtest-onboarding pass, v0.2.3 mobile-polish pass, v0.2.4 radial tech-tree layout pass, v0.2.5 unit-sprite pass, v0.2.6 data-cache fix, v0.2.7 Dan playtest quick-fix pass, v0.2.8 enemy-sprite pass, and v0.2.9 loadout-polish pass are complete. The game is fully playable end-to-end across all 3 chapters with a working tech tree, quest system, cheats inspector panel, combat readability effects, local scenario sandbox, capped unopened shop packs, same-unit synergy payoffs, cursor proc tuning, supply pack-bonus tech, breakable battlefield crates, cursor/tower/Influence progression expansion, first-time onboarding spotlights, scalable canvas/mobile shims, local GUI editors for tech tree and unit data, a programmatic radial tech-tree layout prototype, static SVG paper-doll sprites for every player unit and enemy/boss, versioned JSON/SVG asset requests, first Dan playtest UX fixes, and polished SVG loadout previews. This is the **v0.2.9 checkpoint**.
 
 ### v0.1.2 Additions
 - Multi-entry Vite app structure: main game plus local-only side apps.
@@ -143,6 +143,13 @@ Layers 1–8 (recovery + progression pass) plus the first editor-tooling, v0.2.0
 - Data validation now checks enemy visual metadata against the known texture set.
 - Game data cache version now reads `0.2.8` so changed enemy/unit JSON does not mix with stale deployed data.
 - Main menu version label now reads `v0.2.8 enemy sprites - For Dan <3`.
+
+### v0.2.9 Additions
+- Archer body sprite now uses a blue lower-tunic shade instead of the previous green accent.
+- Pack reveal synergy summaries now stay inside the synergies box and expose full active synergy text in a hover/tap overlay.
+- Start Battle now appears green as soon as all packs are opened, is vertically separated from the synergies box, and keeps its compact button size.
+- SVG assets now use the same deploy cache version query as JSON data.
+- Main menu version label now reads `v0.2.9 loadout polish - For Dan <3`.
 
 ### Development Workflow Notes
 - When adding or changing combat mechanics, enemy behavior, unit behavior, targeting, movement, effects, or balance-sensitive tuning, add or update at least one focused scenario fixture in `src/tools/scenario/scenarios.ts`.

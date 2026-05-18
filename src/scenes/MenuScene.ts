@@ -9,7 +9,7 @@ import { fadeInScene, fadeToScene } from '../ui/sceneTransitions'
 import { cursors } from '../ui/cursors'
 import { currencyLabels } from '../ui/currency'
 
-const VERSION_LABEL = 'v0.2.8 enemy sprites - For Dan <3'
+const VERSION_LABEL = 'v0.2.9 loadout polish - For Dan <3'
 
 export class MenuScene extends Phaser.Scene {
   private orbiters: Phaser.GameObjects.Arc[] = []

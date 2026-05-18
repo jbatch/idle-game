@@ -55,8 +55,13 @@ export function showPackRevealOverlay(
   const infoX = GAME_W / 2 + panelW / 2 - infoW - 34
   const infoY = contentTop
   const inspectorH = 186
+  const startBtnW = 174
+  const startBtnH = 34
+  const startBtnGap = 18
+  const startBtnY = footerY
+  const startBtnTop = startBtnY - startBtnH / 2
   const synergyY = infoY + inspectorH + 12
-  const synergyH = Math.max(92, footerY - 28 - synergyY)
+  const synergyH = Math.max(72, startBtnTop - startBtnGap - synergyY)
 
   const root = scene.add.container(0, 0).setDepth(60)
   const shade = scene.add.rectangle(0, 0, GAME_W, GAME_H, 0x03050b, 0.68).setOrigin(0, 0)
@@ -80,8 +85,9 @@ export function showPackRevealOverlay(
     fontFamily: 'monospace',
     fontStyle: 'bold',
   }).setOrigin(0.5)
-  const startBtn = scene.add.rectangle(GAME_W / 2 + panelW / 2 - 116, footerY, 174, 34, 0x1d5737, 0)
-  startBtn.setStrokeStyle(1, 0x7cff9f, 0)
+  const startBtn = scene.add.rectangle(infoX + infoW / 2, startBtnY, startBtnW, startBtnH, 0x1d5737, 1)
+    .setAlpha(0)
+  startBtn.setStrokeStyle(1, 0x7cff9f, 0.75)
   const startText = scene.add.text(startBtn.x, startBtn.y, 'START BATTLE', {
     fontSize: '14px',
     color: '#7cff9f',
@@ -120,6 +126,7 @@ export function showPackRevealOverlay(
   }).setOrigin(0, 0)
 
   const synergyPanel = scene.add.rectangle(infoX + infoW / 2, synergyY + synergyH / 2, infoW, synergyH, 0x081020, 0.78)
+    .setInteractive({ useHandCursor: true })
   synergyPanel.setStrokeStyle(1, 0x263a66)
   const synergyTitle = scene.add.text(infoX + 14, synergyY + 10, 'SYNERGIES', {
     fontSize: '11px',
@@ -134,6 +141,7 @@ export function showPackRevealOverlay(
     lineSpacing: 1,
     wordWrap: { width: infoW - 28 },
   }).setOrigin(0, 0)
+  const synergyTextMaxH = Math.max(36, synergyH - 44)
 
   root.add([
     shade, panel, title, hint, openAllBtn, openAllText, startBtn, startText,
@@ -145,6 +153,8 @@ export function showPackRevealOverlay(
   let battleStarting = false
   const openedCounts: Record<string, number> = {}
   const announcedSynergies = new Set<string>()
+  let fullSynergyOverlayText = ''
+  let synergyOverlay: Phaser.GameObjects.Container | null = null
   const tiles = results.map((result, index) => {
     const col = index % cols
     const row = Math.floor(index / cols)
@@ -189,6 +199,8 @@ export function showPackRevealOverlay(
     openAllBtn.disableInteractive()
     openAllBtn.setAlpha(0.25)
     openAllText.setAlpha(0.35)
+    startBtn.setFillStyle(0x1d5737, 1)
+    startBtn.setStrokeStyle(1, 0x7cff9f, 0.75)
     startBtn.setInteractive({ useHandCursor: true })
     scene.tweens.add({
       targets: [startBtn, startText],
@@ -233,18 +245,96 @@ export function showPackRevealOverlay(
     infoDesc.setText(unit.description)
   }
 
+  const hideSynergyOverlay = () => {
+    synergyOverlay?.destroy(true)
+    synergyOverlay = null
+  }
+
+  const showSynergyOverlay = () => {
+    if (!fullSynergyOverlayText || battleStarting) return
+    hideSynergyOverlay()
+
+    const overlayW = Math.min(390, panelW - infoW - 76)
+    const overlayX = Phaser.Math.Clamp(infoX - overlayW - 18, GAME_W / 2 - panelW / 2 + 18, GAME_W / 2 + panelW / 2 - overlayW - 18)
+    const overlayY = Phaser.Math.Clamp(synergyY - 18, panelTop + 18, panelBottom - 120)
+    const overlay = scene.add.container(overlayX, overlayY)
+    const titleText = scene.add.text(14, 12, 'ACTIVE SYNERGIES', {
+      fontSize: '11px',
+      color: '#7cff9f',
+      fontFamily: 'monospace',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0)
+    const bodyText = scene.add.text(14, 36, fullSynergyOverlayText, {
+      fontSize: '10px',
+      color: '#dbe4ff',
+      fontFamily: 'monospace',
+      lineSpacing: 3,
+      wordWrap: { width: overlayW - 28 },
+    }).setOrigin(0, 0)
+    const overlayH = Math.max(116, bodyText.height + 54)
+    const bg = scene.add.rectangle(0, 0, overlayW, overlayH, 0x081020, 0.98).setOrigin(0, 0)
+    bg.setStrokeStyle(1, 0x7cff9f, 0.82)
+    overlay.add([bg, titleText, bodyText])
+    root.add(overlay)
+    synergyOverlay = overlay
+  }
+
+  synergyPanel.on('pointerover', () => {
+    synergyPanel.setStrokeStyle(1, 0x7cff9f, fullSynergyOverlayText ? 0.9 : 0.55)
+    showSynergyOverlay()
+  })
+  synergyPanel.on('pointerout', () => {
+    synergyPanel.setStrokeStyle(1, 0x263a66)
+    hideSynergyOverlay()
+  })
+  synergyPanel.on('pointerdown', (
+    _pointer: Phaser.Input.Pointer,
+    _localX: number,
+    _localY: number,
+    event: Phaser.Types.Input.EventData,
+  ) => {
+    event.stopPropagation()
+    if (synergyOverlay) hideSynergyOverlay()
+    else showSynergyOverlay()
+  })
+
+  const updateSynergySummary = (active: UnitSynergyData[]) => {
+    fullSynergyOverlayText = active.map(synergy => {
+      const count = openedCounts[synergy.unitId] ?? 0
+      return `${synergy.name} (${count}/${synergy.threshold})\n${synergy.description}`
+    }).join('\n\n')
+
+    const format = (synergy: UnitSynergyData) => {
+      const count = openedCounts[synergy.unitId] ?? 0
+      return `${synergy.name} (${count}/${synergy.threshold})\n${compactSynergyDescription(synergy.description)}`
+    }
+    const render = (visible: UnitSynergyData[]) => {
+      const hidden = active.length - visible.length
+      synergyText.setText([
+        ...visible.map(format),
+        hidden > 0 ? `+${hidden} more active` : '',
+      ].filter(Boolean).join('\n'))
+    }
+
+    for (let visibleCount = Math.min(2, active.length); visibleCount >= 1; visibleCount -= 1) {
+      render(active.slice(0, visibleCount))
+      if (synergyText.height <= synergyTextMaxH) return
+    }
+
+    synergyText.setText(`+${active.length} active synergies`)
+  }
+
   const refreshSynergies = (newlyOpened: PackRollResult) => {
     openedCounts[newlyOpened.unitId] = (openedCounts[newlyOpened.unitId] ?? 0) + 1
     const active = synergies.filter(synergy => (openedCounts[synergy.unitId] ?? 0) >= synergy.threshold)
     if (active.length === 0) {
+      fullSynergyOverlayText = ''
+      hideSynergyOverlay()
       synergyText.setText('Open matching units to activate bonuses.')
       return
     }
 
-    synergyText.setText(active.slice(0, 2).map(synergy => {
-      const count = openedCounts[synergy.unitId] ?? 0
-      return `${synergy.name} (${count}/${synergy.threshold})\n${compactSynergyDescription(synergy.description)}`
-    }).join('\n') + (active.length > 2 ? `\n+${active.length - 2} more active` : ''))
+    updateSynergySummary(active)
 
     for (const synergy of active) {
       if (announcedSynergies.has(synergy.id)) continue
@@ -408,9 +498,9 @@ function compactSynergyDescription(description: string): string {
   return description
     .replace(/^Three or more living /, '3+ ')
     .replace(/^Two or more living /, '2+ ')
-    .replace('coordinate fire, attack faster, and hold a tighter firing line', 'attack faster and group up')
-    .replace('pack together and hit harder', 'group up and hit harder')
-    .replace('hold a wider defensive line', 'widen their defensive line')
+    .replace('coordinate fire, attack faster, and hold a tighter firing line', 'faster shots + grouping')
+    .replace('pack together and hit harder', 'group + hit harder')
+    .replace('hold a wider defensive line', 'wider guard line')
 }
 
 function animatePackTileOpen(scene: Phaser.Scene, tile: PackRevealTile): void {

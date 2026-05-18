@@ -194,3 +194,6 @@ Captured after Dan's full playtest. These are categorized by player value and im
 
 13. [DONE] **v0.2.8 Enemy Sprite Checkpoint**
    First pass complete: all regular enemies and bosses now have static SVG body sprites using the shared body/weapon renderer, enemy visual metadata is validated, and pack reveal/loadout tiles use SVG unit previews instead of circles when unit visual metadata exists.
+
+14. [DONE] **v0.2.9 Loadout Polish**
+   First pass complete: Archer sprite tint is now blue-on-blue, active synergy summaries no longer overflow the loadout box, full synergy text is available through a hover/tap overlay, and the Start Battle button has stable green visibility plus explicit margin below the synergies panel.

@@ -10,7 +10,7 @@ type SvgAsset = DataAsset & {
   size: number
 }
 
-const DATA_CACHE_VERSION = '0.2.8'
+const DATA_CACHE_VERSION = '0.2.9'
 
 export const gameDataAssets: DataAsset[] = [
   { key: 'grunt', path: '/data/enemies/grunt.json' },
@@ -69,7 +69,7 @@ export function loadGameData(scene: Phaser.Scene): void {
   }
   for (const asset of [...unitVisualAssets, ...enemyVisualAssets]) {
     if (!scene.textures.exists(asset.key)) {
-      scene.load.svg(asset.key, asset.path, { width: asset.size, height: asset.size })
+      scene.load.svg(asset.key, versionedDataPath(asset.path), { width: asset.size, height: asset.size })
     }
   }
 }
