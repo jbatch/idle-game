@@ -10,7 +10,7 @@ type SvgAsset = DataAsset & {
   size: number
 }
 
-const DATA_CACHE_VERSION = '0.2.10'
+const DATA_CACHE_VERSION = '0.2.11'
 
 export const gameDataAssets: DataAsset[] = [
   { key: 'grunt', path: '/data/enemies/grunt.json' },

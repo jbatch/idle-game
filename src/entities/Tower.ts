@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import type { Targetable } from '../data/types'
 import { floatDamageNumber, floatHealNumber, playRingPulse } from '../effects/CombatEffects'
+import { audioManager } from '../systems/AudioManager'
 
 const RADIUS = 28
 
@@ -46,6 +47,7 @@ export class Tower {
     if (!this.alive || this.godMode) return
     const absorbed = Math.min(this.shield, amount)
     this.shield -= absorbed
+    if (absorbed > 0) audioManager.playSfx(this.graphics.scene, 'shield_absorb', 0.34)
     if (amount > 0) this.shieldRegenTimer = this.shieldRegenDelay
     const remaining = amount - absorbed
     if (remaining > 0) this.hp = Math.max(0, this.hp - remaining)

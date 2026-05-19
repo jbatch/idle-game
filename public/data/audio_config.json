@@ -1,0 +1,25 @@
+{
+  "sfx": {
+    "ui_click": "click_tick",
+    "ui_hover": "hover_lift",
+    "pack_buy": "buy_chime",
+    "pack_open": "open_rip",
+    "run_start": "run_horn",
+    "tech_purchase": "tech_unlock",
+    "crate_open": "crate_crack",
+    "combo_step": "combo_pluck",
+    "combo_max": "max_shine",
+    "combo_break": "break_drop",
+    "boss_warning": "boss_alarm",
+    "victory": "victory_three",
+    "defeat": "defeat_fall",
+    "cursor_hit": "cursor_snap",
+    "shield_absorb": "shield_ping"
+  },
+  "music": {
+    "menu_theme": "menu_camp",
+    "shop_theme": "shop_market",
+    "battle_theme": "battle_sparkline",
+    "boss_theme": "boss_engine"
+  }
+}

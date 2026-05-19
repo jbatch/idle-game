@@ -135,6 +135,7 @@ export class CursorAttack {
         if (knockbackTriggered && target.applyKnockback) target.applyKnockback(x, y, kb)
       }
     })
+    if (hits > 0) audioManager.playSfx(this.scene, 'cursor_hit', 0.36)
     this.resolveComboFeedback(x, y, nextCombo, hits > 0, comboEligible)
     return true
   }

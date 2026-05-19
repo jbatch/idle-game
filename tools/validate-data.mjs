@@ -91,6 +91,31 @@ const KNOWN_VISUAL_TEXTURES = new Set([
   'enemy_void_sovereign_body',
 ])
 
+const KNOWN_AUDIO_SFX = new Set([
+  'ui_click',
+  'ui_hover',
+  'pack_buy',
+  'pack_open',
+  'run_start',
+  'tech_purchase',
+  'crate_open',
+  'combo_step',
+  'combo_max',
+  'combo_break',
+  'boss_warning',
+  'victory',
+  'defeat',
+  'cursor_hit',
+  'shield_absorb',
+])
+
+const KNOWN_AUDIO_MUSIC = new Set([
+  'menu_theme',
+  'shop_theme',
+  'battle_theme',
+  'boss_theme',
+])
+
 const errors = []
 const warnings = []
 
@@ -108,6 +133,7 @@ function main() {
   validateChapters(data)
   validateCrates(data)
   validateSynergies(data)
+  validateAudioConfig(data)
 
   report()
 }
@@ -122,6 +148,7 @@ function loadAllData() {
   const shopPacks = loadJson('shop_packs.json')
   const crates = loadJson('crates.json')
   const synergies = loadJson('unit_synergies.json')
+  const audioConfig = loadJson('audio_config.json')
 
   return {
     units,
@@ -133,6 +160,7 @@ function loadAllData() {
     shopPacks,
     crates,
     synergies,
+    audioConfig,
     unitIds: new Set(units.map(unit => unit.id)),
     enemyIds: new Set(enemies.map(enemy => enemy.id)),
     chapterIds: new Set(chapters.map(chapter => chapter.id)),
@@ -400,6 +428,36 @@ function validateSynergies(data) {
       if (effect.radius !== undefined) expectNumber(effect.radius, `${effectAt}.radius`, { min: 0 })
       if (effect.strength !== undefined) expectNumber(effect.strength, `${effectAt}.strength`)
     }
+  }
+}
+
+function validateAudioConfig(data) {
+  const config = data.audioConfig
+  if (!isRecord(config)) {
+    error('audio_config.json must be an object')
+    return
+  }
+  if (!isRecord(config.sfx)) {
+    error('audio_config.sfx must be an object')
+  } else {
+    validateAudioSelectionMap(config.sfx, KNOWN_AUDIO_SFX, 'audio_config.sfx')
+  }
+  if (!isRecord(config.music)) {
+    error('audio_config.music must be an object')
+  } else {
+    validateAudioSelectionMap(config.music, KNOWN_AUDIO_MUSIC, 'audio_config.music')
+  }
+}
+
+function validateAudioSelectionMap(map, knownKeys, at) {
+  for (const key of knownKeys) {
+    if (!(key in map)) error(`${at} is missing "${key}"`)
+    else if (typeof map[key] !== 'string' || !/^[a-z][a-z0-9_]*$/.test(map[key])) {
+      error(`${at}.${key} must be a lowercase variant id`)
+    }
+  }
+  for (const key of Object.keys(map)) {
+    if (!knownKeys.has(key)) error(`${at} has unknown key "${key}"`)
   }
 }
 

@@ -192,6 +192,11 @@ export interface CurrencyDisplayData {
   icon: string
 }
 
+export interface AudioConfigData {
+  sfx: Record<string, string>
+  music: Record<string, string>
+}
+
 export interface TechEffect {
   type: 'cursor_knockback' | 'cursor_knockback_chance' | 'cursor_cooldown' | 'cursor_damage' | 'cursor_radius_bonus'
        | 'cursor_boss_damage_mult' | 'cursor_crate_damage_mult' | 'cursor_combo_damage_bonus' | 'cursor_max_combo_bonus'

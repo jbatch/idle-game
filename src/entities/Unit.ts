@@ -5,6 +5,7 @@ import type { UnitData, UnitBuff, UnitSynergyEffect, StatusEffect, Targetable } 
 import { CX, CY, ARENA_RADIUS } from '../constants'
 import { floatDamageNumber, floatHealNumber, playUnitAttackEffect } from '../effects/CombatEffects'
 import { UnitVisual } from './UnitVisual'
+import { audioManager } from '../systems/AudioManager'
 
 export class Unit implements Targetable {
   scene: Phaser.Scene
@@ -641,6 +642,7 @@ export class Unit implements Targetable {
     if (!this.alive) return
     const absorbed = Math.min(this.shield, amount)
     this.shield -= absorbed
+    if (absorbed > 0) audioManager.playSfx(this.scene, 'shield_absorb', 0.22)
     this.hp -= amount - absorbed
     floatDamageNumber(this.scene, this.x, this.y, amount)
     if (this.hp <= 0) {

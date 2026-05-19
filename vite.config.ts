@@ -69,6 +69,27 @@ export default defineConfig({
             res.end(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : 'Unable to save tech tree' }))
           }
         })
+
+        server.middlewares.use('/__audio-lab/save', async (req, res) => {
+          if (req.method !== 'POST') {
+            res.statusCode = 405
+            res.end('Method not allowed')
+            return
+          }
+
+          try {
+            const body = await readBody(req)
+            const parsed = JSON.parse(body) as unknown
+            assertAudioConfigPayload(parsed)
+            await writeFile(resolve(__dirname, 'public/data/audio_config.json'), stringifyAudioConfig(parsed), 'utf8')
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ ok: true }))
+          } catch (error) {
+            res.statusCode = 400
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : 'Unable to save audio config' }))
+          }
+        })
       },
     },
   ],
@@ -80,6 +101,7 @@ export default defineConfig({
         scenario: resolve(__dirname, 'tools/scenario.html'),
         techEditor: resolve(__dirname, 'tools/tech-editor.html'),
         unitEditor: resolve(__dirname, 'tools/unit-editor.html'),
+        audioLab: resolve(__dirname, 'tools/audio-lab.html'),
       },
     },
   },
@@ -111,6 +133,36 @@ type UnitSavePayload = {
   manifest: { units: string[] }
   originalFiles: string[]
 }
+
+type AudioConfigPayload = {
+  sfx: Record<string, string>
+  music: Record<string, string>
+}
+
+const AUDIO_SFX_KEYS = [
+  'ui_click',
+  'ui_hover',
+  'pack_buy',
+  'pack_open',
+  'run_start',
+  'tech_purchase',
+  'crate_open',
+  'combo_step',
+  'combo_max',
+  'combo_break',
+  'boss_warning',
+  'victory',
+  'defeat',
+  'cursor_hit',
+  'shield_absorb',
+]
+
+const AUDIO_MUSIC_KEYS = [
+  'menu_theme',
+  'shop_theme',
+  'battle_theme',
+  'boss_theme',
+]
 
 function assertSavePayload(value: unknown): asserts value is SavePayload {
   if (!value || typeof value !== 'object') throw new Error('Expected save payload object')
@@ -146,6 +198,26 @@ function assertUnitSavePayload(value: unknown): asserts value is UnitSavePayload
 
   for (const file of payload.originalFiles) {
     if (typeof file !== 'string' || !/^[a-z][a-z0-9_]*\.json$/.test(file)) throw new Error(`Invalid original unit file "${String(file)}"`)
+  }
+}
+
+function assertAudioConfigPayload(value: unknown): asserts value is AudioConfigPayload {
+  if (!value || typeof value !== 'object') throw new Error('Expected audio config object')
+  const payload = value as { sfx?: unknown, music?: unknown }
+  if (!isFlatRecord(payload.sfx)) throw new Error('Expected audio config sfx object')
+  if (!isFlatRecord(payload.music)) throw new Error('Expected audio config music object')
+
+  for (const key of AUDIO_SFX_KEYS) {
+    const selected = (payload.sfx as JsonRecord)[key]
+    if (typeof selected !== 'string' || !/^[a-z][a-z0-9_]*$/.test(selected)) {
+      throw new Error(`Invalid SFX variant for "${key}"`)
+    }
+  }
+  for (const key of AUDIO_MUSIC_KEYS) {
+    const selected = (payload.music as JsonRecord)[key]
+    if (typeof selected !== 'string' || !/^[a-z][a-z0-9_]*$/.test(selected)) {
+      throw new Error(`Invalid music variant for "${key}"`)
+    }
   }
 }
 
@@ -300,6 +372,13 @@ function stringifyUnit(unit: JsonRecord): string {
 
   output.push('}')
   return `${output.join('\n')}\n`
+}
+
+function stringifyAudioConfig(config: AudioConfigPayload): string {
+  return `${JSON.stringify({
+    sfx: Object.fromEntries(AUDIO_SFX_KEYS.map(key => [key, config.sfx[key]])),
+    music: Object.fromEntries(AUDIO_MUSIC_KEYS.map(key => [key, config.music[key]])),
+  }, null, 2)}\n`
 }
 
 function stringifyConfigValue(value: unknown, indent: number): string {

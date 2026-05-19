@@ -158,3 +158,6 @@ Captured after Dan's full playtest. These are categorized by player value and im
 
 16. [DONE] **v0.2.10 Combo, Shields, Support Crates, and Options**
    First pass complete: tower shields can regenerate after a damage delay, healers and bards can open crates, the main/pause options overlay persists Master/Music/SFX volumes, and cursor timing combos add visible damage scaling with no-op SFX hooks. Simulator and scenario sandbox coverage mirror the new mechanics.
+
+17. [DONE] **v0.2.11 Procedural Audio and Audio Lab**
+   First pass complete: procedural Web Audio SFX/music variants now back the game audio hooks, the Audio Lab previews three options per hook and saves selected preferences to `audio_config.json`, and cursor hits plus shield absorbs now have live SFX cues.
